@@ -6,8 +6,9 @@ interface Props {
 
 export default function RichTextBlock({ block }: Props) {
   return (
-    <section className="max-w-prose text-base leading-relaxed opacity-80">
-      <p className="whitespace-pre-wrap">{block.content}</p>
-    </section>
+    <section
+      className="rich-text max-w-prose"
+      dangerouslySetInnerHTML={{ __html: block.content }}
+    />
   );
 }

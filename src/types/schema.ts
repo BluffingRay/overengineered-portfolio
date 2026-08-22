@@ -1,5 +1,10 @@
+export const SPACINGS = ['none', 'compact', 'normal', 'spacious'] as const;
+
+export type BlockSpacing = (typeof SPACINGS)[number];
+
 interface BlockBase {
   id: string;
+  spacing?: BlockSpacing;
 }
 
 export const IMAGE_ALIGNMENTS = ['left', 'right', 'top', 'backdrop'] as const;
@@ -21,10 +26,12 @@ export interface AppCardItem {
   name: string;
   description: string;
   href: string;
+  coverImage?: string;
+  icon?: string;
+  tags?: string[];
   demoUrl?: string;
   githubUrl?: string;
   category?: string;
-  icon?: string;
   primaryAction?: PrimaryAction;
 }
 
@@ -71,7 +78,7 @@ export interface ThemeConfig {
 }
 
 export interface PortfolioData {
-  version: 1;
+  version: 2;
   skin: ThemeSkin;
   theme: ThemeConfig;
   tabs: Tab[];

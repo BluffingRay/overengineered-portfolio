@@ -18,7 +18,8 @@ const BTN =
   'rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80';
 
 export default function UtilityBar() {
-  const { data, mutate, reset } = usePortfolioData();
+  const { data, mutate, reset, undo, redo, canUndo, canRedo } =
+    usePortfolioData();
   const [hexDraft, setHexDraft] = useState('');
   const [copied, setCopied] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -134,6 +135,26 @@ export default function UtilityBar() {
       </div>
 
       <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          aria-label="Undo"
+          title="Undo (Ctrl/Cmd+Z)"
+          disabled={!canUndo}
+          onClick={undo}
+          className={`${BTN} disabled:pointer-events-none disabled:opacity-30`}
+        >
+          ↩
+        </button>
+        <button
+          type="button"
+          aria-label="Redo"
+          title="Redo (Ctrl/Cmd+Shift+Z)"
+          disabled={!canRedo}
+          onClick={redo}
+          className={`${BTN} disabled:pointer-events-none disabled:opacity-30`}
+        >
+          ↪
+        </button>
         <input
           ref={fileInputRef}
           type="file"

@@ -1,7 +1,7 @@
 import type { PortfolioData } from '@/types/schema';
 
 export const initialData: PortfolioData = {
-  version: 1,
+  version: 2,
   skin: 'hud',
   theme: {
     accentColor: '#22d3ee',
@@ -39,8 +39,10 @@ export const initialData: PortfolioData = {
               description:
                 'This site: a block-driven portfolio with theme skins and local-first editing.',
               href: '/projects/mama',
+              coverImage: '/images/covers/cms.jpg',
+              icon: '/images/icons/react.svg',
+              tags: ['next.js', 'local-first', 'dnd-kit'],
               category: 'Web App',
-              icon: 'layout-dashboard',
               demoUrl: 'https://example.com/demo',
               githubUrl: 'https://github.com/raymar/portfolio-cms',
             },
@@ -50,8 +52,8 @@ export const initialData: PortfolioData = {
               description:
                 'Kanban board with optimistic sync and offline-first storage.',
               href: '/projects/taskflow',
+              icon: '/images/icons/trello.svg',
               category: 'Productivity',
-              icon: 'kanban',
               githubUrl: 'https://github.com/raymar/taskflow',
             },
             {

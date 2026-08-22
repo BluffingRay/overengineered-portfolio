@@ -6,8 +6,12 @@ import {
   getPortfolioDataSnapshot,
   getPortfolioDataServerSnapshot,
   subscribeToPortfolioData,
+  getHistorySnapshot,
+  getHistoryServerSnapshot,
   savePortfolioData,
   resetPortfolioData,
+  undoPortfolioData,
+  redoPortfolioData,
 } from '@/lib/storage';
 
 export function usePortfolioData() {
@@ -15,6 +19,12 @@ export function usePortfolioData() {
     subscribeToPortfolioData,
     getPortfolioDataSnapshot,
     getPortfolioDataServerSnapshot,
+  );
+
+  const history = useSyncExternalStore(
+    subscribeToPortfolioData,
+    getHistorySnapshot,
+    getHistoryServerSnapshot,
   );
 
   const mutate = useCallback(
@@ -28,5 +38,21 @@ export function usePortfolioData() {
     resetPortfolioData();
   }, []);
 
-  return { data, mutate, reset };
+  const undo = useCallback(() => {
+    undoPortfolioData();
+  }, []);
+
+  const redo = useCallback(() => {
+    redoPortfolioData();
+  }, []);
+
+  return {
+    data,
+    mutate,
+    reset,
+    undo,
+    redo,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+  };
 }

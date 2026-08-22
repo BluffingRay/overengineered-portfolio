@@ -9,7 +9,7 @@ import UtilityBar from '@/components/UtilityBar';
 import EditorPanel from '@/components/editor/EditorPanel';
 
 export default function PortfolioView() {
-  const { data } = usePortfolioData();
+  const { data, undo, redo } = usePortfolioData();
   const searchParams = useSearchParams();
   const [isEditMode, setIsEditMode] = useState(
     searchParams.get('edit') === 'true',
@@ -19,20 +19,57 @@ export default function PortfolioView() {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (isEditMode) params.set('edit', 'true');
+    else params.delete('edit');
+
+    const queryString = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      queryString ? `/?${queryString}` : window.location.pathname,
+    );
+  }, [isEditMode]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
       if (
-        (event.ctrlKey || event.metaKey) &&
-        event.shiftKey &&
-        event.key.toLowerCase() === 'e'
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
       ) {
+        return;
+      }
+
+      const mod = event.ctrlKey || event.metaKey;
+
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'e') {
         event.preventDefault();
         setIsEditMode((mode) => !mode);
+        return;
+      }
+
+      if (!isEditMode) return;
+
+      if (mod && !event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undo();
+      } else if (
+        mod &&
+        ((event.shiftKey && event.key.toLowerCase() === 'z') ||
+          event.key.toLowerCase() === 'y')
+      ) {
+        event.preventDefault();
+        redo();
       }
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [isEditMode, undo, redo]);
 
   const tabs = data.tabs;
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
@@ -147,7 +184,6 @@ export default function PortfolioView() {
         role="tabpanel"
         id={`panel-${activeTab.id}`}
         aria-labelledby={`tab-${activeTab.id}`}
-        className="space-y-24 pt-16"
       >
         {activeTab.blocks.map((block) => (
           <BlockRenderer key={block.id} block={block} />
