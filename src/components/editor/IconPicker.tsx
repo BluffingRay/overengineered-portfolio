@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { CURATED_ICONS, resolveAppIcon } from '@/components/blocks/iconMap';
 import ProjectIcon from '@/components/ui/ProjectIcon';
+import MediaPicker from '@/components/editor/MediaPicker';
 
 interface Props {
   value?: string;
@@ -14,19 +15,47 @@ interface Props {
 export default function IconPicker({ value, appName, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Outside-click + Escape close. A fixed backdrop can't be trusted here:
+  // dnd-kit transforms on ancestor sortable rows turn `fixed` into
+  // row-relative positioning, so the backdrop stops covering the viewport.
+  // While the media library dialog is open it OWNS the interaction — this
+  // layer detaches its listeners so clicks inside the (portaled) dialog
+  // don't close the dropdown and Escape only closes the top layer.
+  useEffect(() => {
+    if (!open || mediaOpen) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, mediaOpen]);
 
   const filtered = CURATED_ICONS.filter((id) =>
     id.includes(query.trim().toLowerCase().replace(/\s+/g, '-')),
   );
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((state) => !state)}
-        className="flex w-full items-center gap-3 rounded-skin border border-[var(--border)] bg-background px-2 py-1.5 text-left transition-opacity hover:opacity-80"
+        className="flex w-full items-center gap-3 rounded-skin border border-[var(--border)] bg-background px-2 py-1.5 text-left hover:opacity-80"
       >
         <ProjectIcon icon={value} appName={appName} />
         <span className="min-w-0 flex-1 truncate text-xs opacity-60">
@@ -41,17 +70,11 @@ export default function IconPicker({ value, appName, onChange }: Props) {
       </button>
 
       {open && (
-        <>
-          <div
-            aria-hidden="true"
-            className="fixed inset-0 z-30"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-label={`Pick an icon for ${appName}`}
-            className="absolute left-0 z-40 mt-1 w-80 max-w-[calc(100vw-2rem)] space-y-2 rounded-skin border border-[var(--border)] bg-surface p-2 shadow-lg shadow-black/20"
-          >
+        <div
+          role="dialog"
+          aria-label={`Pick an icon for ${appName}`}
+          className="absolute left-0 z-40 mt-1 w-80 max-w-[calc(100vw-2rem)] space-y-2 rounded-skin border border-[var(--border)] bg-surface p-2 shadow-lg shadow-black/20"
+        >
             <div className="relative">
               <Search
                 className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 opacity-50"
@@ -81,7 +104,7 @@ export default function IconPicker({ value, appName, onChange }: Props) {
                       onChange(id);
                       setOpen(false);
                     }}
-                    className={`flex h-9 w-9 items-center justify-center rounded-skin border transition-colors ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-skin border ${
                       value === id
                         ? 'border-accent text-accent'
                         : 'border-transparent opacity-70 hover:bg-current/10 hover:opacity-100'
@@ -99,37 +122,54 @@ export default function IconPicker({ value, appName, onChange }: Props) {
             </div>
 
             <div className="space-y-1.5 border-t border-[var(--border)] pt-2">
-              <input
-                value={
-                  value && value.startsWith('data:image') === false &&
-                  (value.startsWith('/') ||
-                    /^(https?:)?\/\//i.test(value))
-                    ? value
-                    : ''
-                }
-                onChange={(event) =>
-                  onChange(event.target.value || undefined)
-                }
-                placeholder="Custom image URL (/images/…, https://…)"
-                aria-label="Custom icon image URL"
-                spellCheck={false}
-                className="w-full rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs"
-              />
+              <div className="flex gap-1.5">
+                <input
+                  value={
+                    value && value.startsWith('data:image') === false &&
+                    (value.startsWith('/') ||
+                      /^(https?:)?\/\//i.test(value))
+                      ? value
+                      : ''
+                  }
+                  onChange={(event) =>
+                    onChange(event.target.value || undefined)
+                  }
+                  placeholder="Custom image URL (/images/…, https://…)"
+                  aria-label="Custom icon image URL"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMediaOpen(true)}
+                  className="shrink-0 rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium opacity-70 hover:opacity-100"
+                >
+                  Library
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   onChange(undefined);
                   setQuery('');
                 }}
-                className="flex items-center gap-1 rounded-skin border border-dashed border-[var(--border)] px-2 py-1 text-xs opacity-70 transition-opacity hover:text-red-500 hover:opacity-100"
+                className="flex items-center gap-1 rounded-skin border border-dashed border-[var(--border)] px-2 py-1 text-xs opacity-70 hover:text-red-500 hover:opacity-100"
               >
                 <X className="h-3 w-3" aria-hidden="true" />
                 Clear — reset to monogram
               </button>
             </div>
-          </div>
-        </>
+        </div>
       )}
+
+      <MediaPicker
+        open={mediaOpen}
+        onClose={() => setMediaOpen(false)}
+        onSelect={(url) => {
+          onChange(url);
+          setOpen(false);
+        }}
+      />
     </div>
   );
 }

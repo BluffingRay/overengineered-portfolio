@@ -2,6 +2,7 @@
 
 :root,
 [data-skin='clean'] {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #18181b;
   --surface: #fafafa;
@@ -9,9 +10,14 @@
   --accent: #2563eb;
   --radius: 0.75rem;
   --font: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Calm glide */
+  --dur: 150ms;
+  --ease: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --press: 0.97;
 }
 
 [data-skin='hud'] {
+  color-scheme: dark;
   --background: #09090b;
   --foreground: #e4e4e7;
   --surface: #18181b;
@@ -19,9 +25,14 @@
   --accent: #22d3ee;
   --radius: 0px;
   --font: var(--font-geist-mono), ui-monospace, monospace;
+  /* Terminal snap */
+  --dur: 90ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --press: 0.985;
 }
 
 [data-skin='notebook'] {
+  color-scheme: light;
   --background: #fdfcf9;
   --foreground: #292524;
   --surface: #f5f5f4;
@@ -29,12 +40,51 @@
   --accent: #b45309;
   --radius: 0.25rem;
   --font: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+  /* Springy page */
+  --dur: 190ms;
+  --ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --press: 0.96;
+  /* Overshoot reads as jelly on big slow surfaces — reveals get the
+     spring-free curve instead. */
+  --reveal-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 [data-skin] {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font);
+}
+
+/* ── Motion system ────────────────────────────────────────────────
+   Every interaction rides the skin's tokens: HUD snaps, Notebook
+   springs, Clean glides. Base layer, so explicit utilities win. */
+@layer base {
+  [data-skin] {
+    --dur: 160ms;
+    --ease: ease-out;
+    --press: 0.97;
+  }
+
+  /* Single motion owner for buttons and links — colors, opacity,
+     shadow and the individual transform properties all share the
+     skin's timing. `transform` stays out so dnd-kit drags (inline
+     transforms) never lag behind a transition. */
+  [data-skin] :is(button, a):not(:disabled) {
+    transition-property: color, background-color, border-color, fill, stroke,
+      opacity, box-shadow, translate, rotate, scale;
+    transition-duration: var(--dur);
+    transition-timing-function: var(--ease);
+  }
+
+  /* Physical press — depth from --press. Inline text links opt out:
+     shrinking body-copy links reads as glitch, not tactility. */
+  [data-skin] :is(button, a):not(:disabled):active {
+    scale: var(--press);
+  }
+
+  [data-skin] .rich-text a:active {
+    scale: none;
+  }
 }
 
 @theme inline {
@@ -50,6 +100,39 @@
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+/* Always reserve the scrollbar gutter — no layout jump when a tab/page
+   grows past the viewport and the scrollbar pops into existence. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* One slim, skin-aware scrollbar everywhere (Firefox…). Colors derive
+   from --foreground so each skin themes it automatically. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 25%, transparent)
+    transparent;
+}
+
+/* …and Chromium/WebKit. Radius follows the active skin token. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+  border: 3px solid transparent;
+  border-radius: var(--radius);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 45%, transparent);
+  background-clip: padding-box;
 }
 
 .rich-text :is(h1, h2, h3) {
@@ -75,9 +158,13 @@ body {
 }
 
 .rich-text ul {
-  list-style: disc;
+  list-style: square;
   padding-inline-start: 1.25rem;
   margin-block: 0.5em;
+}
+
+.rich-text :is(ul, ol) li::marker {
+  color: var(--accent);
 }
 
 .rich-text ol {
@@ -93,13 +180,220 @@ body {
 .rich-text blockquote {
   border-inline-start: 3px solid var(--accent);
   padding-inline-start: 0.75rem;
-  opacity: 0.8;
+  font-style: italic;
   margin-block: 0.6em;
 }
 
 .rich-text a {
   color: var(--accent);
   text-decoration: underline;
+}
+
+.rich-text img {
+  max-width: 100%;
+  height: auto;
+  /* Same rounding as the editor's node view — WYSIWYG parity. */
+  border-radius: var(--radius);
+}
+
+/* Floated (wrap) images must not poke out of the article's bottom edge.
+   Clearing at the ROOT only — per-paragraph clears stretch the hosting
+   paragraph and force following text UNDER the float in the editor. */
+.rich-text::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+/* Explicit "start below wraps" paragraph flag (⤵ toolbar toggle). */
+.rich-text [data-clear='both'] {
+  clear: both;
+}
+
+.rich-text table {
+  border-collapse: collapse;
+  margin-block: 0.6em;
+  width: 100%;
+}
+
+.rich-text :is(th, td) {
+  position: relative;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  min-width: 3rem;
+}
+
+.rich-text th {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  font-weight: 600;
+}
+
+.rich-text .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--accent);
+  opacity: 0.18;
+}
+
+.rich-text ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0.25rem;
+}
+
+.rich-text ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.rich-text ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.15em;
+  user-select: none;
+}
+
+.rich-text input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+.rich-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* Enter animation — content fades while settling from a hair of extra
+   scale: no spatial journey, just arrival. Each skin's duration/easing
+   gives the flavor (Notebook visibly springs on the settle). */
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    scale: 0.985;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.settle-in {
+  animation: settle-in calc(var(--dur) * 2) var(--ease) both;
+}
+
+/* Directional tab entry — content arrives from the side you came from:
+   moving right → panel slides in leftward from the right edge, and
+   vice versa. Same skin timing as everything else. */
+@keyframes tab-enter-right {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes tab-enter-left {
+  from {
+    opacity: 0;
+    translate: -24px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.tab-enter-right {
+  animation: tab-enter-right calc(var(--dur) * 2.5) var(--ease) both;
+}
+
+.tab-enter-left {
+  animation: tab-enter-left calc(var(--dur) * 2.5) var(--ease) both;
+}
+
+/* Scroll reveal — blocks ease in the first time they enter the viewport.
+   Hidden state lives on .reveal; .is-visible transitions it away using
+   the skin's timing (4x --dur: reveals should linger, not rush). */
+.reveal {
+  opacity: 0;
+  translate: 0 18px;
+  transition:
+    opacity calc(var(--dur) * 4) var(--reveal-ease, var(--ease)),
+    translate calc(var(--dur) * 4) var(--reveal-ease, var(--ease));
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* Card hover lift — a breath of depth, tinted per skin. */
+.lift {
+  transition:
+    translate var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.lift:hover {
+  translate: 0 -2px;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* Marquee ticker — two identical halves + translateX(-50%) loop. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: var(--marquee-duration, 36s) marquee-scroll linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-reverse .marquee-track {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+
+  .settle-in,
+  .tab-enter-right,
+  .tab-enter-left {
+    animation: none;
+  }
+
+  .reveal {
+    opacity: 1;
+    translate: none;
+  }
+
+  .lift:hover {
+    translate: none;
+    box-shadow: none;
+  }
+
+  [data-skin] :is(button, a):not(:disabled):active {
+    scale: none;
+  }
 }
 
 .rich-editor .ProseMirror {

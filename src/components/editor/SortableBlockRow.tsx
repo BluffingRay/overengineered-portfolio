@@ -70,7 +70,7 @@ export default function SortableBlockRow({
           type="button"
           aria-expanded={isExpanded}
           onClick={onToggle}
-          className="flex items-center gap-1.5 text-left text-sm font-medium transition-opacity hover:opacity-70"
+          className="flex items-center gap-1.5 text-left text-sm font-medium hover:opacity-70"
         >
           <span className="opacity-50">{isExpanded ? '▾' : '▸'}</span>
           {(() => {

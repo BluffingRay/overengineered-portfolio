@@ -1,20 +1,29 @@
+import { useEffect, useRef, useState } from 'react';
 import { SPACINGS } from '@/types/schema';
 import type {
   AppCardItem,
   Block,
   BlockType,
   BlockSpacing,
+  BlockWidth,
+  MarqueeSpeed,
+  HeroLayout,
   ImageAlignment,
   PrimaryAction,
+  SocialLink,
+  SocialPlatform,
+  StatusColor,
 } from '@/types/schema';
 import type { LucideIcon } from 'lucide-react';
-import { KanbanSquare, CodeXml, Star, Type } from 'lucide-react';
+import { KanbanSquare, CodeXml, Star, Type, MoveHorizontal, Newspaper } from 'lucide-react';
 
 export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   featured_hero: Star,
   app_grid: KanbanSquare,
   rich_text: Type,
   custom_html: CodeXml,
+  marquee: MoveHorizontal,
+  blog: Newspaper,
 };
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
@@ -22,6 +31,14 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   app_grid: 'App Grid',
   rich_text: 'Rich Text',
   custom_html: 'Custom HTML',
+  marquee: 'Marquee',
+  blog: 'Blog',
+};
+
+export const SPEED_LABELS: Record<MarqueeSpeed, string> = {
+  slow: 'Slow',
+  normal: 'Normal',
+  fast: 'Fast',
 };
 
 export const ALIGNMENT_LABELS: Record<ImageAlignment, string> = {
@@ -37,6 +54,50 @@ export const ACTION_LABELS: Record<PrimaryAction, string> = {
   href: 'Page link',
 };
 
+export const HERO_LAYOUT_LABELS: Record<HeroLayout, string> = {
+  centered: 'Centered',
+  split: 'Split (side selectable)',
+  banner: 'Banner (image backdrop)',
+};
+
+export const STATUS_COLOR_LABELS: Record<StatusColor, string> = {
+  green: 'Green',
+  blue: 'Blue',
+  amber: 'Amber',
+  purple: 'Purple',
+};
+
+export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  github: 'GitHub',
+  linkedin: 'LinkedIn',
+  twitter: 'Twitter / X',
+  email: 'Email',
+  discord: 'Discord',
+  custom: 'Custom',
+};
+
+export function Checkbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-1.5 text-xs opacity-80 transition-opacity hover:opacity-100">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-3.5 w-3.5 accent-[var(--accent)]"
+      />
+      {label}
+    </label>
+  );
+}
+
 export const SPACING_LABELS: Record<BlockSpacing, string> = {
   none: 'None',
   compact: 'Compact',
@@ -51,18 +112,93 @@ export const SPACING_GLYPHS: Record<BlockSpacing, string> = {
   spacious: '█',
 };
 
+export const WIDTH_LABELS: Record<BlockWidth, string> = {
+  narrow: 'Narrow',
+  wide: 'Wide',
+  full: 'Full',
+};
+
+const WIDTH_OPTIONS = Object.keys(WIDTH_LABELS) as BlockWidth[];
+
+export function BlockWidthPicker({
+  value,
+  onChange,
+}: {
+  value?: BlockWidth;
+  onChange: (next: BlockWidth | undefined) => void;
+}) {
+  const active = value ?? 'narrow';
+  return (
+    <div
+      role="group"
+      aria-label="Content width"
+      className="inline-flex overflow-hidden rounded-skin border border-[var(--border)]"
+    >
+      {WIDTH_OPTIONS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={active === option}
+          onClick={() => onChange(option === 'narrow' ? undefined : option)}
+          className={`px-2 py-1 text-xs font-medium ${
+            active === option
+              ? 'bg-accent text-background'
+              : 'opacity-60 hover:opacity-100'
+          }`}
+        >
+          {WIDTH_LABELS[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function nextSpacing(current: BlockSpacing): BlockSpacing {
   return SPACINGS[(SPACINGS.indexOf(current) + 1) % SPACINGS.length];
+}
+
+/**
+ * Draft buffer for text fields that get *normalized* on commit (trimmed,
+ * cleared when whitespace-only). Typing stays free — spaces survive — and
+ * normalization happens on blur only, per the echo-guard convention.
+ */
+export function useTrimmedCommit(
+  value: string | undefined,
+  onCommit: (next: string | undefined) => void,
+) {
+  const [draft, setDraft] = useState(value ?? '');
+  const echoRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const external = value ?? '';
+    if (external !== echoRef.current) setDraft(external);
+  }, [value]);
+
+  return {
+    draft,
+    onChange(raw: string) {
+      setDraft(raw);
+      // Commit raw while typing so spaces stick; empty means "remove field".
+      echoRef.current = raw;
+      onCommit(raw === '' ? undefined : raw);
+    },
+    onBlur() {
+      const trimmed = draft.trim();
+      setDraft(trimmed);
+      echoRef.current = trimmed;
+      onCommit(trimmed === '' ? undefined : trimmed);
+    },
+  };
 }
 
 export const INPUT =
   'w-full rounded-skin border border-[var(--border)] bg-background px-2 py-1 text-sm';
 
 export const ROW_BTN =
-  'flex h-6 w-6 items-center justify-center rounded-skin border border-[var(--border)] text-xs opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-20';
+  'flex h-6 w-6 items-center justify-center rounded-skin border border-[var(--border)] text-xs opacity-60 hover:opacity-100 disabled:pointer-events-none disabled:opacity-20';
 
 export const DRAG_HANDLE =
-  'flex h-6 w-5 cursor-grab touch-none select-none items-center justify-center text-sm opacity-40 transition-opacity hover:opacity-100 active:cursor-grabbing';
+  'flex h-6 w-5 cursor-grab touch-none select-none items-center justify-center text-sm opacity-40 hover:opacity-100 active:cursor-grabbing';
 
 export function Field({
   label,
@@ -94,7 +230,6 @@ export function createDefaultBlock(type: BlockType): Block {
         ctaLabel: 'Open',
         ctaHref: '#',
         thumbnail: '',
-        imageAlign: 'left',
       };
     case 'app_grid':
       return { id, type, title: 'New grid', apps: [] };
@@ -102,6 +237,15 @@ export function createDefaultBlock(type: BlockType): Block {
       return { id, type, content: '<p>Write something…</p>' };
     case 'custom_html':
       return { id, type, html: '<div>New HTML block</div>' };
+    case 'marquee':
+      return {
+        id,
+        type,
+        items: ['Skill one', 'Skill two', 'Skill three'],
+        speed: 'normal',
+      };
+    case 'blog':
+      return { id, type, title: 'From the blog' };
   }
 }
 
@@ -121,16 +265,19 @@ export function duplicateApp(app: AppCardItem): AppCardItem {
   };
 }
 
+export function createDefaultSocial(): SocialLink {
+  return {
+    id: crypto.randomUUID(),
+    platform: 'custom',
+    url: '',
+  };
+}
+
 export function duplicateBlock(block: Block): Block {
   const clone = structuredClone(block);
   clone.id = crypto.randomUUID();
 
-  if (clone.type === 'app_grid') {
-    clone.apps = clone.apps.map((app) => ({
-      ...app,
-      id: crypto.randomUUID(),
-    }));
-  }
-
+  // v3: app_grid.apps are library id references — they carry over as-is;
+  // per-card independence is handled by duplicateAsIndependent instead.
   return clone;
 }

@@ -18,12 +18,44 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Runs synchronously before the body paints: pulls the saved document
+  // straight from localStorage and applies skin/accent/font to <html>, so
+  // even the first frame already wears the visitor's theme (no HUD flash).
+  // A persisted visitor skin override (SkinSwitcher pick, incl. 'auto')
+  // wins over the document's official default — and survives navigation
+  // to the standalone /write and /blog routes.
+  const prePaintTheme = `
+    try {
+      var d = JSON.parse(localStorage.getItem('portfolio-data') || 'null');
+      var el = document.documentElement;
+      var over = localStorage.getItem('portfolio-skin-override');
+      var skins = ['hud', 'notebook', 'clean'];
+      if (over === 'auto') {
+        over = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'hud'
+          : 'clean';
+      }
+      if (skins.includes(over)) {
+        el.dataset.skin = over;
+      } else if (d && typeof d === 'object' && d.skin) {
+        el.dataset.skin = d.skin;
+      }
+      var t = (d && typeof d === 'object' && d.theme) || {};
+      if (t.accentColor) el.style.setProperty('--accent', t.accentColor);
+      if (t.fontFamily) el.style.setProperty('--font', t.fontFamily);
+    } catch (e) {}
+  `;
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: prePaintTheme }} />
+        {children}
+      </body>
     </html>
   );
 }

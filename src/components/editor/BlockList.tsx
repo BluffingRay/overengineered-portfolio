@@ -22,17 +22,19 @@ import { useBlockMutations } from '@/hooks/useBlockMutations';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import {
   BLOCK_LABELS,
+  BlockWidthPicker,
   SPACING_GLYPHS,
   SPACING_LABELS,
   createDefaultApp,
   createDefaultBlock,
-  duplicateApp,
   duplicateBlock,
   nextSpacing,
 } from './editor-shared';
 import SortableBlockRow from './SortableBlockRow';
 import HeroForm from './blocks/HeroForm';
 import AppGridForm from './blocks/AppGridForm';
+import MarqueeForm from './blocks/MarqueeForm';
+import BlogForm from './blocks/BlogForm';
 import RichTextForm from './RichTextForm';
 
 interface Props {
@@ -41,8 +43,18 @@ interface Props {
 
 export default function BlockList({ activeTabId }: Props) {
   const { data } = usePortfolioData();
-  const { updateBlocks, updateBlock, updateAppsOf, updateApp } =
-    useBlockMutations(activeTabId);
+  const {
+    updateBlocks,
+    updateBlock,
+    moveBlockToTab,
+    updateAppsOf,
+    updateCard,
+    addCardToGrid,
+    detachApp,
+    deleteCardGlobally,
+    attachCardToGrid,
+    duplicateAsIndependent,
+  } = useBlockMutations(activeTabId);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -51,6 +63,16 @@ export default function BlockList({ activeTabId }: Props) {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const usageCounts: Record<string, number> = {};
+  for (const tab of data.tabs) {
+    for (const block of tab.blocks) {
+      if (block.type !== 'app_grid') continue;
+      for (const cardId of block.apps) {
+        usageCounts[cardId] = (usageCounts[cardId] ?? 0) + 1;
+      }
+    }
+  }
 
   const activeTab = data.tabs.find((tab) => tab.id === activeTabId);
   if (!activeTab) return null;
@@ -70,35 +92,42 @@ export default function BlockList({ activeTabId }: Props) {
   function renderBody(block: Block) {
     switch (block.type) {
       case 'featured_hero':
-        return <HeroForm block={block} patch={(p) => updateBlock(block.id, p)} />;
+        return (
+          <HeroForm
+            block={block}
+            tabs={data.tabs}
+            patch={(p) => updateBlock(block.id, p)}
+          />
+        );
       case 'app_grid':
         return (
           <AppGridForm
             block={block}
+            cards={data.cards}
+            posts={data.posts ?? []}
+            usageCounts={usageCounts}
             patch={(p) => updateBlock(block.id, p)}
-            patchApp={(appId, p) => updateApp(block.id, appId, p)}
-            removeApp={(appId) =>
-              updateAppsOf(block.id, (apps) =>
-                apps.filter((app) => app.id !== appId),
-              )
+            patchCard={(cardId, p) => updateCard(cardId, p)}
+            detachApp={(cardId) => detachApp(block.id, cardId)}
+            deleteCardGlobal={deleteCardGlobally}
+            duplicateAsNew={(cardId) =>
+              duplicateAsIndependent(block.id, cardId)
             }
-            duplicateApp={(appId) =>
-              updateAppsOf(block.id, (apps) => {
-                const from = apps.findIndex((app) => app.id === appId);
-                if (from === -1) return apps;
-                const next = [...apps];
-                next.splice(from + 1, 0, duplicateApp(apps[from]));
-                return next;
-              })
-            }
-            addApp={() =>
-              updateAppsOf(block.id, (apps) => [...apps, createDefaultApp()])
+            addNewCard={() => addCardToGrid(block.id, createDefaultApp())}
+            attachExisting={(cardId, atIndex) =>
+              attachCardToGrid(block.id, cardId, atIndex)
             }
             reorderApps={(from, to) =>
               updateAppsOf(block.id, (apps) => arrayMove(apps, from, to))
             }
           />
         );
+      case 'marquee':
+        return (
+          <MarqueeForm block={block} patch={(p) => updateBlock(block.id, p)} />
+        );
+      case 'blog':
+        return <BlogForm block={block} patch={(p) => updateBlock(block.id, p)} />;
       case 'rich_text':
         return (
           <RichTextForm
@@ -108,16 +137,22 @@ export default function BlockList({ activeTabId }: Props) {
         );
       case 'custom_html':
         return (
-          <textarea
-            value={block.html}
-            onChange={(event) =>
-              updateBlock(block.id, { html: event.target.value })
-            }
-            rows={4}
-            spellCheck={false}
-            aria-label="Custom HTML source"
-            className="w-full resize-y rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs leading-relaxed"
-          />
+          <div className="space-y-1.5">
+            <BlockWidthPicker
+              value={block.width}
+              onChange={(width) => updateBlock(block.id, { width })}
+            />
+            <textarea
+              value={block.html}
+              onChange={(event) =>
+                updateBlock(block.id, { html: event.target.value })
+              }
+              rows={4}
+              spellCheck={false}
+              aria-label="Custom HTML source"
+              className="w-full resize-y rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs leading-relaxed"
+            />
+          </div>
         );
     }
   }
@@ -214,7 +249,7 @@ export default function BlockList({ activeTabId }: Props) {
                                       option === 'normal' ? undefined : option,
                                   })
                                 }
-                                className={`rounded-[calc(var(--radius)-0.15rem)] px-2 py-0.5 text-[10px] capitalize transition-colors ${
+                                className={`rounded-[calc(var(--radius)-0.15rem)] px-2 py-0.5 text-[10px] capitalize ${
                                   isActive
                                     ? 'bg-accent text-background'
                                     : 'opacity-60 hover:opacity-100'
@@ -225,6 +260,32 @@ export default function BlockList({ activeTabId }: Props) {
                             );
                           })}
                         </div>
+                      </div>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-[10px] font-medium uppercase tracking-wide opacity-50">
+                          Move to
+                        </span>
+                        <select
+                          value=""
+                          onChange={(event) => {
+                            if (event.target.value) {
+                              moveBlockToTab(block.id, event.target.value);
+                            }
+                          }}
+                          aria-label="Move this block to another tab"
+                          className="rounded-skin border border-[var(--border)] bg-background px-2 py-0.5 text-xs"
+                        >
+                          <option value="" disabled>
+                            Choose tab…
+                          </option>
+                          {data.tabs
+                            .filter((tab) => tab.id !== activeTabId)
+                            .map((tab) => (
+                              <option key={tab.id} value={tab.id}>
+                                {tab.label}
+                              </option>
+                            ))}
+                        </select>
                       </div>
                       {renderBody(block)}
                     </>
@@ -242,7 +303,7 @@ export default function BlockList({ activeTabId }: Props) {
             <button
               key={type}
               type="button"
-              className="rounded-skin border border-dashed border-[var(--border)] px-2.5 py-1 text-xs opacity-70 transition-opacity hover:border-accent hover:text-accent hover:opacity-100"
+              className="rounded-skin border border-dashed border-[var(--border)] px-2.5 py-1 text-xs opacity-70 hover:border-accent hover:text-accent hover:opacity-100"
               onClick={() =>
                 updateBlocks((blocks) => [...blocks, createDefaultBlock(type)])
               }

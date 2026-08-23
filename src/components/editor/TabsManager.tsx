@@ -148,7 +148,7 @@ export default function TabsManager({ activeTabId }: { activeTabId: string }) {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-1.5 text-left text-[10px] font-medium uppercase tracking-wide opacity-50 transition-opacity hover:opacity-80"
+        className="flex w-full items-center gap-1.5 text-left text-[10px] font-medium uppercase tracking-wide opacity-50 hover:opacity-80"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         Manage tabs
@@ -185,7 +185,7 @@ export default function TabsManager({ activeTabId }: { activeTabId: string }) {
           <button
             type="button"
             onClick={addTab}
-            className="mt-1.5 rounded-skin border border-dashed border-[var(--border)] px-2.5 py-1 text-xs opacity-70 transition-opacity hover:border-accent hover:text-accent hover:opacity-100"
+            className="mt-1.5 rounded-skin border border-dashed border-[var(--border)] px-2.5 py-1 text-xs opacity-70 hover:border-accent hover:text-accent hover:opacity-100"
           >
             + Add tab
           </button>

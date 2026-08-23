@@ -1,35 +1,72 @@
+import type { AppCardItem } from '@/types/schema';
 import type { AppGridBlock as AppGridBlockData } from '@/types/schema';
+import type { Post } from '@/types/schema';
+import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
+import Reveal from './Reveal';
 
 interface Props {
   block: AppGridBlockData;
+  cards?: AppCardItem[];
+  posts?: Post[];
+  /** Floating reader; absent = plain /blog links. */
+  onOpenPost?: (id: string) => void;
 }
 
-export default function AppGridBlock({ block }: Props) {
+export default function AppGridBlock({
+  block,
+  cards,
+  posts,
+  onOpenPost,
+}: Props) {
+  const cardById = new Map((cards ?? []).map((card) => [card.id, card]));
+
   return (
     <section className="space-y-6">
       <h2 className="text-2xl font-semibold tracking-tight">{block.title}</h2>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {block.apps.map((app) => {
+        {block.apps.map((appId, index) => {
+          const app = cardById.get(appId);
+          if (!app) return null; // dangling ref — sanitizer normally removes these
+
           const primaryHref =
             { demo: app.demoUrl, github: app.githubUrl, href: app.href }[
               app.primaryAction ?? 'href'
             ] ?? app.href;
 
-          return (
-            <article
-              key={app.id}
-              className="relative flex flex-col overflow-hidden rounded-2xl border border-current/15 transition-colors hover:border-current/40"
-            >
-              {app.coverImage && (
-                <img
-                  src={app.coverImage}
-                  alt=""
-                  className="aspect-video w-full object-cover"
-                />
-              )}
+          // Custom link: a resolvable post reference wins over the external
+          // URL; label alone renders nothing.
+          const linkedPost = app.customPostId
+            ? (posts ?? []).find((post) => post.id === app.customPostId)
+            : undefined;
 
-              <div className={`flex flex-1 flex-col ${app.coverImage ? 'p-5 pt-4' : 'p-5'}`}>
+          return (
+            <Reveal key={appId} delay={Math.min(index * 60, 300)}>
+              <article
+                className="lift relative flex h-full flex-col overflow-hidden rounded-skin border border-current/15 hover:border-current/40"
+              >
+              {/* Uniform media slot: every card shares the same cover band,
+                  image or not — rows stop stretching to the tallest sibling. */}
+              <div className="relative aspect-video w-full overflow-hidden bg-current/[0.04]">
+                {app.coverImage ? (
+                  <img
+                    src={app.coverImage}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 flex select-none items-center justify-center text-7xl font-semibold opacity-[0.07]"
+                  >
+                    {app.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-1 flex-col p-5 pt-4">
                 <div className="flex items-center justify-between gap-2">
                   <ProjectIcon icon={app.icon} appName={app.name} />
                   {app.category && (
@@ -57,21 +94,26 @@ export default function AppGridBlock({ block }: Props) {
                     href={primaryHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-accent after:absolute after:inset-0 after:rounded-2xl"
+                    className="text-accent after:absolute after:inset-0 after:rounded-skin"
                   >
                     {app.name}
                   </a>
                 </h3>
-                <p className="mt-1 text-sm opacity-60">{app.description}</p>
+                <p
+                  className="mt-1 line-clamp-3 text-sm opacity-60"
+                  title={app.description}
+                >
+                  {app.description}
+                </p>
 
-                {(app.demoUrl || app.githubUrl) && (
-                  <div className="relative z-10 mt-auto flex gap-4 pt-4 text-sm">
+                {(app.demoUrl || app.githubUrl || linkedPost || app.customUrl) && (
+                  <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-sm">
                     {app.demoUrl && (
                       <a
                         href={app.demoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline-offset-4 transition-colors hover:text-accent hover:underline"
+                        className="underline-offset-4 hover:text-accent hover:underline"
                       >
                         Demo ↗
                       </a>
@@ -81,15 +123,39 @@ export default function AppGridBlock({ block }: Props) {
                         href={app.githubUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline-offset-4 transition-colors hover:text-accent hover:underline"
+                        className="underline-offset-4 hover:text-accent hover:underline"
                       >
                         GitHub ↗
                       </a>
                     )}
+                    {linkedPost ? (
+                      <Link
+                        href={`/blog?post=${linkedPost.id}`}
+                        className="underline-offset-4 hover:text-accent hover:underline"
+                        onClick={(event) => {
+                          if (onOpenPost) {
+                            event.preventDefault();
+                            onOpenPost(linkedPost.id);
+                          }
+                        }}
+                      >
+                        {app.customLabel ?? 'Read'} →
+                      </Link>
+                    ) : app.customUrl ? (
+                      <a
+                        href={app.customUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline-offset-4 hover:text-accent hover:underline"
+                      >
+                        {app.customLabel || 'Open'} ↗
+                      </a>
+                    ) : null}
                   </div>
                 )}
               </div>
             </article>
+            </Reveal>
           );
         })}
       </div>

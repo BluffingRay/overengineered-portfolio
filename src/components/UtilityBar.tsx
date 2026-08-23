@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import { importPortfolioData } from '@/lib/storage';
 
@@ -15,7 +15,7 @@ const PRESETS = [
 const HEX_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 const BTN =
-  'rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80';
+  'rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium hover:opacity-80';
 
 export default function UtilityBar() {
   const { data, mutate, reset, undo, redo, canUndo, canRedo } =
@@ -28,9 +28,14 @@ export default function UtilityBar() {
 
   const activeAccent = data.theme.accentColor;
 
-  useEffect(() => {
+  // Render-phase adjustment (React's "you might not need an effect"
+  // pattern): follow external accent changes — preset clicks, undo,
+  // import — without syncing through an effect.
+  const [syncedAccent, setSyncedAccent] = useState(activeAccent);
+  if (syncedAccent !== activeAccent) {
+    setSyncedAccent(activeAccent);
     setHexDraft(activeAccent ?? '');
-  }, [activeAccent]);
+  }
 
   function commitAccent(value: string | undefined) {
     mutate((current) => ({
@@ -111,7 +116,7 @@ export default function UtilityBar() {
             aria-pressed={activeAccent === preset.hex}
             onClick={() => commitAccent(preset.hex)}
             style={{ backgroundColor: preset.hex }}
-            className={`h-5 w-5 rounded-full transition-transform hover:scale-110 ${
+            className={`h-5 w-5 rounded-full hover:scale-110 ${
               activeAccent === preset.hex
                 ? 'ring-2 ring-current ring-offset-1'
                 : ''
