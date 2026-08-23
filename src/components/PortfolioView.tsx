@@ -288,10 +288,7 @@ export default function PortfolioView() {
 
   if (!ready) {
     return (
-      <main
-        data-skin={activeSkin}
-        className="grid min-h-dvh place-items-center"
-      >
+      <main className="grid min-h-dvh place-items-center">
         <p className="animate-pulse font-mono text-sm opacity-40">
           ~/loading portfolio…
         </p>
@@ -301,7 +298,6 @@ export default function PortfolioView() {
 
   return (
     <main
-      data-skin={activeSkin}
       style={
         {
           ...(data.theme.accentColor

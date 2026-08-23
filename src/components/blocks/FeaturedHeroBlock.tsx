@@ -94,22 +94,22 @@ const STATUS_STYLES: Record<StatusColor, { dot: string; ping: string; pill: stri
     green: {
       dot: 'bg-green-500',
       ping: 'bg-green-400',
-      pill: 'border-green-500/30 bg-green-500/10',
+      pill: 'border-green-500/20 bg-green-500/10',
     },
     blue: {
       dot: 'bg-blue-500',
       ping: 'bg-blue-400',
-      pill: 'border-blue-500/30 bg-blue-500/10',
+      pill: 'border-blue-500/20 bg-blue-500/10',
     },
     amber: {
       dot: 'bg-amber-500',
       ping: 'bg-amber-400',
-      pill: 'border-amber-500/30 bg-amber-500/10',
+      pill: 'border-amber-500/20 bg-amber-500/10',
     },
     purple: {
       dot: 'bg-purple-500',
       ping: 'bg-purple-400',
-      pill: 'border-purple-500/30 bg-purple-500/10',
+      pill: 'border-purple-500/20 bg-purple-500/10',
     },
   };
 
@@ -326,30 +326,36 @@ export default function FeaturedHeroBlock({
               : 'w-full'
         }
       >
-        {block.eyebrow && (
-          <p
-            className="text-xs font-medium uppercase tracking-widest opacity-50"
-            title="Eyebrow — edit under the Hero form"
+        {(block.eyebrow || badge) && (
+          <div
+            className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${layout === 'centered' ? 'justify-center' : ''}`}
           >
-            {block.eyebrow}
-          </p>
-        )}
+            {block.eyebrow && (
+              <p
+                className="text-xs font-medium uppercase tracking-widest opacity-50"
+                title="Eyebrow — edit under the Hero form"
+              >
+                {block.eyebrow}
+              </p>
+            )}
 
-        {badge && (
-          <span
-            className={`mt-3 inline-flex items-center gap-2 rounded-skin border px-3 py-1 text-[11px] font-medium uppercase tracking-widest ${status.pill}`}
-          >
-            <span className="relative flex h-2 w-2">
+            {badge && (
               <span
-                aria-hidden="true"
-                className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${status.ping}`}
-              />
-              <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${status.dot}`}
-              />
-            </span>
-            {badge.text}
-          </span>
+                className={`inline-flex items-center gap-2 rounded-skin border px-3 py-0.5 text-[11px] font-medium uppercase tracking-widest ${status.pill}`}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${status.ping}`}
+                  />
+                  <span
+                    className={`relative inline-flex h-2 w-2 rounded-full ${status.dot}`}
+                  />
+                </span>
+                {badge.text}
+              </span>
+            )}
+          </div>
         )}
 
         {block.name ? (
