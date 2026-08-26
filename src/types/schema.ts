@@ -6,6 +6,16 @@ export const BLOCK_WIDTHS = ['narrow', 'wide', 'full'] as const;
 
 export type BlockWidth = (typeof BLOCK_WIDTHS)[number];
 
+/**
+ * Per-block art direction. Designs are siblings, not skins: same data
+ * contract, entirely different rendering behavior (the default hero's
+ * typewriter has no place in the cutie hero). Absent = `default` =
+ * the original rendering. `custom_html` deliberately has no design.
+ */
+export const BLOCK_DESIGNS = ['default', 'cutie', 'editorial', 'riso'] as const;
+
+export type BlockDesign = (typeof BLOCK_DESIGNS)[number];
+
 interface BlockBase {
   id: string;
   spacing?: BlockSpacing;
@@ -65,6 +75,8 @@ export interface HeroSecondaryAction {
 
 export interface FeaturedHeroBlock extends BlockBase {
   type: 'featured_hero';
+  /** Art direction — see BLOCK_DESIGNS. Absent = default. */
+  design?: BlockDesign;
   /** Small uppercase kicker above the heading (site/path identity). */
   eyebrow?: string;
   /** Display name — promoted to the H1 when present. */
@@ -139,6 +151,8 @@ export type PrimaryAction = (typeof PRIMARY_ACTIONS)[number];
 
 export interface AppGridBlock extends BlockBase {
   type: 'app_grid';
+  /** Art direction — cascades onto every card rendered by this grid. */
+  design?: BlockDesign;
   title: string;
   /**
    * Ordered references into the root `cards` library (v3). The same card
@@ -150,6 +164,7 @@ export interface AppGridBlock extends BlockBase {
 
 export interface RichTextBlock extends BlockBase {
   type: 'rich_text';
+  design?: BlockDesign;
   content: string;
   width?: BlockWidth;
 }
@@ -166,6 +181,7 @@ export type MarqueeSpeed = (typeof MARQUEE_SPEEDS)[number];
 
 export interface MarqueeBlock extends BlockBase {
   type: 'marquee';
+  design?: BlockDesign;
   items: string[];
   /** Glyph rendered between items; defaults to '·'. */
   separator?: string;
@@ -184,6 +200,8 @@ export type BlogVariant = (typeof BLOG_VARIANTS)[number];
  */
 export interface BlogBlock extends BlockBase {
   type: 'blog';
+  /** Art direction for the post cards (variant stays latest/all). */
+  design?: BlockDesign;
   title: string;
   variant?: BlogVariant;
 }
@@ -211,6 +229,8 @@ export type ThemeSkin = (typeof THEME_SKINS)[number];
 export interface ThemeConfig {
   accentColor?: string;
   fontFamily?: string;
+  /** When true, visitors can't switch skins — the official skin is forced. */
+  lockSkin?: boolean;
 }
 
 export interface FooterConfig {

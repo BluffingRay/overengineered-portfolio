@@ -401,3 +401,113 @@ html {
   min-height: 9rem;
   padding: 0.5rem;
 }
+
+/* ── Block designs (art directions) ───────────────────────────────
+   Design components own structure/markup; this layer owns their
+   exotic decoration only (shapes, ink effects, ambient loops).
+   Colors keep flowing through the skin tokens — especially --accent —
+   so every design stays on-brand across hud/notebook/clean. */
+
+/* Editorial — serif display stack (the design's signature voice). */
+.dsn-editorial {
+  --font-editorial: 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    Georgia, 'Times New Roman', serif;
+}
+
+.ed-serif {
+  font-family: var(--font-custom, var(--font-editorial));
+}
+
+/* Heavy theme font — when admin sets a global font, all design display
+   stacks yield to it so the theme feels heavy across every block. */
+.dsn-riso .font-mono {
+  font-family: var(--font-custom, var(--font-geist-mono)), ui-monospace, monospace;
+}
+
+/* Cutie — blob media, starburst sticker, drifting doodles. */
+.cutie-blob {
+  border-radius: 58% 42% 55% 45% / 48% 55% 45% 52%;
+}
+
+.cutie-star {
+  clip-path: polygon(
+    50% 0%, 59.8% 13.3%, 75% 6.7%, 76.9% 23.1%, 93.3% 25%,
+    86.7% 40.2%, 100% 50%, 86.7% 59.8%, 93.3% 75%, 76.9% 76.9%,
+    75% 93.3%, 59.8% 86.7%, 50% 100%, 40.2% 86.7%, 25% 93.3%,
+    23.1% 76.9%, 6.7% 75%, 13.3% 59.8%, 0% 50%, 13.3% 40.2%,
+    6.7% 25%, 23.1% 23.1%, 25% 6.7%, 40.2% 13.3%
+  );
+}
+
+.cutie-btn:hover {
+  rotate: -2deg;
+  scale: 1.06;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cutie-bob {
+    from {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -6px;
+    }
+    to {
+      translate: 0 0;
+    }
+  }
+
+  .cutie-float {
+    animation: cutie-bob 4s ease-in-out infinite;
+  }
+
+  .cutie-float-slow {
+    animation: cutie-bob 6s ease-in-out infinite;
+  }
+}
+
+/* Riso — misregistered ink, halftone field, paper grain, duotone. */
+.riso-misprint {
+  /* The classic off-register second pass of the accent ink. */
+  text-shadow: 0.055em 0.055em 0
+    color-mix(in srgb, var(--accent) 85%, transparent);
+}
+
+.riso-halftone {
+  color: var(--accent);
+  background-image: radial-gradient(currentColor 1.1px, transparent 1.4px);
+  background-size: 11px 11px;
+  opacity: 0.18;
+}
+
+.riso-grain {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    rgb(128 128 128 / 6%) 3px 4px
+  );
+}
+
+.riso-highlight {
+  box-shadow: inset 0 -0.42em 0
+    color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Editorial rich text — drop cap on the opening paragraph; display
+   headings pick up the serif stack via this hook, leaving every
+   .rich-text rule untouched. */
+.ed-dropcap > p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.2em;
+  line-height: 0.85;
+  padding-right: 0.08em;
+  font-family: var(--font-editorial);
+}
+
+.ed-dropcap :is(h1, h2, h3) {
+  font-family: var(--font-editorial);
+}
+
+.riso-duotone {
+  filter: grayscale(1) contrast(1.05);
+}

@@ -6,6 +6,7 @@ import type {
   BlockType,
   BlockSpacing,
   BlockWidth,
+  BlockDesign,
   MarqueeSpeed,
   HeroLayout,
   ImageAlignment,
@@ -119,6 +120,52 @@ export const WIDTH_LABELS: Record<BlockWidth, string> = {
 };
 
 const WIDTH_OPTIONS = Object.keys(WIDTH_LABELS) as BlockWidth[];
+
+export const DESIGN_LABELS: Record<BlockDesign, string> = {
+  default: 'Default',
+  cutie: 'Cutie',
+  editorial: 'Editorial',
+  riso: 'Riso',
+};
+
+const DESIGN_OPTIONS = Object.keys(DESIGN_LABELS) as BlockDesign[];
+
+/**
+ * Per-block art direction. `default` (the original rendering) is stored
+ * as absent — same "default = undefined" convention as width/variant.
+ */
+export function BlockDesignPicker({
+  value,
+  onChange,
+}: {
+  value?: BlockDesign;
+  onChange: (next: BlockDesign | undefined) => void;
+}) {
+  const active = value ?? 'default';
+  return (
+    <div
+      role="group"
+      aria-label="Art direction"
+      className="inline-flex overflow-hidden rounded-skin border border-[var(--border)]"
+    >
+      {DESIGN_OPTIONS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={active === option}
+          onClick={() => onChange(option === 'default' ? undefined : option)}
+          className={`px-2 py-1 text-xs font-medium ${
+            active === option
+              ? 'bg-accent text-background'
+              : 'opacity-60 hover:opacity-100'
+          }`}
+        >
+          {DESIGN_LABELS[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function BlockWidthPicker({
   value,

@@ -1,4 +1,8 @@
-import type { Router } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+
+// This Next version exports no Router type from 'next/navigation' —
+// derive it from the hook so the signature tracks the real API.
+type AppRouter = ReturnType<typeof useRouter>;
 
 /**
  * Return to the in-app page the visitor came from instead of a hardcoded
@@ -8,7 +12,7 @@ import type { Router } from 'next/navigation';
  * loads have no depth and fall back to the site root, where PortfolioView
  * restores the last-viewed tab from sessionStorage.
  */
-export function goBackOrHome(router: Router): void {
+export function goBackOrHome(router: AppRouter): void {
   const idx =
     (window.history.state as { idx?: number } | null)?.idx ?? 0;
   if (idx > 0) {

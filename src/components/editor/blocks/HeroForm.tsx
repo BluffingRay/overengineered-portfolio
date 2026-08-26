@@ -26,6 +26,7 @@ import {
   STATUS_COLORS,
 } from '@/types/schema';
 import {
+  BlockDesignPicker,
   Checkbox,
   Field,
   useTrimmedCommit,
@@ -253,6 +254,13 @@ export default function HeroForm({ block, tabs, patch }: Props) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium opacity-50">Design</span>
+        <BlockDesignPicker
+          value={block.design}
+          onChange={(design) => patch({ design })}
+        />
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <Field label="Heading">
           <input

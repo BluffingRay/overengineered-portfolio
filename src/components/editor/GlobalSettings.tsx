@@ -213,6 +213,12 @@ export default function GlobalSettings() {
     { label: 'System', value: 'system-ui, sans-serif' },
   ];
 
+  const DESIGN_FONT_PRESETS: Array<{ label: string; value: string; hint: string }> = [
+    { label: 'Cutie', value: "ui-rounded, 'Nunito', system-ui, sans-serif", hint: 'Soft rounded' },
+    { label: 'Editorial', value: "ui-serif, Georgia, Cambria, 'Times New Roman', serif", hint: 'Serif' },
+    { label: 'Riso', value: 'var(--font-geist-mono), ui-monospace, monospace', hint: 'Mono' },
+  ];
+
   return (
     <section aria-label="Site settings" className="space-y-3">
       <div>
@@ -245,15 +251,29 @@ export default function GlobalSettings() {
           Visitors can temporarily switch themes (like dark mode) — this one
           loads for everyone and survives reloads.
         </p>
+        <div className="mt-2">
+          <Checkbox
+            label="Lock theme — visitors can't switch skins (design forced)"
+            checked={data.theme.lockSkin === true}
+            onChange={(next) => patchTheme({ lockSkin: next || undefined })}
+          />
+          <p className="mt-1 text-[10px] opacity-50">
+            When locked, the skin switcher hides and every visitor is forced to
+            see {data.skin.toUpperCase()}.
+          </p>
+        </div>
       </div>
       <div>
-        <Field label="Global font (blank = skin default)">
+        <Field label="Global font — pick a preset or paste any CSS font stack">
           <FontInput
             value={data.theme.fontFamily}
             onCommit={(fontFamily) => patchTheme({ fontFamily })}
           />
         </Field>
-        <div className="mt-1 flex flex-wrap gap-1">
+        <p className="mt-1 text-[10px] opacity-50">
+          Any CSS <code className="rounded bg-current/10 px-1">font-family</code> works — e.g. a Google Fonts stack. Blank = each skin&apos;s default.
+        </p>
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {FONT_PRESETS.map((preset) => (
             <button
               key={preset.label}
@@ -267,15 +287,50 @@ export default function GlobalSettings() {
                       : preset.value,
                 })
               }
-              className={`rounded-skin border px-2 py-0.5 text-xs ${
+              style={{ fontFamily: preset.value }}
+              className={`rounded-skin border px-2.5 py-1 text-xs ${
                 data.theme.fontFamily === preset.value
                   ? 'border-accent bg-accent text-background'
-                  : 'border-[var(--border)] opacity-60 hover:opacity-100'
+                  : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
               }`}
+              title={preset.value}
             >
               {preset.label}
             </button>
           ))}
+        </div>
+        <p
+          className="mt-2 rounded-skin border border-[var(--border)] bg-surface p-2 text-sm"
+          style={{ fontFamily: data.theme.fontFamily || undefined }}
+        >
+          Preview: The quick brown fox jumps — 0123 Aa
+        </p>
+        <div className="mt-2">
+          <p className="text-[10px] font-medium opacity-60">Heavy theme font — one tap per design (applies to all blocks)</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {DESIGN_FONT_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                aria-pressed={data.theme.fontFamily === preset.value}
+                onClick={() =>
+                  patchTheme({
+                    fontFamily: data.theme.fontFamily === preset.value ? undefined : preset.value,
+                  })
+                }
+                style={{ fontFamily: preset.value }}
+                className={`rounded-skin border px-2.5 py-1 text-xs ${
+                  data.theme.fontFamily === preset.value
+                    ? 'border-accent bg-accent text-background'
+                    : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
+                }`}
+                title={`${preset.hint}: ${preset.value}`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] opacity-50">These force the same font heavily across every block, overriding each design&apos;s display stack.</p>
         </div>
       </div>
           <DndContext

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Block-based, **local-first portfolio CMS** built with Next.js (App Router), TypeScript strict mode, and Tailwind CSS v4. All content lives in a single JSON document persisted to `localStorage`; no backend in Phase 1.
+Block-based, **local-first portfolio CMS** built with Next.js (App Router), TypeScript strict mode, and Tailwind CSS v4. All content lives in a single JSON document persisted to `localStorage`; no backend in Phase 1. Phase 3.5 added art direction designs (default/cutie/editorial/riso) for every block type, global font picker, and theme lock.
 
 ## Architecture & Conventions
 
@@ -115,18 +115,118 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 
 All workstreams shipped: v3 card library, rich text engine + site settings, socials/footer/hero supercharger, media vault, **blog system** (dual-mode /write composer + floating reader sheets via `FloatingPage`, user-composable Latest/All blog blocks, card custom links with blog binding), hidden edit-mode admin tabs (Posts/Site render in-page; `/admin` routes removed), persisted visitor skin + live `<html>` theme mirroring, editable publish dates.
 
+**Phase 3.5 — art direction designs (this session):**
+- 4 art direction designs per block type (default, cutie, editorial, riso) — 21 modules in `src/components/blocks/designs/` (5 families × 4 designs + 5 shared + types). Schema union `BLOCK_DESIGNS` + per-block `design?: BlockDesign` field (additive, no version bump). Legacy `'coder'` maps to `'default'` via `sanitizeBlockDesign`.
+- Per-block design picker wired into all 5 block forms (Hero, AppGrid, RichText, Marquee, Blog). Dispatcher pattern: thin `Record<BlockDesign, ComponentType<Props>>` in each renderer.
+- Hero layout parity across all designs (centered/split/banner + mediaSide/Position/ratio/size/radius/frame). All 4 hero designs support the full layout API.
+- Design CSS decoration layer in `globals.css:414`: `.dsn-cutie`/`.dsn-editorial`/`.dsn-riso` decorations, cutie blob+star+float keyframes, riso misprint/halftone/grain/highlight/duotone, editorial dropcap/serif.
+- **Global font picker** in GlobalSettings: 4 presets (Mono/Sans/Serif/System) with live preview paragraph, any CSS `font-family` stack accepted. `--font-custom` variable added for heavy-theme-font overrides across all designs.
+- **Heavy theme font pills** per design (Cutie/Editorial/Riso) — one tap forces a single font heavily across all blocks, overriding each design's display stacks.
+- **Theme lock** (`theme.lockSkin?: boolean`): admin toggle hides SkinSwitcher, forces official skin for all visitors. Pre-paint script respects it. Badge shows "locked" state.
+- **Marquee textarea fix**: local draft state + blur commit pattern so typing spaces and pressing Enter to add new entries works naturally (was fighting controlled-from-store re-renders).
+
 Known deferred polish → **Phase 4 candidates**: popover enter/exit animations (IconPicker), `DragOverlay` drag previews, skeleton states, keyboard-focus styling audit.
 
-## Phase 4 — TBD
+## Two-Product Architecture
 
-Scope not yet decided. Ideas parked: the deferred polish list above; auth wrapping an admin hub; cloud storage swap behind `/api/upload`.
+One codebase, two deployment targets, different audiences:
 
-**DB persistence plan (agreed direction, not built):** self-hosted, SINGLE admin — no concurrency machinery needed. Model = DB as storage, localStorage as editing buffer, explicit sync point:
-- Login/entry → fetch doc from API → `prepareDocument()` validates → seed localStorage → paint (pre-paint script fed from API response)
-- Editing stays 100% local-real-time (current architecture untouched); **Save** button PUTs the whole document (it's small; no patch API needed)
-- Preferred UX: **autosave after ~2s idle + "Saved ✓" indicator**, keeping the explicit button for trust; warn "not yet on server" when leaving edit mode with pending changes
-- Loss scenarios are only: cleared storage, or stale-tab overwrite — acceptable for one user; a server-side `updatedAt` check is a cheap extra guard
-- Free upgrade path: store each save as a snapshot server-side = browsable version history
+**Product A — Hosted SaaS (the big lift)**
+- Non-devs go to our website → sign up → pick a design → fill in content → live portfolio. Zero friction, no code, no repo.
+- We host the JSON documents (a few MB total — even 1000 users = ~200MB). Free to run at scale.
+- Images: user brings their own storage (S3, R2, Cloudinary, etc.) OR we provide a simple upload pipeline with a small free tier.
+- Needs: user accounts, auth, real DB backend, dashboard, onboarding flow.
+- Target audience: classmates, designers, personal sites. People who want a portfolio without touching code.
+
+**Product B — Self-hosted / Fork (already works)**
+- Devs fork the repo → run locally → full control over everything.
+- localStorage, local images, `?edit=true` + `Ctrl+Shift+E` to edit. No server needed.
+- Target audience: developers, power users who want their own stack, or anyone who wants to customize the code.
+- **This is the current state of the project.** Product B is done.
+
+**Cross-product bridge:**
+- Product B user can export JSON → import into Product A (go hosted).
+- Product A user can export JSON → fork repo for Product B (go self-hosted).
+- Both directions should be seamless (JSON import/export already works).
+
+## Phase 4 — Auth Gate for Product B (planning)
+
+Single-admin auth for the self-hosted version. Visitors can't edit; only the repo owner can.
+
+### 4a — Configurable shortcut
+- Default `Ctrl/Cmd + Shift + E` to enter edit mode, configurable in Site Settings (stored in localStorage).
+- Remappable via a single text input in Site Settings.
+
+### 4b — Login card
+- After activating the shortcut, show a **login card** (centered, branded) prompting for a single admin password.
+- Password stored as a bcrypt hash in the JSON document (or env var for self-hosted). Plain-text comparison on the client for now; hash verification when DB exists.
+- Session: localStorage flag `portfolio-session` with a 24h expiry + "Remember me" toggle. No user registration — single admin, one password.
+- Security note: client-side hashing is obfuscation, not real security. Acceptable for single-admin + no-sensitive-data. Real auth comes in Product A.
+
+## Phase 5 — Product A: Hosted SaaS (planning)
+
+The real product. Non-devs create portfolios on our platform.
+
+### 5a — DB backend research
+JSON hosting that doesn't cold-sleep:
+- **Cloudflare Workers KV** — free tier, no cold starts, 100K reads/day. Good fit.
+- **Supabase Postgres** — free tier, always-on, real relational DB. Future-proof for multi-user.
+- **Turso (SQLite edge)** — fast, free tier, good DX.
+- **GitHub Gist as DB** — janky but free, no cold starts. Stopgap option.
+- **Firebase Realtime DB** — always-on, but Google vendor lock-in.
+
+Decision criteria: cost (free preferred), cold starts (zero or near-zero), DX (simple API), migration path (easy to swap later).
+
+### 5b — Image hosting
+- **Cloudflare R2** — free 10GB, no egress fees, S3-compatible.
+- **Uploadthing** — free 2GB, good DX, upload-from-browser.
+- **imgbb** — free API, simple, but limited.
+- **User-brings-their-own**: user pastes S3/R2/Cloudinary config in Site Settings → uploads go browser → their bucket.
+
+### 5c — User accounts & auth
+- Sign up / login flow (email + password, or OAuth via GitHub/Google).
+- Each user gets their own JSON document in the DB.
+- Session management, password reset, account settings.
+
+### 5d — Dashboard & onboarding
+- Post-login dashboard: list of user's portfolios, create new, settings.
+- Onboarding flow: pick a design → fill in name/role → auto-generate initial blocks.
+- Design picker as the first screen (not the editor) — non-devs choose visually, not structurally.
+
+### 5e — Export/import bridge
+- Product B → Product A: "Import from file" in dashboard.
+- Product A → Product B: "Export JSON" in Site Settings → fork repo → import.
+- Both directions seamless (JSON format is identical).
+
+## Phase 6 — Polish & Cross-Product (planning)
+
+Features that benefit both products or are deferred from earlier phases.
+
+### UI/UX polish
+- Popover enter/exit animations (IconPicker)
+- `DragOverlay` drag previews
+- Skeleton loading states
+- Keyboard-focus styling audit
+- Responsive editor audit (tablet/mobile: touch-friendly dnd, bigger tap targets, collapsible sidebar)
+
+### SEO & discoverability
+- Dynamic `<title>`, Open Graph image, favicon — derived from document data
+- Currently invisible to search engines
+
+### Accessibility
+- Keyboard navigation audit, focus rings, screen reader labels
+- Motion system is a11y-aware (`prefers-reduced-motion`) but editor UI hasn't been audited
+
+### PWA / offline
+- Already works offline (localStorage). Service worker + manifest makes it installable.
+- On-brand for the "overengineered" identity.
+
+### Analytics (self-hosted)
+- Plausible or Umami — privacy-friendly, no cookies
+
+### Design theme export
+- Export just the design config (skin + font + accent) as a shareable "theme"
+- Classmates could swap themes without copying entire docs
 
 ---
 

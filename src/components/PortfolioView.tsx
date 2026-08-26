@@ -94,8 +94,10 @@ export default function PortfolioView() {
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
     () => false,
   );
-  const activeSkin: ThemeSkin =
-    skinOverride === 'auto'
+  const isSkinLocked = data.theme.lockSkin === true;
+  const activeSkin: ThemeSkin = isSkinLocked
+    ? data.skin
+    : skinOverride === 'auto'
       ? systemPrefersDark
         ? 'hud'
         : 'clean'
@@ -111,6 +113,8 @@ export default function PortfolioView() {
   // Same mirror for the admin-owned accent/font: html carries the
   // pre-paint copies that standalone routes inherit — keep them live
   // with document edits instead of waiting for a full reload.
+  // --font-custom is the heavy override that all designs respect;
+  // --font keeps the body in sync for backwards compat.
   useEffect(() => {
     const root = document.documentElement;
     if (data.theme.accentColor) {
@@ -120,8 +124,10 @@ export default function PortfolioView() {
     }
     if (data.theme.fontFamily) {
       root.style.setProperty('--font', data.theme.fontFamily);
+      root.style.setProperty('--font-custom', data.theme.fontFamily);
     } else {
       root.style.removeProperty('--font');
+      root.style.removeProperty('--font-custom');
     }
   }, [data.theme.accentColor, data.theme.fontFamily]);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -211,7 +217,8 @@ export default function PortfolioView() {
   const activeTab = adminView
     ? undefined
     : (tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]);
-  const activeIndex = tabs.indexOf(activeTab);
+  // -1 while an admin view owns the panel — no regular tab highlighted.
+  const activeIndex = activeTab ? tabs.indexOf(activeTab) : -1;
 
   // Visitors read published posts, newest first.
   const publishedPosts = (data.posts ?? [])
@@ -379,11 +386,20 @@ export default function PortfolioView() {
 
           <div className="flex flex-wrap items-center justify-end gap-3 pb-3">
             {isEditMode && <UtilityBar />}
-            <SkinSwitcher
-              value={skinOverride ?? activeSkin}
-              official={data.skin}
-              onChange={changeSkinOverride}
-            />
+            {!isSkinLocked ? (
+              <SkinSwitcher
+                value={skinOverride ?? activeSkin}
+                official={data.skin}
+                onChange={changeSkinOverride}
+              />
+            ) : (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs opacity-50"
+                title="Theme locked by site owner"
+              >
+                {data.skin.toUpperCase()} locked
+              </span>
+            )}
             {isEditMode && (
               <button
                 type="button"

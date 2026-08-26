@@ -2,7 +2,11 @@
 
 import type { BlogBlock, BlogVariant } from '@/types/schema';
 import { BLOG_VARIANTS } from '@/types/schema';
-import { Field, INPUT } from '../editor-shared';
+import {
+  BlockDesignPicker,
+  Field,
+  INPUT,
+} from '../editor-shared';
 
 const VARIANT_LABELS: Record<BlogVariant, string> = {
   latest: 'Latest (grid of 3)',
@@ -48,6 +52,13 @@ export default function BlogForm({
             </button>
           ))}
         </div>
+      </Field>
+
+      <Field label="Design">
+        <BlockDesignPicker
+          value={block.design}
+          onChange={(design) => patch({ design })}
+        />
       </Field>
 
       <p className="text-xs opacity-50">

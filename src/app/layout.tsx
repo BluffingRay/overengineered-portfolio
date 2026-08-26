@@ -28,21 +28,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     try {
       var d = JSON.parse(localStorage.getItem('portfolio-data') || 'null');
       var el = document.documentElement;
-      var over = localStorage.getItem('portfolio-skin-override');
+      var t = (d && typeof d === 'object' && d.theme) || {};
+      var locked = t.lockSkin === true;
+      var over = locked ? null : localStorage.getItem('portfolio-skin-override');
       var skins = ['hud', 'notebook', 'clean'];
       if (over === 'auto') {
         over = window.matchMedia('(prefers-color-scheme: dark)').matches
           ? 'hud'
           : 'clean';
       }
-      if (skins.includes(over)) {
+      if (!locked && skins.includes(over)) {
         el.dataset.skin = over;
       } else if (d && typeof d === 'object' && d.skin) {
         el.dataset.skin = d.skin;
       }
-      var t = (d && typeof d === 'object' && d.theme) || {};
       if (t.accentColor) el.style.setProperty('--accent', t.accentColor);
-      if (t.fontFamily) el.style.setProperty('--font', t.fontFamily);
+      if (t.fontFamily) {
+        el.style.setProperty('--font', t.fontFamily);
+        el.style.setProperty('--font-custom', t.fontFamily);
+      }
     } catch (e) {}
   `;
 

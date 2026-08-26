@@ -25,7 +25,7 @@ import type {
   PrimaryAction,
 } from '@/types/schema';
 import { PRIMARY_ACTIONS } from '@/types/schema';
-import { ACTION_LABELS, DRAG_HANDLE, Field, INPUT, ROW_BTN } from '../editor-shared';
+import { ACTION_LABELS, BlockDesignPicker, DRAG_HANDLE, Field, INPUT, ROW_BTN } from '../editor-shared';
 import IconPicker from '../IconPicker';
 
 function SortableAppCard({
@@ -483,6 +483,14 @@ export default function AppGridForm({
           className={INPUT}
         />
       </Field>
+
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium opacity-50">Design</span>
+        <BlockDesignPicker
+          value={block.design}
+          onChange={(design) => patch({ design })}
+        />
+      </div>
 
       <DndContext
         sensors={sensors}

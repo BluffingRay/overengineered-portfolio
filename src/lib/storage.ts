@@ -1,5 +1,6 @@
 import { initialData } from '@/data/initialData';
 import {
+  BLOCK_DESIGNS,
   BLOCK_WIDTHS,
   BLOG_VARIANTS,
   HERO_MEDIA_FRAMES,
@@ -299,11 +300,39 @@ function sanitizeBlogBlock(block: Record<string, unknown>): Record<string, unkno
   );
 }
 
+/**
+ * Art direction (`design?`) exists on every block except custom_html.
+ * Unknown values are stripped — absent falls back to the default design.
+ * Legacy `coder` (pre-rename) maps to `default`.
+ */
+function sanitizeBlockDesign(block: Record<string, unknown>): Record<string, unknown> {
+  if (
+    block.type !== 'featured_hero' &&
+    block.type !== 'app_grid' &&
+    block.type !== 'rich_text' &&
+    block.type !== 'marquee' &&
+    block.type !== 'blog'
+  ) {
+    return block;
+  }
+  if (block.design === undefined) return block;
+  if (block.design === 'coder') return { ...block, design: 'default' };
+
+  const design = pickEnum(BLOCK_DESIGNS, block.design);
+  if (design !== undefined) return { ...block, design };
+
+  return Object.fromEntries(
+    Object.entries(block).filter(([key]) => key !== 'design'),
+  );
+}
+
 function sanitizeBlock(block: Record<string, unknown>): Record<string, unknown> {
-  return sanitizeBlogBlock(
-    sanitizeMarquee(
-      sanitizeHeroIdentity(
-        sanitizeHeroEyebrow(sanitizeBlockWidth(sanitizeHeroMedia(block))),
+  return sanitizeBlockDesign(
+    sanitizeBlogBlock(
+      sanitizeMarquee(
+        sanitizeHeroIdentity(
+          sanitizeHeroEyebrow(sanitizeBlockWidth(sanitizeHeroMedia(block))),
+        ),
       ),
     ),
   );
@@ -342,6 +371,13 @@ function sanitizeThemeFont(theme: unknown): Record<string, unknown> {
     delete clean.fontFamily;
   } else {
     clean.fontFamily = clean.fontFamily.slice(0, 200);
+  }
+  // Additive optional — no version bump.
+  if (clean.lockSkin !== true) delete clean.lockSkin;
+  if (typeof clean.accentColor === 'string' && clean.accentColor.trim() === '') {
+    delete clean.accentColor;
+  } else if (typeof clean.accentColor === 'string') {
+    clean.accentColor = clean.accentColor.slice(0, 32);
   }
   return clean;
 }

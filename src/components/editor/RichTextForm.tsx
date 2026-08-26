@@ -1,7 +1,7 @@
 'use client';
 
 import type { RichTextBlock as RichTextBlockData } from '@/types/schema';
-import { BlockWidthPicker } from './editor-shared';
+import { BlockWidthPicker, BlockDesignPicker } from './editor-shared';
 import RichTextEditor from '@/components/rich/RichTextEditor';
 
 export default function RichTextForm({
@@ -13,6 +13,13 @@ export default function RichTextForm({
 }) {
   return (
     <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium opacity-50">Design</span>
+        <BlockDesignPicker
+          value={block.design}
+          onChange={(design) => patch({ design })}
+        />
+      </div>
       <div className="flex items-center gap-2">
         <span className="text-[11px] font-medium opacity-50">Width</span>
         <BlockWidthPicker
