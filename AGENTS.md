@@ -154,7 +154,7 @@ One codebase, two deployment targets, different audiences:
 Single-admin auth for the self-hosted version. Visitors can't edit; only the repo owner can.
 
 ### 4a — Configurable shortcut
-- Default `Ctrl/Cmd + Shift + E` to enter edit mode, configurable in Site Settings (stored in localStorage).
+- Default `Ctrl/Cmd + Shift + E` to enter edit mode, configurable in Site Settings (stored in login database).
 - Remappable via a single text input in Site Settings.
 
 ### 4b — Login card
