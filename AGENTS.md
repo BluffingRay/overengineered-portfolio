@@ -9,7 +9,7 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 ### Schema — `src/types/schema.ts`
 - Blocks are a **discriminated union** on `type`: `featured_hero | app_grid | rich_text | custom_html`. Every entity has an `id`.
 - Literal unions that must exist at runtime (`THEME_SKINS`, `IMAGE_ALIGNMENTS`, `PRIMARY_ACTIONS`, `SPACINGS`, `HERO_LAYOUTS`, `STATUS_COLORS`, `SOCIAL_PLATFORMS`) are defined as `as const` arrays; types are derived via `(typeof X)[number]`. **Never hand-write a literal union that duplicates one of these** — extend the array instead.
-- `PortfolioData.version` is the literal `2`. **Changing document shape requires bumping this and adding a migration step** in `storage.ts` (`migrateV1ToV2` is the template); old documents flow through `prepareDocument()` on every load/import.
+- `PortfolioData.version` is the literal `3`. **Changing document shape requires bumping this and adding a migration step** in `storage.ts` (`migrateV2ToV3` is the current template; `migrateV1ToV2` the historical one); old documents flow through `prepareDocument()` on every load/import.
 - `rich_text.content` has been HTML (`<p>…</p>`) since v2; plain-text v1 strings are auto-migrated on load.
 - Optional fields must be *absent* from stored JSON, never `null` (editors commit `value || undefined`).
 
@@ -17,6 +17,8 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 - `localStorage` key `portfolio-data`, wrapped as an external store consumed via `useSyncExternalStore` (hook: `src/hooks/usePortfolioData.ts`). No mirrored copies of data in React state; `mutate(recipe)` writes → `notify()` → subscribers re-read cached snapshots.
 - All stored documents pass through the `isPortfolioData` type guard (version + shape check). Invalid/corrupt data silently falls back to `structuredClone(initialData)` — never cast parsed JSON blindly.
 - Import/export helpers live here too (`importPortfolioData`, save/reset).
+- **Storage engine is a swappable seam — do NOT commit to a DB during Phase 4.** The document is a plain JSON blob, read/written in exactly 4 places (`storage.ts` getItem/setItem/removeItem + the layout pre-paint script). Swapping localStorage → KV/Postgres/Turso later = reimplement that small surface behind `usePortfolioData`; consumers never change. Choosing a DB is **Phase 5a** research (decision criteria: cost, cold starts, DX, migration path). Uploads already swap behind `/api/upload`. The document JSON *format* (schema) is the contract worth locking, not the engine.
+- **Product B content seed is a committed JSON file.** `src/data/initialData.ts` now imports `content/portfolio.json` (generated from the original inlined object) — so the *default/publish* content is a single editable JSON file owners swap with their exported document. Publishing = edit `content/portfolio.json` (+ committed assets in `public/`, e.g. `public/images/`) → `git push` → rebuild. `initialData` is baked at **build** time, so a new deploy is required to publish. Runtime uploads go to gitignored `public/uploads/` (the `/public/uploads` rule in `.gitignore`); they don't persist on Vercel's ephemeral serverless FS. Optional for self-host on a persistent Node host: remove `/public/uploads` from `.gitignore` to commit uploads, or swap `/api/upload`'s internals for a cloud bucket.
 
 ### Theming — `src/app/globals.css`
 - Token-driven: each `[data-skin='hud' | 'notebook' | 'clean']` declares the same CSS variable contract (`--background`, `--foreground`, `--surface`, `--border`, `--accent`, `--radius`, `--font`).
@@ -32,7 +34,8 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 - `isEditMode` seeds from `?edit=true` (via `useSearchParams`) and toggles with Ctrl/Cmd+Shift+E. Gated: UtilityBar + EditorPanel. SkinSwitcher stays public.
 
 ## Hard-Won Gotchas
-- This Next.js version's lint forbids synchronous `setState` directly inside effects — use event handlers or `useSyncExternalStore` for external systems.
+- **Env values with `$` (bcrypt hashes, secrets) get eaten by Next's `.env` loader.** `next dev` loads `.env*` via `dotenv-expand`, which interpolates `$name` as a variable. A bcrypt hash is nothing but `$2y$10$…`, so it's silently reduced to empty and auth never matches. **Quoting does NOT help** (dotenv strips quotes before expanding). Fix: use a plaintext value in `.env` for dev, OR set the hash as a real env var (`ADMIN_PASSWORD='$2y$…' next start`) which bypasses the file loader. Also: route handlers only see env at startup, so env changes require a restart.
+- This Next.js version's lint forbids synchronous `setState` directly inside effects — use event handlers or `useSyncExternalStore` for external systems. It **also** flags writing `ref.current` during render (`react-hooks/refs`) — keep a `ref` in sync via an effect or just move the value into an effect dependency, don't assign it in the render body.
 - TipTap's `useEditor` must pass `immediatelyRender: false` (SSR'd tree); sync external content changes via an effect guarded against echo loops.
 - `useSearchParams()` requires a `<Suspense>` boundary on prerendered routes (see `src/app/page.tsx`).
 - Never render `<img src="">` — conditionally mount when the CMS field may be empty.
@@ -96,7 +99,7 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 - Lint note: sync-`setState`-in-effect errors were also purged from `TypewriterRoles` (single-timer state machine + `useSyncExternalStore` for reduced-motion) and UtilityBar's hex draft (React render-phase adjustment pattern).
 
 **Media management (asset vault) — complete:**
-- **Upload pipeline**: `POST /api/upload` (src/app/api/upload/route.ts) validates MIME (png/jpeg/webp/gif/avif) + 8MB cap, writes bytes to `public/uploads/<uuid><ext>`, returns `{url, name}`. Cloud migration = swap this file's internals for S3; consumers unchanged. Files are gitignored artifacts, not document data.
+- **Upload pipeline**: `POST /api/upload` (src/app/api/upload/route.ts) validates MIME (png/jpeg/webp/gif/avif) + 8MB cap, writes bytes to `public/uploads/<uuid><ext>`, returns `{url, name}`. Cloud migration = swap this file's internals for S3; consumers unchanged. `public/uploads/` is **gitignored** (uploaded artifacts, not source) — so to ship images with a Product B `git push`, commit them to a `public/` folder like `public/images/`. NOTE: on Vercel's ephemeral serverless FS these runtime writes don't persist; uploads persist on a long-lived Node host. Optional: remove `/public/uploads` from `.gitignore` (self-host) if you want runtime uploads committed.
 - **Registry**: additive optional root `assets?: AssetItem[]` ({id, url, name?}) — NO version bump. `sanitizeAssets` in prepareDocument: URL-reference-only (http(s)/root-relative), dedupes by url, caps at 200.
 - **`editor/MediaPicker.tsx`**: centered dialog — library grid (thumbnails, ✕ removes from library only, references keep working), upload button (auto-selects on success), paste-URL fallback form. Escape/outside-click close per house pattern.
 - **⚠️ Fixed overlays MUST portal to `<body>`** (`createPortal(…, document.body)`): dnd-kit sortable rows carry inline `transform`, and any transformed ancestor turns `position:fixed` into row-relative positioning — an unportaled dialog centers inside the editor row instead of the viewport (this exact bug shipped once). MediaPicker portals; copy that pattern for any future modal/backdrop.
@@ -125,43 +128,82 @@ All workstreams shipped: v3 card library, rich text engine + site settings, soci
 - **Theme lock** (`theme.lockSkin?: boolean`): admin toggle hides SkinSwitcher, forces official skin for all visitors. Pre-paint script respects it. Badge shows "locked" state.
 - **Marquee textarea fix**: local draft state + blur commit pattern so typing spaces and pressing Enter to add new entries works naturally (was fighting controlled-from-store re-renders).
 
-Known deferred polish → **Phase 4 candidates**: popover enter/exit animations (IconPicker), `DragOverlay` drag previews, skeleton states, keyboard-focus styling audit.
+Known deferred polish → **Phase 6** (see below): popover enter/exit animations (IconPicker), `DragOverlay` drag previews, skeleton states, keyboard-focus styling audit.
 
-## Two-Product Architecture
+## Two-Product Architecture — one core, two shells
 
-One codebase, two deployment targets, different audiences:
+**The rule: Product B is the base and always works standalone. Product A is an opt-in layer that only activates in the hosted deployment. B never requires any of A.**
+
+One codebase, shared trunk, layered shells:
+
+```
+CORE (shared, ZERO Firebase knowledge) = editor + designs + block types + JSON schema + rendering + motion
+B SHELL = core + local-first (localStorage) + env-password gate   ← zero-config, always works
+A SHELL = core + Firebase Auth + hosted store + hub + dashboard   ← opt-in via config only
+```
+
+**How B stays clean:** B has no dependency on A's config. Firebase is **not** a hard dependency of the base — it lives in the A shell (or is gated so it's only bundled/loaded when A's config is present). A features activate only when their config exists; absent that, the app behaves entirely as B. The hub + dashboard are **A-only** routes.
 
 **Product A — Hosted SaaS (the big lift)**
 - Non-devs go to our website → sign up → pick a design → fill in content → live portfolio. Zero friction, no code, no repo.
 - We host the JSON documents (a few MB total — even 1000 users = ~200MB). Free to run at scale.
-- Images: user brings their own storage (S3, R2, Cloudinary, etc.) OR we provide a simple upload pipeline with a small free tier.
+- Keep the doc in **our own store** (KV/Postgres/Turso), NOT Firestore (1MB/doc limit + lock-in + wrong shape for a JSON blob). Firebase only does **Auth + Storage** (see 5c).
 - Needs: user accounts, auth, real DB backend, dashboard, onboarding flow.
 - Target audience: classmates, designers, personal sites. People who want a portfolio without touching code.
 
 **Product B — Self-hosted / Fork (already works)**
 - Devs fork the repo → run locally → full control over everything.
-- localStorage, local images, `?edit=true` + `Ctrl+Shift+E` to edit. No server needed.
+- localStorage, local images, `?edit=true` + `Ctrl+Shift+E` to edit. No backend/DB needed — content is pure localStorage (the only server bits are the upload + auth route handlers, which a Next server already provides).
+- Optional: single-admin password gate via `.env.local` (Phase 4) — server-side verify, guardrail not real security.
 - Target audience: developers, power users who want their own stack, or anyone who wants to customize the code.
 - **This is the current state of the project.** Product B is done.
 
-**Cross-product bridge:**
-- Product B user can export JSON → import into Product A (go hosted).
-- Product A user can export JSON → fork repo for Product B (go self-hosted).
-- Both directions should be seamless (JSON import/export already works).
+**Cross-product bridge — migration is the JSON, always:**
+- The bridge is the **JSON document format** (shared schema + `prepareDocument`), NOT the auth/provider. Firebase only touches auth/storage — which aren't in the doc — so it never sits in the migration path.
+- Product B → A: export JSON → import into a hosted account.
+- Product A → B: export JSON → fork repo → import. (The Firebase identity/account doesn't carry over, and doesn't need to — in B whoever runs it owns the doc.)
+- **You can run your OWN A too:** since A is just "core + Firebase + hub" layers, anyone can self-host a Firebase-backed hosted version and run their own product. That's the same reason migration just works — A and B are the same core, only the outer layers differ. Keep the JSON schema in sync across both and the bridge stays seamless forever.
+- Images: URLs carry over either way (a cloud URL still renders in B; re-upload only if you want full-locality).
 
 ## Phase 4 — Auth Gate for Product B (planning)
 
-Single-admin auth for the self-hosted version. Visitors can't edit; only the repo owner can.
+Lightweight **admin gate** for the self-hosted version. Purpose is **governance/UX, not security**: stop a visitor from *accidentally* entering edit mode on their own local view, and give the admin a branded entry point. It is a guardrail, not a fortress. Because content lives in each visitor's browser `localStorage` (not a shared server), gating edit mode does not secure shared data — there is none. For real auth, see Product A. No OAuth, no user registration.
+
+**Phase 4a shipped:**
+- Configurable edit-mode shortcut in `src/lib/editShortcut.ts` (`EditShortcut`, `shortcutMatches`, `shortcutFromEvent`, `validateShortcut`, `formatShortcut`, read/store). `mod` = ctrl OR meta (platform-agnostic, as before). Preference lives under localStorage `portfolio-edit-shortcut` — NOT document data, so no version bump/migration. Unset = default `⌘/Ctrl+Shift+E`.
+- `PortfolioView` seeds the shortcut from storage and matches it in the keydown effect (deps include `editShortcut`). `GlobalSettings` (Site tab) shows a **capture-on-press** field: focus, press a chord, release. Rejects bare-key / modifier-only combos and the reserved undo/redo chords (`⌘/Ctrl+Z`, `⌘/Ctrl+Shift+Z`, `⌘/Ctrl+Y`); has a reset-to-default ↺.
+- Gotcha honored: recording happens in a read-only `<input>`, so the global edit-toggle listener early-returns (target INPUT) and never flips edit mode while recording. Writes go to the storage key, never the document.
+
+**Phase 4b shipped — auth gate:**
+- `src/lib/auth.ts`: session helpers (`readStoredSession`/`writeStoredSession`/`clearStoredSession`, 24h TTL). `portfolio-session` key, separate from the document; no version bump. "Remember me" → `localStorage`, else `sessionStorage`.
+- `src/app/api/auth/status/route.ts` (GET `{enabled}`; true when `ADMIN_PASSWORD` is set — the gate is opt-in) + `src/app/api/auth/verify/route.ts` (POST — compares *server-side* with `bcryptjs` when the env var is a `$2…` hash, else plaintext for dev; on success returns an opaque token; the hash/secret **never ships to the client**).
+- `src/hooks/useAuth.ts` (`enabled`/`authenticated`/`login`/`logout`, `authenticated` seeds synchronously from storage) + `src/components/auth/LoginCard.tsx` (centered card, password + "Remember me", error state).
+- `PortfolioView` gate: `canEdit = isEditMode && isAuthed`; `showLogin = isEditMode && gated && !authenticated`. UtilityBar / EditorPanel / hidden admin tabs / admin view / undo(+redo) all now gate on `canEdit`. When `showLogin`, the content region renders `LoginCard`. `?edit=true` stays the recovery entry (URL sync still keys off `isEditMode`).
+- Known limits (guardrail): the session token is opaque and unsigned (bypassable by writing the key — accepted); the `/write` standalone authoring route is NOT yet independently gated (reachable only through the already-gated Posts UI). Both are fine for a guardrail, note for Phase 4c docs.
+- **Log out**: a header button (edit mode only, `handleLogout` in PortfolioView) clears the session and exits edit mode back to visitor UI. `.env.example` is the committed `ADMIN_PASSWORD` template (copy to `.env.local`, which `.gitignore` excludes); `.gitignore` un-ignores `.env.example` only (`!.env.example`).
+- **`/write` gate closed:** `WriteView` now calls `useAuth()` and renders `LoginCard` when `enabled && !authenticated` — so a direct visit to `/write` (not via the gated Posts overlay) is blocked too. Same guardrail pattern as the main view; the overlay path was already gated.
+
+**Phase 4c shipped — README:** `README.md` rewritten from the create-next-app boilerplate into a real project readme (setup, editing, the optional admin gate, storage-swap note, roadmap). The auth-gate section documents the bcrypt generation (project's own `bcryptjs` one-liner + htpasswd fallback), the `ADMIN_PASSWORD` setup, and the **`$`-in-`.env` trap** (never put a bcrypt hash in a `.env`; plaintext for dev, real env var for prod).
 
 ### 4a — Configurable shortcut
-- Default `Ctrl/Cmd + Shift + E` to enter edit mode, configurable in Site Settings (stored in login database).
-- Remappable via a single text input in Site Settings.
+- Default `Ctrl/Cmd + Shift + E` to enter edit mode, configurable in Site Settings (stored in localStorage).
+- Remappable via **capture-on-press** in Site Settings (focus a field, press the chord, release). [Shipped — see above.]
 
 ### 4b — Login card
 - After activating the shortcut, show a **login card** (centered, branded) prompting for a single admin password.
-- Password stored as a bcrypt hash in the JSON document (or env var for self-hosted). Plain-text comparison on the client for now; hash verification when DB exists.
-- Session: localStorage flag `portfolio-session` with a 24h expiry + "Remember me" toggle. No user registration — single admin, one password.
-- Security note: client-side hashing is obfuscation, not real security. Acceptable for single-admin + no-sensitive-data. Real auth comes in Product A.
+- Password lives in `.env.local` as `ADMIN_PASSWORD` — bcrypt hash in production, plaintext allowed for local dev (with a console warning). **No `NEXT_PUBLIC_` prefix** (that would ship the secret to the browser).
+- **The comparison happens server-side** via a route handler (e.g. `/api/auth/verify`) that reads `process.env.ADMIN_PASSWORD` / the hash and returns a match — use `bcryptjs`. The hash never ships to the client. This works because the deployed site runs a real Next server (see `/api/upload`).
+- On match → set a session token in a separate `portfolio-session` localStorage key (NOT the portfolio document) with a 24h expiry. "Remember me" toggles between `sessionStorage` (per-tab) and `localStorage` (persists). No user registration — single admin, one password.
+- **Gate *all* edit surface off the session, not just the shortcut path**: `?edit=true`, the shortcut, UtilityBar, EditorPanel, and the hidden Posts/Site tabs must all check the session. Otherwise a visitor just opens `?edit=true` and skips the card.
+- **Load correctness:** login state rides the existing `ready` gate (hydration-safe mount flag) so unauthenticated edit UI never flashes before the session is known.
+- **Export/import never touches credentials.** You export the portfolio, not your password. Importing someone else's JSON doesn't overwrite your session or env var.
+
+### 4c — README instructions
+- How to generate the bcrypt hash (one-liner with `htpasswd` or online tool)
+- How to set `ADMIN_PASSWORD` in `.env.local`
+- What NOT to do (commit the hash to git, store it in the JSON, or prefix the var `NEXT_PUBLIC_`)
+- How the session works (separate key, expiry, "Remember me")
+- Note: this is a guardrail (governance/UX), not real security. For production auth, see Product A.
 
 ## Phase 5 — Product A: Hosted SaaS (planning)
 
@@ -184,9 +226,26 @@ Decision criteria: cost (free preferred), cold starts (zero or near-zero), DX (s
 - **User-brings-their-own**: user pastes S3/R2/Cloudinary config in Site Settings → uploads go browser → their bucket.
 
 ### 5c — User accounts & auth
-- Sign up / login flow (email + password, or OAuth via GitHub/Google).
-- Each user gets their own JSON document in the DB.
-- Session management, password reset, account settings.
+
+**One rule — the server is the authority. The client only requests and reflects; it never decides.** Every state-changing operation (login, logout, read/write doc, import, export, upload) is a route handler that runs the same 5-step template: `authenticate → authorize (owner-only) → validate/sanitize → do it → return the confirmed result`. The client updates UI state only after the server confirms — never optimistically.
+
+- **Identity (managed, don't hand-roll):** Supabase Auth or Auth.js. Google one-tap + magic-link primary, email/password secondary. Identity = `userId`. Never store plaintext passwords.
+
+- **Session:** `HttpOnly + Secure + SameSite=Lax` cookie on the client; the session record lives **server-side** (`sessions` table, or stateless JWT). Server validates the cookie on every protected request → sets `req.userId`. **Logout = server deletes the session + clears the cookie; the client clears its UI only after the server confirms.**
+
+- **Storage: ONE store, not three.** Same swappable seam as the doc (5a). In a relational DB: 3 tables — `users`, `sessions` (token→user, expiry), `portfolios` (user_id, slug, JSON). In KV: 3 key prefixes (`user:*`, `session:*`, `portfolio:*`). Stateless JWT drops the sessions table.
+
+- **Access model — public render vs private edit:**
+  - **Public** (no auth): the *published* portfolio render + the images it references. That's the product — visitors must be able to see it.
+  - **Private** (session + ownership): editing the doc, uploading images, drafts/unpublished, the dashboard. Every read/write checks `req.userId === portfolio.user_id` (the IDOR/ownership check).
+
+- **Images:** public when part of a published render (visitors see them); **upload is owner-only**; unpublished/draft images are private (session-gated). Storage behind `/api/upload` (swap internals for R2/S3); the doc stores URLs only.
+
+- **Import is server-confirmed:** client POSTs the JSON → server validates (`isPortfolioData`/`prepareDocument`) **and sanitizes HTML** (rich_text/custom_html — the stored-XSS path) → persists → returns success. Export returns the sanitized doc from the server.
+
+- **Also:** rate-limit login, CSRF (SameSite + token), session expiry/idle timeout, HTML sanitization, server-side password hashing.
+
+- **Scope note:** this is the Product A lift — do NOT build it during Phase 4. The JSON **format** is the bridge (B ↔ A import/export).
 
 ### 5d — Dashboard & onboarding
 - Post-login dashboard: list of user's portfolios, create new, settings.
@@ -197,6 +256,17 @@ Decision criteria: cost (free preferred), cold starts (zero or near-zero), DX (s
 - Product B → Product A: "Import from file" in dashboard.
 - Product A → Product B: "Export JSON" in Site Settings → fork repo → import.
 - Both directions seamless (JSON format is identical).
+
+### 5f — Hub / showcase / marketing landing page
+The public face of Product A. Three jobs in one site:
+
+- **Showcase gallery**: grid of hosted portfolios (social proof). "Built with overengineered-portfolio" badge in each hosted site's footer → links back to the hub. Free organic marketing.
+- **Marketing copy**: what the product is, how it works, the 4 design systems, the skin switcher, the motion system. Demo section with live skin/design switching.
+- **Entry point**: "Create your portfolio" button → signup → onboarding → editor.
+
+Built with the project itself (dogfooding): Product B instance with custom HTML blocks for marketing copy, app grid for showcase gallery, hero with product pitch. The showcase is the strongest marketing tool — real users' portfolios *are* the demo.
+
+URL structure: `yoursite.com` (hub) → `yoursite.com/u/username` (hosted portfolio). Subdomain or path-based routing for hosted portfolios.
 
 ## Phase 6 — Polish & Cross-Product (planning)
 
@@ -236,7 +306,7 @@ Features that benefit both products or are deferred from earlier phases.
 
 Original candidate workstreams (all resolved — see sections above and Phase 3 closure note):
 
-- **UI/UX & animation pass:** skin-aware press/enter/hover shipped; leftovers moved to Phase 4 candidates.
+- **UI/UX & animation pass:** skin-aware press/enter/hover shipped; leftovers moved to Phase 6 (polish).
 - **Hero upgrades:** layout variants, badge colors, secondary CTA, socials row shipped; video backgrounds/multi-CTA remain idea-parked.
 - **Blog editor + viewer:** shipped as budget-Medium (see Blog section).
 - **Asset management:** shipped as the media vault.
