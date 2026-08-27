@@ -15,20 +15,26 @@ export type LoginResult = { ok: boolean; error?: string };
  * the gate is inactive and edit mode works as before. `authenticated` seeds
  * synchronously from the stored session — the same lazy-backed `useState`
  * pattern the skin override + last-tab use, so hydration reads real storage.
+ * `allowEdit` reflects the `ALLOW_EDIT` env toggle (default true); when false
+ * the site is read-only and the editor/shortcut are hidden.
  */
 export function useAuth() {
   const [enabled, setEnabled] = useState(true);
+  const [allowEdit, setAllowEdit] = useState(true);
   const [authenticated, setAuthenticated] = useState(() => hasValidSession());
 
   useEffect(() => {
     let active = true;
     fetch('/api/auth/status')
       .then((res) => res.json())
-      .then((data: { enabled?: unknown }) => {
-        if (active) setEnabled(data.enabled === true);
+      .then((data: { enabled?: unknown; allowEdit?: unknown }) => {
+        if (!active) return;
+        setEnabled(data.enabled === true);
+        setAllowEdit(data.allowEdit !== false);
       })
       .catch(() => {
-        // Leave `enabled` at its default (on) — fail toward gating.
+        // Leave `enabled`/`allowEdit` at their defaults (on) — fail toward
+        // keeping edit available rather than locking the owner out.
       });
     return () => {
       active = false;
@@ -69,5 +75,5 @@ export function useAuth() {
     setAuthenticated(false);
   }, []);
 
-  return { enabled, authenticated, login, logout };
+  return { enabled, authenticated, login, logout, allowEdit };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import type { PostStatus } from '@/types/schema';
@@ -41,6 +41,11 @@ export default function WriteView({
   // already reached through the gated Posts UI). This is a guardrail, not
   // a boundary — same as the main view.
   const auth = useAuth();
+  // Editing fully disabled (ALLOW_EDIT=false) → this authoring route is
+  // read-only too; bounce home rather than expose the editor.
+  useEffect(() => {
+    if (!auth.allowEdit) router.replace('/');
+  }, [auth.allowEdit, router]);
   const { posts, createPost, updatePost, setPostStatus, deletePost } =
     usePosts();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -68,6 +73,8 @@ export default function WriteView({
       router.replace(`/write?post=${id}`);
     }
   }
+
+  if (!auth.allowEdit) return null; // editing disabled — redirecting home
 
   if (auth.enabled && !auth.authenticated) {
     return <LoginCard onLogin={auth.login} />;

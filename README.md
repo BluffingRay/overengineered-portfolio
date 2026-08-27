@@ -44,6 +44,13 @@ edit content/portfolio.json  +  add images to public/  →  git push  →  redep
 
 By default edit mode is open. To stop casual visitors from wandering into edit mode, set a single admin password.
 
+**For a public self-host (e.g. Vercel), the simplest way to make your site read-only is `ALLOW_EDIT=false`** — it hides the editor entirely (no shortcut toggle, `?edit=true` shows nothing). Works on its own or combined with the password gate:
+
+```
+# read-only public site (local dev stays zero-config)
+ALLOW_EDIT=false
+```
+
 **The gate turns on only when `ADMIN_PASSWORD` is set.** Put it in `.env.local` (gitignored):
 
 ```

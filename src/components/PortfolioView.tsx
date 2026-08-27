@@ -49,10 +49,15 @@ export default function PortfolioView() {
   const auth = useAuth();
   const gated = auth.enabled;
   const isAuthed = !gated || auth.authenticated;
+  // Editing can be fully disabled by ALLOW_EDIT=false (env) — makes a public
+  // self-host read-only. When off, no editor UI, no shortcut toggle, and
+  // ?edit=true shows nothing (the derived gates below handle all of it).
+  const editingAllowed = auth.allowEdit;
   // Edit UI only when edit was requested AND we're allowed. `showLogin`
   // intercepts the request: edit was requested but the gate isn't satisfied.
-  const canEdit = isEditMode && isAuthed;
-  const showLogin = isEditMode && gated && !auth.authenticated;
+  const canEdit = isEditMode && isAuthed && editingAllowed;
+  const showLogin =
+    isEditMode && gated && !auth.authenticated && editingAllowed;
 
   function handleLogout() {
     auth.logout();
@@ -210,7 +215,7 @@ export default function PortfolioView() {
 
       const mod = event.ctrlKey || event.metaKey;
 
-      if (shortcutMatches(event, editShortcut)) {
+      if (editingAllowed && shortcutMatches(event, editShortcut)) {
         event.preventDefault();
         setIsEditMode((mode) => !mode);
         return;
@@ -233,7 +238,7 @@ export default function PortfolioView() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isEditMode, canEdit, undo, redo, editShortcut]);
+  }, [isEditMode, canEdit, undo, redo, editShortcut, editingAllowed]);
 
   const tabs = data.tabs;
 
