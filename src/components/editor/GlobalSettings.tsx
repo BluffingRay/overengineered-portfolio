@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -22,6 +22,14 @@ import type { SocialLink, SocialPlatform, ThemeConfig } from '@/types/schema';
 import { SOCIAL_PLATFORMS, THEME_SKINS } from '@/types/schema';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import SocialIcon from '@/components/ui/SocialIcon';
+import {
+  DEFAULT_SHORTCUT,
+  formatShortcut,
+  isModifierKey,
+  shortcutFromEvent,
+  validateShortcut,
+  type EditShortcut,
+} from '@/lib/editShortcut';
 import { Checkbox, DRAG_HANDLE, Field, INPUT, PLATFORM_LABELS, ROW_BTN, useTrimmedCommit } from './editor-shared';
 import IconPicker from './IconPicker';
 
@@ -156,7 +164,89 @@ function FontInput({
   );
 }
 
-export default function GlobalSettings() {
+function ShortcutCapture({
+  value,
+  onChange,
+}: {
+  value: EditShortcut;
+  onChange: (next: EditShortcut) => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setRecording(false);
+      setError(null);
+      event.currentTarget.blur();
+      return;
+    }
+    // Ignore the modifier press itself — wait for the chord's actual key,
+    // so holding Ctrl then pressing E records the whole combo.
+    if (isModifierKey(event.key)) return;
+    event.preventDefault();
+    const shortcut = shortcutFromEvent(event.nativeEvent);
+    const problem = validateShortcut(shortcut);
+    if (problem === null) {
+      onChange(shortcut);
+      setError(null);
+      setRecording(false);
+    } else {
+      setError(problem);
+      setRecording(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5">
+        <input
+          readOnly
+          value={recording ? 'Press a combo…' : formatShortcut(value)}
+          placeholder="Press a combo…"
+          aria-label="Edit-mode shortcut"
+          onFocus={() => {
+            setRecording(true);
+            setError(null);
+          }}
+          onBlur={() => setRecording(false)}
+          onKeyDown={handleKeyDown}
+          className={`${INPUT} font-mono text-xs ${
+            recording ? 'border-accent' : ''
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            onChange(DEFAULT_SHORTCUT);
+            setError(null);
+          }}
+          className={ROW_BTN}
+          title="Reset to default"
+          aria-label="Reset shortcut to default"
+        >
+          ↺
+        </button>
+      </div>
+      <p className="mt-1 text-[10px] opacity-50">
+        Focus the box, press your combo, then release it. Must include
+        Ctrl/Cmd or Alt — and must not collide with undo/redo (Ctrl/Cmd+Z, +Y).
+      </p>
+      {error && (
+        <p className="mt-1 text-[10px] font-medium text-red-500">{error}</p>
+      )}
+    </div>
+  );
+}
+
+export default function GlobalSettings({
+  editShortcut,
+  onEditShortcutChange,
+}: {
+  editShortcut: EditShortcut;
+  onEditShortcutChange: (next: EditShortcut) => void;
+}) {
   const { data, mutate } = usePortfolioData();
   const [openLinkId, setOpenLinkId] = useState<string | null>(null);
 
@@ -262,6 +352,19 @@ export default function GlobalSettings() {
             see {data.skin.toUpperCase()}.
           </p>
         </div>
+      </div>
+      <div>
+        <Field label="Edit-mode shortcut — press a combo to remap">
+          <ShortcutCapture
+            value={editShortcut}
+            onChange={onEditShortcutChange}
+          />
+        </Field>
+        <p className="mt-1 text-[10px] opacity-50">
+          The toggle for entering / leaving edit mode (default:
+          <code className="rounded bg-current/10 px-1">⌘/Ctrl+Shift+E</code>).
+          Stored locally — never in your portfolio document.
+        </p>
       </div>
       <div>
         <Field label="Global font — pick a preset or paste any CSS font stack">

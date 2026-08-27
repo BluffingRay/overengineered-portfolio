@@ -28,6 +28,14 @@ import BlogSite from '@/components/blog/BlogSite';
 import GlobalSettings from '@/components/editor/GlobalSettings';
 import SiteFooter from '@/components/ui/SiteFooter';
 import EditorPanel from '@/components/editor/EditorPanel';
+import {
+  readStoredShortcut,
+  writeStoredShortcut,
+  shortcutMatches,
+  type EditShortcut,
+} from '@/lib/editShortcut';
+import { useAuth } from '@/hooks/useAuth';
+import LoginCard from '@/components/auth/LoginCard';
 
 export default function PortfolioView() {
   const { data, undo, redo } = usePortfolioData();
@@ -35,6 +43,33 @@ export default function PortfolioView() {
   const [isEditMode, setIsEditMode] = useState(
     searchParams.get('edit') === 'true',
   );
+  // Phase 4b — auth gate. `enabled` is whether an ADMIN_PASSWORD is
+  // configured; when it isn't, the gate is off and edit mode works as
+  // before. `authenticated` seeds from the stored session on hydration.
+  const auth = useAuth();
+  const gated = auth.enabled;
+  const isAuthed = !gated || auth.authenticated;
+  // Edit UI only when edit was requested AND we're allowed. `showLogin`
+  // intercepts the request: edit was requested but the gate isn't satisfied.
+  const canEdit = isEditMode && isAuthed;
+  const showLogin = isEditMode && gated && !auth.authenticated;
+
+  function handleLogout() {
+    auth.logout();
+    // Drop back to visitor mode (also strips ?edit=true via the URL effect).
+    setIsEditMode(false);
+  }
+  // Edit-mode toggle shortcut — a preference, NOT document data. Lives in
+  // its own localStorage key (like the skin override). It's a dependency of
+  // the keydown effect below, so that listener re-subscribes only when it
+  // changes (rare) and always reads the current value.
+  const [editShortcut, setEditShortcut] = useState<EditShortcut>(() =>
+    readStoredShortcut(),
+  );
+  function changeEditShortcut(next: EditShortcut) {
+    setEditShortcut(next);
+    writeStoredShortcut(next);
+  }
   // Floating pages — /write and /blog cover the site in-place instead
   // of navigating, so closing unmasks the exact view underneath.
   const [overlay, setOverlay] = useState<
@@ -175,13 +210,13 @@ export default function PortfolioView() {
 
       const mod = event.ctrlKey || event.metaKey;
 
-      if (mod && event.shiftKey && event.key.toLowerCase() === 'e') {
+      if (shortcutMatches(event, editShortcut)) {
         event.preventDefault();
         setIsEditMode((mode) => !mode);
         return;
       }
 
-      if (!isEditMode) return;
+      if (!canEdit) return;
 
       if (mod && !event.shiftKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
@@ -198,7 +233,7 @@ export default function PortfolioView() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isEditMode, undo, redo]);
+  }, [isEditMode, canEdit, undo, redo, editShortcut]);
 
   const tabs = data.tabs;
 
@@ -212,7 +247,7 @@ export default function PortfolioView() {
   type AdminTabId = (typeof ADMIN_TABS)[number]['id'];
   const activeAdmin = ADMIN_TABS.find((t) => t.id === activeTabId);
   const adminView: AdminTabId | null =
-    isEditMode && activeAdmin ? activeAdmin.id : null;
+    canEdit && activeAdmin ? activeAdmin.id : null;
 
   const activeTab = adminView
     ? undefined
@@ -355,7 +390,7 @@ export default function PortfolioView() {
           })}
           </div>
 
-          {isEditMode && (
+          {canEdit && (
             <div className="flex items-center gap-1.5 self-start pt-1.5">
               <span
                 aria-hidden="true"
@@ -385,7 +420,7 @@ export default function PortfolioView() {
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-3 pb-3">
-            {isEditMode && <UtilityBar />}
+            {canEdit && <UtilityBar />}
             {!isSkinLocked ? (
               <SkinSwitcher
                 value={skinOverride ?? activeSkin}
@@ -400,7 +435,7 @@ export default function PortfolioView() {
                 {data.skin.toUpperCase()} locked
               </span>
             )}
-            {isEditMode && (
+            {canEdit && (
               <button
                 type="button"
                 aria-expanded={editorOpen}
@@ -414,21 +449,40 @@ export default function PortfolioView() {
                 {editorOpen ? 'Done' : 'Edit'}
               </button>
             )}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="End this session and return to visitor mode"
+                className="rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium opacity-70 hover:opacity-100"
+              >
+                Log out
+              </button>
+            )}
           </div>
         </div>
 
-        {isEditMode && editorOpen && !adminView && activeTab && (
+        {canEdit && editorOpen && !adminView && activeTab && (
           <EditorPanel activeTabId={activeTab.id} />
         )}
 
-        {adminView ? (
+        {showLogin ? (
+          <div className="flex-1">
+            <LoginCard onLogin={auth.login} />
+          </div>
+        ) : adminView ? (
           <div className="settle-in mx-auto w-full max-w-2xl flex-1 pt-8">
             {adminView === 'admin:posts' && (
               <PostAdmin
                 onOpenPost={(id) => setOverlay({ kind: 'write', id })}
               />
             )}
-            {adminView === 'admin:site' && <GlobalSettings />}
+            {adminView === 'admin:site' && (
+              <GlobalSettings
+                editShortcut={editShortcut}
+                onEditShortcutChange={changeEditShortcut}
+              />
+            )}
           </div>
         ) : (
           activeTab && (

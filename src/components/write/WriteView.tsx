@@ -10,6 +10,8 @@ import { goBackOrHome } from '@/lib/navigation';
 import RichTextEditor from '@/components/rich/RichTextEditor';
 import MediaPicker from '@/components/editor/MediaPicker';
 import { useTrimmedCommit } from '../editor/editor-shared';
+import { useAuth } from '@/hooks/useAuth';
+import LoginCard from '@/components/auth/LoginCard';
 
 /**
  * Medium-style writer, dual-mode: standalone route at /write?post=<id>
@@ -35,6 +37,10 @@ export default function WriteView({
 } = {}) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  // Direct visits to /write must respect the auth gate (the overlay path is
+  // already reached through the gated Posts UI). This is a guardrail, not
+  // a boundary — same as the main view.
+  const auth = useAuth();
   const { posts, createPost, updatePost, setPostStatus, deletePost } =
     usePosts();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -61,6 +67,10 @@ export default function WriteView({
       // instead of bouncing through the chooser.
       router.replace(`/write?post=${id}`);
     }
+  }
+
+  if (auth.enabled && !auth.authenticated) {
+    return <LoginCard onLogin={auth.login} />;
   }
 
   return (
