@@ -12,6 +12,7 @@ import MediaPicker from '@/components/editor/MediaPicker';
 import { useTrimmedCommit } from '../editor/editor-shared';
 import { useAuth } from '@/hooks/useAuth';
 import LoginCard from '@/components/auth/LoginCard';
+import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 
 /**
  * Medium-style writer, dual-mode: standalone route at /write?post=<id>
@@ -74,12 +75,17 @@ export default function WriteView({
     }
   }
 
-  if (!auth.allowEdit) return null; // editing disabled — redirecting home
+  if (!auth.allowEdit) return null;
 
-  if (auth.enabled && !auth.authenticated) {
-    return <LoginCard onLogin={auth.login} />;
+  if (auth.gated && !auth.authenticated) {
+    // Same rule as PortfolioView: the SERVER's hosted flag picks the
+    // card — Firebase client env alone must never activate Product A UI.
+    return auth.hosted ? (
+      <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+    ) : (
+      <LoginCard onLogin={auth.login} />
+    );
   }
-
   return (
     <main className="min-h-dvh">
       {/* Chooser: no post targeted */}

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { getUserIdFromSessionCookie, isAdminConfigured } from '@/lib/firebase/admin';
 
 /**
  * Asset vault — triad `HOSTED (throwaway R2) / GOOGLE DRIVE BYO / CUSTOM API BYO`.
@@ -11,7 +12,12 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command }
  * `LOCAL=false`   -> force R2 (hosted) — fails loudly if R2 env missing
  * `LOCAL=hybrid`  -> auto coexist: R2 if configured else local, shows both (same as unset)
  * unset           -> auto (hybrid)
- * Per-user: `uploads/<uid>/...` — uid from Firebase ID token, else `dev` for now.
+ * Per-user: `uploads/<uid>/...` — uid from the Firebase session cookie
+ *   ONLY (never a client-supplied token — that was an unverified prefix
+ *   spoof, removed in FIX-B). No admin config (Product B local) => `dev`.
+ * FIX-B: DELETE is owner-only — the key must sit under the caller's own
+ *   prefix; cross-user keys 403. FIX-E2: `?list=1` lists the caller's
+ *   own prefix only (legacy flat files dev-only).
  * Accepts multiple env aliases so `R2_ACCOUNT_ID`/`R2_BUCKET_NAME`/`R2_PUBLIC_BASE_URL` just work.
  */
 function pickEnv(...keys: string[]): string | undefined {
@@ -23,24 +29,39 @@ function pickEnv(...keys: string[]): string | undefined {
 }
 function isLocalMode(): boolean | null {
   const raw = pickEnv('LOCAL', 'USE_LOCAL', 'STORAGE_LOCAL');
-  if (raw == null) return null;
+  if (raw == null) return true; // B-core frictionless: no env => offline local, not hybrid
   const v = raw.toLowerCase().trim();
-  if (['true', '1', 'yes', 'local'].includes(v)) return true;
+  if (['true', '1', 'yes', 'local', 'offline'].includes(v)) return true;
   if (['false', '0', 'no', 'r2', 'remote'].includes(v)) return false;
   if (['hybrid', 'auto', 'both', 'coexist', 'mixed'].includes(v)) return null;
-  return null;
+  return true;
 }
-function getUserPrefix(request: Request): string {
-  const auth = request.headers.get('authorization') ?? '';
-  const m = auth.match(/^Bearer\s+(.+)$/);
-  if (m) {
-    try {
-      const payload = JSON.parse(Buffer.from(m[1].split('.')[1] ?? '', 'base64').toString());
-      if (payload?.uid) return String(payload.uid).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
-      if (payload?.user_id) return String(payload.user_id).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
-    } catch {}
+async function getUserPrefix(request: Request): Promise<string> {
+  // FIX-B/FIX-H: the session cookie is the ONLY identity source. The old
+  // Bearer-token branch decoded an UNVERIFIED base64 payload to pick the
+  // prefix — an unauthenticated prefix spoof (only reachable when admin
+  // was unconfigured, but it undermines ownership checks). Removed.
+  if (isAdminConfigured()) {
+    const uid = await getUserIdFromSessionCookie(request);
+    if (uid) return uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
   }
-  return pickEnv('R2_USER_PREFIX', 'UPLOADS_PREFIX') ?? 'dev';
+  return pickEnv("R2_USER_PREFIX", "UPLOADS_PREFIX") ?? "dev";
+}
+
+/**
+ * FIX-B ownership check: a key belongs to the caller when it sits under
+ * their own `uploads/<uid>/` prefix. Legacy flat keys (`uploads/<file>`,
+ * pre-5b, no owner folder) belong to the dev prefix only — anyone else
+ * deleting them gets a 403. Path-traversal-safe: key must match
+ * `uploads/` followed by `[A-Za-z0-9._-]` segments only.
+ */
+function ownsKey(key: string, myPrefix: string): boolean {
+  if (!/^(uploads\/)?[A-Za-z0-9._\-/]+$/.test(key) || key.includes('..')) return false;
+  if (key.startsWith(myPrefix)) return true;
+  // Legacy flat file (no user folder segment)?
+  const rest = key.slice('uploads/'.length);
+  if (rest.includes('/')) return false; // someone else's folder — not ours
+  return myPrefix === 'uploads/dev/'; // flat files are dev-owned
 }
 function getR2Endpoint(): string | undefined {
   const direct = pickEnv('R2_ENDPOINT');
@@ -76,26 +97,30 @@ function r2Configured(): { endpoint: boolean; accessKey: boolean; secretKey: boo
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  if (url.searchParams.has('list')) {
-    const prefix = url.searchParams.get('prefix') ?? `uploads/${getUserPrefix(request)}/`;
-    // also list dev fallback so old uploads/dev still show in hybrid
-    const prefixes = prefix === 'uploads/dev/' ? [prefix] : [prefix, 'uploads/dev/'];
+  if (url.searchParams.has("list")) {
+    // FIX-E2: list ONLY the caller's own prefix. The old code scanned a
+    // bare `uploads/` prefix (every user's objects) and always appended
+    // `uploads/dev/` — a cross-user media library leak. A client-supplied
+    // `?prefix=` is ignored for the same reason (it could name another
+    // user's folder); the server derives the scope from the session.
+    const myPrefix = `uploads/${await getUserPrefix(request)}/`;
     const out: { url: string; key: string; source: 'r2' | 'local' }[] = [];
-    // local public/uploads/<prefix>
+    // Local public/uploads/<myPrefix>/
     try {
-      for (const p of prefixes) {
-        const dir = path.join(process.cwd(), 'public', p);
-        const files = await readdir(dir).catch(() => [] as string[]);
-        for (const f of files) if (/\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) out.push({ url: `/${p}${f}`, key: `${p}${f}`, source: 'local' });
+      const dir = path.join(process.cwd(), 'public', myPrefix);
+      const files = await readdir(dir).catch(() => [] as string[]);
+      for (const f of files) {
+        if (!/^[A-Za-z0-9._-]+$/.test(f)) continue; // no dirs, no weird names
+        if (/\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) out.push({ url: `/${myPrefix}${f}`, key: `${myPrefix}${f}`, source: 'local' });
       }
-      // legacy flat public/uploads (no user folder) for migration
-      const flat = await readdir(path.join(process.cwd(), 'public', 'uploads')).catch(() => [] as string[]);
-      for (const f of flat) if (/\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f) && !f.includes('.')) {} // handled above; keep flat only if not already
-      // actually include flat files that are not dirs
-      for (const f of flat) {
-        if (f.includes('.') && /\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) {
-          const key = `uploads/${f}`;
-          if (!out.some((x) => x.key === key)) out.push({ url: `/${key}`, key, source: 'local' });
+      // Legacy flat files are dev-visible only (same ownership rule as DELETE)
+      if (myPrefix === 'uploads/dev/') {
+        const flat = await readdir(path.join(process.cwd(), 'public', 'uploads')).catch(() => [] as string[]);
+        for (const f of flat) {
+          if (/^[A-Za-z0-9._-]+$/.test(f) && /\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) {
+            const key = `uploads/${f}`;
+            if (!out.some((x) => x.key === key)) out.push({ url: `/${key}`, key, source: 'local' });
+          }
         }
       }
     } catch {}
@@ -103,15 +128,9 @@ export async function GET(request: Request) {
     if (r2) {
       try {
         const bucket = getR2Bucket();
-        for (const p of prefixes) {
-          const res = await r2.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: p, MaxKeys: 100 }));
-          for (const o of res.Contents ?? []) if (o.Key) out.push({ url: getR2PublicUrl(o.Key), key: o.Key, source: 'r2' });
-        }
-        // also list legacy flat uploads/ for migration
-        if (prefix !== 'uploads/') {
-          const res = await r2.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'uploads/', MaxKeys: 100 }));
-          for (const o of res.Contents ?? []) if (o.Key && !out.some((x) => x.key === o.Key)) out.push({ url: getR2PublicUrl(o.Key!), key: o.Key!, source: 'r2' });
-        }
+        // Caller's own folder only — never a bare uploads/ scan.
+        const res = await r2.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: myPrefix, MaxKeys: 100 }));
+        for (const o of res.Contents ?? []) if (o.Key) out.push({ url: getR2PublicUrl(o.Key), key: o.Key, source: 'r2' });
       } catch {}
     }
     const seen = new Set<string>();
@@ -141,20 +160,24 @@ const ALLOWED_TYPES: Record<string, string> = {
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  if (isAdminConfigured()) {
+    const uid = await getUserIdFromSessionCookie(request);
+    if (!uid) return NextResponse.json({ error: "unauthorized — sign in to upload" }, { status: 401 });
+  }
   let file: File | null = null;
   try {
     const form = await request.formData();
-    const candidate = form.get('file');
+    const candidate = form.get("file");
     if (candidate instanceof File) file = candidate;
   } catch {
-    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
   const ext = ALLOWED_TYPES[file.type];
-  if (!ext) return NextResponse.json({ error: `Unsupported type: ${file.type || 'unknown'}` }, { status: 415 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: 'Image is larger than 8MB' }, { status: 413 });
+  if (!ext) return NextResponse.json({ error: `Unsupported type: ${file.type || "unknown"}` }, { status: 415 });
+  if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image is larger than 8MB" }, { status: 413 });
 
-  const prefix = `uploads/${getUserPrefix(request)}/`;
+  const prefix = `uploads/${await getUserPrefix(request)}/`;
   const id = randomUUID();
   const key = `${prefix}${id}${ext}`;
   const forced = isLocalMode();
@@ -182,17 +205,31 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  // FIX-B: authn — same gate as POST. The session is the ONLY identity
+  // source; without admin config (Product B local) there is no gate by
+  // design and everyone shares the dev prefix.
+  if (isAdminConfigured()) {
+    const uid = await getUserIdFromSessionCookie(request);
+    if (!uid) return NextResponse.json({ error: "unauthorized — sign in to delete" }, { status: 401 });
+  }
+  const myPrefix = `uploads/${await getUserPrefix(request)}/`;
   const { searchParams } = new URL(request.url);
-  const key = searchParams.get('key') ?? (() => {
-    const url = searchParams.get('url');
+  const key = searchParams.get("key") ?? (() => {
+    const url = searchParams.get("url");
     if (!url) return null;
     try {
-      const u = new URL(url, 'http://dummy');
-      const m = u.pathname.match(/\/?(uploads\/.+)$/);
+      const u = new URL(url, "http://dummy");
+      const m = u.pathname.match(/\/?(uploads\/[A-Za-z0-9._\-/]+)$/);
       return m ? m[1] : null;
     } catch { return null; }
   })();
-  if (!key || !key.startsWith('uploads/')) return NextResponse.json({ error: 'Missing ?key=uploads/... or ?url=.../uploads/...' }, { status: 400 });
+  if (!key || !key.startsWith("uploads/")) return NextResponse.json({ error: "Missing ?key=uploads/... or ?url=.../uploads/..." }, { status: 400 });
+  // authz — owner-only: the key must live under the caller's own
+  // prefix (or be a legacy flat file, dev-owned). Cross-user delete is
+  // the IDOR this check closes.
+  if (!ownsKey(key, myPrefix)) {
+    return NextResponse.json({ error: "forbidden — you can only delete your own uploads" }, { status: 403 });
+  }
   const forced = isLocalMode();
   const r2 = forced === true ? null : getR2Client();
   let deleted = false;

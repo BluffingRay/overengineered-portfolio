@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ImagePlus, Trash2, ArrowLeft } from 'lucide-react';
+import { ImagePlus, Trash2 } from 'lucide-react';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 
 export default function MediaPicker({
@@ -20,7 +20,6 @@ export default function MediaPicker({
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storageFiles, setStorageFiles] = useState<{ url: string; key: string; source: 'r2' | 'local' }[] | null>(null);
-  const [driveOpen, setDriveOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const reload = () => {
@@ -31,7 +30,6 @@ export default function MediaPicker({
 
   useEffect(() => {
     if (!open) return;
-    setDriveOpen(false);
     reload();
   }, [open, data.assets]);
 
@@ -137,34 +135,23 @@ export default function MediaPicker({
 
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div ref={rootRef} role="dialog" aria-label="Media library" className="w-full max-w-2xl rounded-skin border border-[var(--border)] bg-surface p-4 shadow-xl">
+      <div ref={rootRef} role="dialog" aria-label="Media library" className="w-full max-w-xl rounded-skin border border-[var(--border)] bg-surface p-4 shadow-xl">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">{driveOpen ? 'Drive Space' : 'Media library'}</p>
+          <p className="text-sm font-semibold">Media library</p>
           <div className="flex items-center gap-1.5">
-            {!driveOpen && <button type="button" onClick={reload} disabled={reloading} aria-label="Reload library" title="Reload from R2 + local (bypass cache)" className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:opacity-50">{reloading ? '…' : '↻ Reload'}</button>}
-            {!driveOpen && (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-skin border border-accent/60 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-background">
-                <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
-                {uploading ? 'Uploading…' : 'Upload'}
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleUpload(file); }} />
-              </label>
-            )}
-            {driveOpen && <button type="button" onClick={() => setDriveOpen(false)} className="inline-flex items-center gap-1 rounded-skin border border-[var(--border)] px-2.5 py-1 text-xs"><ArrowLeft className="h-3 w-3" /> Back to Hosted</button>}
+            <button type="button" onClick={reload} disabled={reloading} aria-label="Reload library" title="Reload from R2 + local (bypass cache)" className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:opacity-50">{reloading ? '…' : '↻ Reload'}</button>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-skin border border-accent/60 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-background">
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+              {uploading ? 'Uploading…' : 'Upload'}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleUpload(file); }} />
+            </label>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] leading-none">
           <span className="opacity-50">Storage:</span>
-          <button type="button" onClick={() => setDriveOpen(false)} className={`rounded-full px-2.5 py-1 font-medium ${!driveOpen ? 'bg-emerald-500/15 text-emerald-700' : 'bg-white shadow-sm ring-1 ring-black/10'}`}>● Hosted (R2 + uploads/)</button>
-          <button type="button" onClick={() => setDriveOpen(true)} className={`rounded-full px-2.5 py-1 font-medium ${driveOpen ? 'bg-emerald-500/15 text-emerald-700' : 'bg-white shadow-sm ring-1 ring-black/10'}`}>Drive</button>
+          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-700">● Hosted (R2 + uploads/)</span>
           <span className="rounded-full bg-zinc-100 px-2.5 py-1 opacity-50">Custom API — Coming soon</span>
         </div>
-        {driveOpen ? (
-          <div className="mt-6 grid place-items-center rounded-skin border border-dashed border-[var(--border)] bg-black/[0.02] p-8 text-center">
-            <p className="text-sm font-medium">Drive is empty</p>
-            <p className="mt-1 max-w-sm text-xs opacity-60">Like diagrams.net — your Drive <code>appFolder</code> files will appear here (15GB per user). Connect with <code>Continue with Google + drive.file</code> in 5c.</p>
-          </div>
-        ) : (
-          <>
             {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
             {inventory.length > 0 ? (
               <ul className="mt-3 grid max-h-80 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
@@ -186,8 +173,6 @@ export default function MediaPicker({
               <input value={urlDraft} onChange={(event) => setUrlDraft(event.target.value)} placeholder="…or paste an image URL" aria-label="Paste image URL" spellCheck={false} className="min-w-0 flex-1 rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs" />
               <button type="submit" disabled={!urlDraft.trim()} className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:pointer-events-none disabled:opacity-30">Use</button>
             </form>
-          </>
-        )}
       </div>
     </div>,
     document.body,

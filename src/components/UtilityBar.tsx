@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import { importPortfolioData } from '@/lib/storage';
+import { useHostedDoc } from '@/hooks/useHostedDoc';
 
 const PRESETS = [
   { hex: '#22d3ee', name: 'Cyan' },
@@ -17,9 +18,29 @@ const HEX_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const BTN =
   'rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium hover:opacity-80';
 
-export default function UtilityBar() {
+/** "Saved 2m ago" style relative time for the save pill. */
+function savedAgoLabel(savedAt: number | null): string | null {
+  if (savedAt === null) return null;
+  const diff = Date.now() - savedAt;
+  if (diff < 15_000) return 'just now';
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+export default function UtilityBar({
+  hosted = false,
+  authenticated = false,
+}: {
+  hosted?: boolean;
+  authenticated?: boolean;
+}) {
   const { data, mutate, reset, undo, redo, canUndo, canRedo } =
     usePortfolioData();
+  // FIX-C — hosted save layer; inert (no UI) when not hosted.
+  const hostedDoc = useHostedDoc(hosted, authenticated);
   const [hexDraft, setHexDraft] = useState('');
   const [copied, setCopied] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -139,6 +160,38 @@ export default function UtilityBar() {
         />
       </div>
 
+      {hosted && (
+        <div className="flex items-center gap-1.5" role="status" aria-live="polite">
+          {hostedDoc.state.status === 'error' && (
+            <span className="text-[11px] font-medium text-red-500">
+              {hostedDoc.state.message}
+            </span>
+          )}
+          {hostedDoc.dirty ? (
+            <span className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+              ● Unsaved changes
+            </span>
+          ) : (
+            <span className="text-[10px] opacity-50">
+              Saved {savedAgoLabel(hostedDoc.savedAt) ?? '—'}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => void hostedDoc.save()}
+            disabled={!hostedDoc.dirty || hostedDoc.state.status === 'saving'}
+            title={
+              hostedDoc.dirty
+                ? 'Save to your hosted portfolio'
+                : 'No changes to save'
+            }
+            className={`${BTN} border-accent/60 text-accent hover:bg-accent hover:text-background disabled:pointer-events-none disabled:opacity-40`}
+          >
+            {hostedDoc.state.status === 'saving' ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-1.5">
         <button
           type="button"
@@ -194,49 +247,6 @@ export default function UtilityBar() {
           className={`${BTN} hover:!text-red-500`}
         >
           Reset
-        </button>
-        {/* TEMP 5b testing — dev id vs local. Remove before prod. */}
-        <span className="mx-1 h-4 w-px bg-current/20" aria-hidden="true" />
-        <span className="text-[10px] opacity-50">TEST</span>
-        <button
-          type="button"
-          title="Preview KV portfolio:default without overwriting localStorage"
-          onClick={async () => {
-            try {
-              const r = await fetch('/api/portfolio', { cache: 'no-store' });
-              const doc: unknown = await r.json();
-              if (!r.ok) {
-                const rec = doc as unknown as Record<string, unknown>;
-                throw new Error(typeof rec.error === 'string' ? rec.error : 'KV fetch failed');
-              }
-              const w = window.open('', '_blank');
-              if (w) { w.document.write(`<pre style="white-space:pre-wrap;word-break:break-all;padding:12px;font:12px monospace">${JSON.stringify(doc, null, 2).replace(/</g, '&lt;')}</pre>`); w.document.close(); }
-              else alert('KV preview fetched — check console'); console.log('KV preview', doc);
-            } catch (e) { alert((e as Error).message); }
-          }}
-          className="rounded-skin border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-[10px] font-medium"
-        >
-          Preview KV (dev)
-        </button>
-        <button
-          type="button"
-          title="Save localStorage portfolio-data to KV portfolio:default (temp)"
-          onClick={async () => {
-            try {
-              const raw = localStorage.getItem('portfolio-data');
-              if (!raw) throw new Error('No local data');
-              const r = await fetch('/api/portfolio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: raw });
-              const j: unknown = await r.json();
-              if (!r.ok) {
-                const rec = j as unknown as Record<string, unknown>;
-                throw new Error(typeof rec.error === 'string' ? rec.error : 'Save failed');
-              }
-              alert('Saved to KV');
-            } catch (e) { alert((e as Error).message); }
-          }}
-          className="rounded-skin border border-emerald-500/50 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium"
-        >
-          Save to KV
         </button>
       </div>
       {importError && (

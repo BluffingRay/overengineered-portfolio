@@ -36,6 +36,7 @@ import {
 } from '@/lib/editShortcut';
 import { useAuth } from '@/hooks/useAuth';
 import LoginCard from '@/components/auth/LoginCard';
+import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 
 export default function PortfolioView() {
   const { data, undo, redo } = usePortfolioData();
@@ -43,28 +44,28 @@ export default function PortfolioView() {
   const [isEditMode, setIsEditMode] = useState(
     searchParams.get('edit') === 'true',
   );
-  // Phase 4b — auth gate. `enabled` is whether an ADMIN_PASSWORD is
-  // configured; when it isn't, the gate is off and edit mode works as
-  // before. `authenticated` seeds from the stored session on hydration.
+  // Phase 4b/5c FIX-D — auth gate. In hosted mode (`auth.hosted`) the
+  // Firebase cookie is the only identity source; the B password gate
+  // doesn't apply. `auth.gated` is true when either gate is active and
+  // `auth.authenticated` reflects the correct one for this shell.
   const auth = useAuth();
-  const gated = auth.enabled;
-  const isAuthed = !gated || auth.authenticated;
-  // Editing can be fully disabled by ALLOW_EDIT=false (env) — makes a public
-  // self-host read-only. When off, no editor UI, no shortcut toggle, and
-  // ?edit=true shows nothing (the derived gates below handle all of it).
+  const gated = auth.gated;
+  const isAuthed = auth.authenticated;
   const editingAllowed = auth.allowEdit;
-  // Edit UI only when edit was requested AND we're allowed. `showLogin`
-  // intercepts the request: edit was requested but the gate isn't satisfied.
   const canEdit = isEditMode && isAuthed && editingAllowed;
+  // Login card follows the SERVER's hosted flag only — never Firebase
+  // client env presence (NEXT_PUBLIC_* keys alone must not activate
+  // Product A UI; LOCAL=true runs B even with them present). The
+  // hostedLoaded gate prevents the wrong card flashing while the
+  // status fetch resolves; render nothing until it has.
   const showLogin =
-    isEditMode && gated && !auth.authenticated && editingAllowed;
+    isEditMode && gated && !auth.authenticated && editingAllowed && auth.hostedLoaded;
+  const useFirebaseLogin = auth.hosted;
 
-  function handleLogout() {
-    auth.logout();
-    // Drop back to visitor mode (also strips ?edit=true via the URL effect).
+  async function handleLogout() {
+    await auth.logout();
     setIsEditMode(false);
   }
-  // Edit-mode toggle shortcut — a preference, NOT document data. Lives in
   // its own localStorage key (like the skin override). It's a dependency of
   // the keydown effect below, so that listener re-subscribes only when it
   // changes (rare) and always reads the current value.
@@ -425,7 +426,7 @@ export default function PortfolioView() {
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-3 pb-3">
-            {canEdit && <UtilityBar />}
+            {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} />}
             {!isSkinLocked ? (
               <SkinSwitcher
                 value={skinOverride ?? activeSkin}
@@ -473,7 +474,11 @@ export default function PortfolioView() {
 
         {showLogin ? (
           <div className="flex-1">
-            <LoginCard onLogin={auth.login} />
+            {useFirebaseLogin ? (
+              <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+            ) : (
+              <LoginCard onLogin={auth.login} />
+            )}
           </div>
         ) : adminView ? (
           <div className="settle-in mx-auto w-full max-w-2xl flex-1 pt-8">
