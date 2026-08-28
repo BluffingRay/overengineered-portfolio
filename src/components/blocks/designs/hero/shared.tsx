@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import ManagedImage from '@/components/ui/ManagedImage';
 import type {
   FeaturedHeroBlock as FeaturedHeroBlockData,
   HeroMediaFrame,
@@ -32,9 +33,9 @@ export const MEDIA_RADIUS_CLASSES: Record<HeroMediaRadius, string> = {
 };
 
 export const MEDIA_SIZE_CLASSES: Record<HeroMediaSize, string> = {
-  xs: 'max-w-48',
-  sm: 'max-w-xs',
-  md: 'max-w-md',
+  xs: 'w-full max-w-48',
+  sm: 'w-full max-w-xs',
+  md: 'w-full max-w-md',
   lg: 'w-full max-w-xl',
 };
 
@@ -46,6 +47,30 @@ export const MEDIA_FRAME_CLASSES: Record<
   subtle: 'border border-[var(--border)] shadow-sm',
   'accent-glow': 'border border-accent shadow-lg shadow-accent/20',
 };
+
+export function HeroPlaceholder({
+  size = 'md',
+  ratio = 'square',
+  className,
+}: {
+  size?: HeroMediaSize;
+  ratio?: HeroMediaRatio;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`relative flex flex-col overflow-hidden ${MEDIA_SIZE_CLASSES[size]} ${MEDIA_RATIO_CLASSES[ratio]} rounded-skin ${className ?? ''}`}
+    >
+      <img
+        src="/images/placeholder.svg"
+        alt="No image"
+        decoding="async"
+        loading="lazy"
+        className="h-full w-full object-cover opacity-60"
+      />
+    </div>
+  );
+}
 
 export function HeroMedia({
   block,
@@ -64,32 +89,37 @@ export function HeroMedia({
   const frameClass =
     frame === 'window' ? '' : MEDIA_FRAME_CLASSES[frame];
 
-  return (
-    <div
-      className={`relative flex flex-col overflow-hidden ${
-        MEDIA_SIZE_CLASSES[size]
-      } ${MEDIA_RATIO_CLASSES[ratio]} ${effectiveRadius} ${frameClass} ${
-        className ?? ''
-      }`}
-    >
-      {frame === 'window' && (
-        <div
-          aria-hidden="true"
-          className="flex items-center gap-1.5 border-b border-[var(--border)] bg-surface px-3 py-1.5"
-        >
+  if (block.mediaFrame === 'window') {
+    return (
+      <div className={`relative flex flex-col overflow-hidden ${MEDIA_SIZE_CLASSES[size]} ${MEDIA_RATIO_CLASSES[ratio]} ${effectiveRadius} ${frameClass} ${className ?? ''}`}>
+        <div aria-hidden="true" className="flex items-center gap-1.5 border-b border-[var(--border)] bg-surface px-3 py-1.5">
           <span className="h-2 w-2 rounded-full bg-red-400" />
           <span className="h-2 w-2 rounded-full bg-amber-400" />
           <span className="h-2 w-2 rounded-full bg-green-400" />
         </div>
-      )}
-      <img
-        src={block.thumbnail}
-        alt=""
-        decoding="async"
-        fetchPriority="high"
-        className="min-h-0 w-full flex-1 object-cover"
-      />
-    </div>
+        <ManagedImage
+          src={block.thumbnail}
+          sizeClass={MEDIA_SIZE_CLASSES[size]}
+          ratioClass={MEDIA_RATIO_CLASSES[ratio]}
+          roundedClass={effectiveRadius}
+          frameClass=""
+          className="flex-1"
+          placeholderLabel="No image"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ManagedImage
+      src={block.thumbnail}
+      sizeClass={MEDIA_SIZE_CLASSES[size]}
+      ratioClass={MEDIA_RATIO_CLASSES[ratio]}
+      roundedClass={effectiveRadius}
+      frameClass={frameClass}
+      className={className}
+      placeholderLabel="No image"
+    />
   );
 }
 

@@ -5,6 +5,7 @@ import {
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
+  HeroPlaceholder,
   legacyLayout,
 } from './shared';
 import type { HeroDesignProps } from '../types';
@@ -103,7 +104,6 @@ export default function CutieHero({
   const roles = block.roles && block.roles.length > 0 ? block.roles : [];
   const secondary = block.secondaryAction;
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
-
   const media =
     layout === 'banner' ? (
       block.thumbnail ? (
@@ -128,7 +128,21 @@ export default function CutieHero({
               : 'order-first justify-self-end md:order-none'
         }
       />
-    ) : null;
+    ) : (
+      <HeroPlaceholder
+        size={block.mediaSize ?? 'md'}
+        ratio={block.mediaRatio ?? 'square'}
+        className={
+          layout === 'centered'
+            ? block.mediaPosition === 'top'
+              ? 'order-first mx-auto'
+              : 'mx-auto'
+            : splitLeft
+              ? 'order-first justify-self-start'
+              : 'order-first justify-self-end md:order-none'
+        }
+      />
+    );
 
   const isCentered = layout === 'centered';
   const isSplit = layout === 'split';
@@ -138,7 +152,7 @@ export default function CutieHero({
     <section
       className={`dsn-cutie relative isolate ${
         isSplit
-          ? 'grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:gap-10'
+          ? `grid items-center gap-6 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`
           : isBanner
             ? 'relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-skin'
             : 'mx-auto flex max-w-2xl flex-col items-center py-8 text-center'

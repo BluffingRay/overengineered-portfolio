@@ -5,6 +5,7 @@ import {
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
+  HeroPlaceholder,
   legacyLayout,
 } from './shared';
 import type { HeroDesignProps } from '../types';
@@ -118,7 +119,19 @@ export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps
               : 'order-first justify-self-end md:order-none'
         }
       />
-    ) : null;
+    ) : (
+      <HeroPlaceholder
+        size={block.mediaSize ?? 'md'}
+        ratio={block.mediaRatio ?? 'landscape'}
+        className={
+          isCentered
+            ? 'mx-auto'
+            : splitLeft
+              ? 'order-first justify-self-start'
+              : 'order-first justify-self-end md:order-none'
+        }
+      />
+    );
 
   const copy = (
     <div className={isBanner ? 'relative z-10' : undefined}>
@@ -218,7 +231,9 @@ export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps
 
   if (isSplit) {
     return (
-      <section className="dsn-riso relative isolate grid items-center gap-6 border-2 border-current p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_auto] md:gap-10">
+      <section
+        className={`dsn-riso relative isolate grid items-center gap-6 border-2 border-current p-6 sm:p-8 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`}
+      >
         <div aria-hidden="true" className="riso-halftone pointer-events-none absolute -right-12 -top-12 h-64 w-64" />
         <div aria-hidden="true" className="riso-grain pointer-events-none absolute inset-0" />
         <div className={`relative z-10 ${splitLeft ? 'md:order-1' : ''}`}>{copy}</div>

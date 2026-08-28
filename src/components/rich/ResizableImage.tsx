@@ -1,6 +1,5 @@
 'use client';
-
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from '@tiptap/extension-image';
 import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
@@ -38,11 +37,13 @@ const LAYOUT_STYLES: Record<ImageLayout, string> = {
 
 function ImageView({ node, updateAttributes, selected }: NodeViewProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  // Live drag preview; committed value stays in the document until drop.
   const [previewPct, setPreviewPct] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const src: string | undefined = node.attrs.src;
+  useEffect(() => { setFailed(!src); setLoading(!!src); }, [src]);
   const width = previewPct ?? Number(node.attrs.width ?? 100);
   const layout = (node.attrs.layout ?? 'center') as ImageLayout;
-
   function startDrag(event: React.PointerEvent<HTMLSpanElement>) {
     event.preventDefault();
     event.stopPropagation();
@@ -104,13 +105,22 @@ function ImageView({ node, updateAttributes, selected }: NodeViewProps) {
         ref={wrapRef}
         className={`relative w-full ${selected ? 'ring-2 ring-accent' : ''}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={node.attrs.src}
-          alt={node.attrs.alt ?? ''}
-          title={node.attrs.title}
-          className="block h-auto w-full rounded-skin"
-        />
+        {failed || !src ? (
+          <img
+            src="/images/placeholder.svg"
+            alt="No image"
+            className="block h-auto w-full rounded-skin opacity-60"
+          />
+        ) : (
+          <img
+            src={src}
+            alt={node.attrs.alt ?? ''}
+            title={node.attrs.title}
+            className="block h-auto w-full rounded-skin"
+            onError={() => setFailed(true)}
+            onLoad={() => setLoading(false)}
+          />
+        )}
 
         {selected && (
           <div className="absolute -top-8 left-0 flex overflow-hidden rounded-skin border border-[var(--border)] bg-surface shadow">

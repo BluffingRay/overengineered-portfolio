@@ -5,6 +5,7 @@ import SocialIcon from '@/components/ui/SocialIcon';
 import {
   STATUS_STYLES,
   HeroMedia,
+  HeroPlaceholder,
   TypewriterRoles,
   legacyLayout,
   useFitOneLine,
@@ -39,6 +40,7 @@ export default function DefaultHero({
           decoding="async"
           fetchPriority="high"
           className="absolute inset-0 -z-10 h-full w-full object-cover"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
         />
       ) : null
     ) : block.thumbnail ? (
@@ -47,32 +49,39 @@ export default function DefaultHero({
         className={
           layout === 'centered'
             ? block.mediaPosition === 'top'
-              ? // Lift the media above the copy within the flex column.
-                'order-first mx-auto'
+              ? 'order-first mx-auto'
               : 'mx-auto'
             : layout === 'split'
-              ? // Mobile stacks in one column: image always leads AND hugs
-                // its outer edge (small images must never drift inward).
-                // On md+, right side restores DOM order for column 2;
-                // left side keeps order-first so it takes column 1.
-                // justify-self pins each column to its container edge —
-                // never flex self-alignment, this is a grid row.
-                splitLeft
+              ? splitLeft
                   ? 'order-first justify-self-start'
                   : 'order-first justify-self-end md:order-none'
               : undefined
         }
       />
-    ) : null;
-
+    ) : (
+      <HeroPlaceholder
+        size={block.mediaSize ?? 'md'}
+        ratio={block.mediaRatio ?? 'square'}
+        className={
+          layout === 'centered'
+            ? block.mediaPosition === 'top'
+              ? 'order-first mx-auto'
+              : 'mx-auto'
+            : layout === 'split'
+              ? splitLeft
+                  ? 'order-first justify-self-start'
+                  : 'order-first justify-self-end md:order-none'
+              : undefined
+        }
+      />
+    );
   return (
     <section
       className={`isolate ${
         layout === 'split'
-          ? // Edge-anchored two-column row: copy takes the leftover space,
-            // media hugs its chosen size at its container edge (justify-self
-            // does the pinning). Tightened gap keeps words near the image.
-            'grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:gap-10'
+          ? // Edge-anchored two-column row: media always `auto` (hugs its size), copy always `1fr` (fills).
+            // Left swaps cols so media stays `auto` even when it visually leads.
+            `grid items-center gap-6 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`
           : layout === 'banner'
             ? 'relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-skin'
             : 'flex flex-col items-center gap-6 text-center'

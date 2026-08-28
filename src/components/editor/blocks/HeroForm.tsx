@@ -272,8 +272,8 @@ export default function HeroForm({ block, tabs, patch }: Props) {
         <Field label="Image URL">
           <div className="flex gap-1.5">
             <input
-              value={block.thumbnail}
-              onChange={(e) => patch({ thumbnail: e.target.value })}
+              value={block.thumbnail ?? ''}
+              onChange={(e) => patch({ thumbnail: e.target.value || undefined })}
               placeholder="/images/…"
               className={`${INPUT} min-w-0 flex-1 font-mono text-xs`}
             />

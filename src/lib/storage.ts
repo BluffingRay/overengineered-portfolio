@@ -509,7 +509,7 @@ function sanitizePosts(candidate: unknown): Post[] | undefined {
   return posts.length > 0 ? posts : undefined;
 }
 
-function prepareDocument(parsed: unknown): PortfolioData | null {
+export function prepareDocument(parsed: unknown): PortfolioData | null {
   if (typeof parsed !== 'object' || parsed === null) return null;
 
   let candidate = parsed as Record<string, unknown>;

@@ -195,8 +195,50 @@ export default function UtilityBar() {
         >
           Reset
         </button>
+        {/* TEMP 5b testing — dev id vs local. Remove before prod. */}
+        <span className="mx-1 h-4 w-px bg-current/20" aria-hidden="true" />
+        <span className="text-[10px] opacity-50">TEST</span>
+        <button
+          type="button"
+          title="Preview KV portfolio:default without overwriting localStorage"
+          onClick={async () => {
+            try {
+              const r = await fetch('/api/portfolio', { cache: 'no-store' });
+              const doc: unknown = await r.json();
+              if (!r.ok) {
+                const rec = doc as unknown as Record<string, unknown>;
+                throw new Error(typeof rec.error === 'string' ? rec.error : 'KV fetch failed');
+              }
+              const w = window.open('', '_blank');
+              if (w) { w.document.write(`<pre style="white-space:pre-wrap;word-break:break-all;padding:12px;font:12px monospace">${JSON.stringify(doc, null, 2).replace(/</g, '&lt;')}</pre>`); w.document.close(); }
+              else alert('KV preview fetched — check console'); console.log('KV preview', doc);
+            } catch (e) { alert((e as Error).message); }
+          }}
+          className="rounded-skin border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-[10px] font-medium"
+        >
+          Preview KV (dev)
+        </button>
+        <button
+          type="button"
+          title="Save localStorage portfolio-data to KV portfolio:default (temp)"
+          onClick={async () => {
+            try {
+              const raw = localStorage.getItem('portfolio-data');
+              if (!raw) throw new Error('No local data');
+              const r = await fetch('/api/portfolio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: raw });
+              const j: unknown = await r.json();
+              if (!r.ok) {
+                const rec = j as unknown as Record<string, unknown>;
+                throw new Error(typeof rec.error === 'string' ? rec.error : 'Save failed');
+              }
+              alert('Saved to KV');
+            } catch (e) { alert((e as Error).message); }
+          }}
+          className="rounded-skin border border-emerald-500/50 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium"
+        >
+          Save to KV
+        </button>
       </div>
-
       {importError && (
         <p role="alert" className="w-full text-xs text-red-500">
           {importError}

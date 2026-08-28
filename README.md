@@ -90,5 +90,5 @@ See `AGENTS.md` for the architecture, conventions, and hard-won gotchas (includi
 
 - **Phase 3** — done: block editor, rich text (TipTap), media vault, blog, art-direction designs (default/cutie/editorial/riso).
 - **Phase 4** — auth gate (configurable shortcut + password card + session). `4a`/`4b` shipped; `4c` docs here.
-- **Phase 5** — hosted SaaS (Product A): accounts, real DB, dashboard, hub. (DB choice is deliberate research, not a commitment.)
-- **Phase 6** — polish & cross-product: popover animations, drag previews, skeletons, focus audit, SEO, a11y, PWA.
+- **Phase 5** — hosted SaaS (Product A): accounts, real DB, dashboard, SEO, hub. (DB choice is deliberate research, not a commitment.)
+- **Phase 6** — polish & cross-product: a11y, popover animations, drag previews, skeletons, focus audit, PWA.

@@ -210,55 +210,70 @@ Lightweight **admin gate** for the self-hosted version. Purpose is **governance/
 
 The real product. Non-devs create portfolios on our platform.
 
-### 5a — DB backend research
-JSON hosting that doesn't cold-sleep:
-- **Cloudflare Workers KV** — free tier, no cold starts, 100K reads/day. Good fit.
-- **Supabase Postgres** — free tier, always-on, real relational DB. Future-proof for multi-user.
-- **Turso (SQLite edge)** — fast, free tier, good DX.
-- **GitHub Gist as DB** — janky but free, no cold starts. Stopgap option.
-- **Firebase Realtime DB** — always-on, but Google vendor lock-in.
+### 5a — DB backend research — DONE ✅ (KV throwaway)
+> **Decision:** **Workers KV (throwaway Cloudflare)** — `KV_NAMESPACE_ID` + `CLOUDFLARE_ACCOUNT_ID` on throwaway account alongside `R2`. Free `1GB stored / 100K reads/day`, `0` cold start, `get/put` blob via `src/lib/kv.ts` + `GET/PUT /api/portfolio` (validate `prepareDocument`, fallback `initialData`). Swappable seam: `localStorage` (Product B) -> `KV` (Product A) behind same `PortfolioData` shape; `localStorage` 4 touchpoints stay for B. Alternatives considered: **Supabase Postgres / Turso (edge SQLite, 5a fallback for SQL dashboard) / GitHub Gist / Firebase RTDB** — superseded by KV for blob; Turso kept as optional SQL later.
 
-Decision criteria: cost (free preferred), cold starts (zero or near-zero), DX (simple API), migration path (easy to swap later).
+Wired: `src/lib/kv.ts` (`kvGet/kvPut` via `CLOUDFLARE_API_TOKEN`) + `src/app/api/portfolio/route.ts` (`GET` KV or `initialData`, `PUT` validate->persist) — `curl` verified `PUT content/portfolio.json -> GET` round-trips. `5c` will add `Firebase` cookie gate + `?public=1` vs `?full=1`.
+### 5b — Image hosting (decided: diagrams.net triad)
+> **Decision:** Triad `HOSTED / GOOGLE DRIVE / CUSTOM API` — `route.ts` is the only swap seam; doc stays URL-only (`AssetItem {url}`, `sanitizeAssets: ^(https?:\/\/|\/)`, cap 200). Picker in `Site -> Storage` / `MediaPicker`.
+- **HOSTED (default)** — **throwaway R2 10GB bucket** (central, S3-compatible, CDN, shared) — env `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET` on throwaway Cloudflare account so main never billed. Path `/users/{userId}/{uuid}{ext}` via `S3 PutObject`.
+- **GOOGLE DRIVE (BYO)** — **user's Drive 15GB** (per-user isolated) — `drive.file` scope via `Continue with Google` (`provider.addScope('https://www.googleapis.com/auth/drive.file')` + incremental consent if already signed in), `appFolder`, `permissions.create(anyone reader)` so public renders work.
+- **CUSTOM API (BYO)** — **user pastes S3/R2/Cloudinary endpoint + bucket + keys** — reuses same S3 code as Hosted but with user-provided credentials (encrypted at rest). Browser -> their bucket directly or proxied via `route.ts`.
 
-### 5b — Image hosting
-- **Cloudflare R2** — free 10GB, no egress fees, S3-compatible.
-- **Uploadthing** — free 2GB, good DX, upload-from-browser.
-- **imgbb** — free API, simple, but limited.
-- **User-brings-their-own**: user pastes S3/R2/Cloudinary config in Site Settings → uploads go browser → their bucket.
+Provider switch (same `POST /api/upload -> {url,name}` contract):
+- if (storagePref === 'drive' && has drive refresh_token) -> their Drive `appFolder`
+- else if (storagePref === 'custom' && has custom creds) -> their S3 endpoint
+- else if (R2_BUCKET) -> throwaway R2 `/users/{userId}/{uuid}{ext}`
+- else -> local `public/uploads/` (Product B fallback, `AGENTS.md:102`)
 
+Quota & future-proofing (so central never bricks future users):
+- **50MB per user** cap in `route.ts` (`10GB / 50MB = 200 classmates` free before central fills). `POST` returns `413 + "Connect your Drive or Custom API to keep uploading"` when `perUserBytes > 50MB || bucketBytes > 8GB`.
+- Old R2/Drive/Custom/`/uploads/` URLs coexist — no migration, no version bump.
+
+TODOs (Phase 5b):
+- [x] Wire throwaway R2 bucket as default provider (S3 switch in `src/app/api/upload/route.ts`) — `S3Client` + `PutObject` to `overengineered-portfolio`, fallback `public/uploads`, `curl -F file=@/tmp/test.png` -> `https://overengineered-portfolio.r2.dev/uploads/...` verified → **superseded by S3-key proxy `/api/r2/[...key]` (`GET` via `GetObject`) so `pub-...r2.dev` DNS not needed; `getR2PublicUrl` now returns `/api/r2/${key}` (custom domain `!*.r2.dev` still uses `R2_PUBLIC_URL`). New uploads are `/api/r2/uploads/<uid>/<id>.ext` (per-user `uploads/<uid>/` where `uid` = Firebase `idToken` `uid` or `dev` fallback via `R2_USER_PREFIX`/`UPLOADS_PREFIX`). `LOCAL=true/false/hybrid` (hybrid = auto coexist `local + R2`, `hybrid` explicit) controls `R2` vs `local` (`isLocalMode()` in `upload/route.ts`). `GET /api/upload?list=1` merges `public/uploads/<uid>/` + `R2 ListObjectsV2 uploads/<uid>/` + legacy flat `uploads/` for migration, deduped; `MediaPicker` shows true inventory (`assets` ∪ `storageFiles` ∪ `refs`, no exclude) with `↻ Reload` + `placeholder.svg` on `404`.
+- [ ] Implement Google Drive BYO via Continue with Google (OAuth `drive.file`, `appFolder`, token refresh, `MediaPicker` picker `Hosted | Drive`)
+- [ ] Implement Custom API BYO (S3-compatible endpoint/bucket/keys form, encrypted storage, presigned or proxied upload)
+- [x] Add true storage delete `DELETE /api/upload?url=...` (R2 `DeleteObject` / local `unlink` + `uploads/<uid>/` aware) + doc-ref clearing (`thumbnail/coverImage/icon` + `rich_text` `<img src>`) so deleted `uploads/dev/...` shows `placeholder.svg` immediately; `MediaPicker:removeAsset` now per-`id` (`storage:`/`ref:`/`asset`) with `used` guard removed for ref (now deletable to clear doc). `GET /api/r2` proxy + `DELETE` both per-user aware.
+- [ ] Update `MediaPicker.tsx` to list/delete from active provider (Hosted vs Drive vs Custom) + add triad picker `Hosted | Drive | Custom` in `Site -> Storage`
+- [x] 5a KV throwaway verified — `KV_NAMESPACE_ID=4abc...` `portfolio:default` (`Hello from KV` test) `GET/PUT /api/portfolio` via `src/lib/kv.ts`; `UtilityBar` TEMP `Preview KV (dev)` (non-destructive `fetch` → new-tab JSON) + `Save to KV` (`PUT` `localStorage portfolio-data` → `KV`) for `uid=dev` testing (marked `TEMP 5b testing — Remove before prod`). `?kv=1` removed (button is source of truth).
+- Legacy options superseded: **Uploadthing 2GB**, **imgbb**, **Firebase Storage 5GB** (central bucket now R2 throwaway + `/api/r2` proxy).
 ### 5c — User accounts & auth
 
-**One rule — the server is the authority. The client only requests and reflects; it never decides.** Every state-changing operation (login, logout, read/write doc, import, export, upload) is a route handler that runs the same 5-step template: `authenticate → authorize (owner-only) → validate/sanitize → do it → return the confirmed result`. The client updates UI state only after the server confirms — never optimistically.
+**One rule — the server is the authority. The client only requests and reflects; it never decides.** Every state-changing operation (login, logout, read/write doc, import, upload, delete) is a route handler that runs the same 5-step template: `authenticate → authorize (owner-only) → validate/sanitize → do it → return the confirmed result`. The client updates UI state only after the server confirms — never optimistically.
 
-- **Identity (managed, don't hand-roll):** Supabase Auth or Auth.js. Google one-tap + magic-link primary, email/password secondary. Identity = `userId`. Never store plaintext passwords.
+- **Identity (managed, don't hand-roll):** **Firebase Auth** — `Continue with Google` (+ `drive.file` scope for Drive BYO when user picks Google) + `email/password` (built-in `sendPasswordResetEmail`, email verification). Gives `idToken` -> server mints `HttpOnly + Secure + SameSite=Lax` session cookie via Admin SDK `verifySessionCookie` -> `req.userId`. Console shows users/sessions like you liked. Auth.js is lighter for Vercel-only but UX here wins. Never store plaintext passwords.
 
-- **Session:** `HttpOnly + Secure + SameSite=Lax` cookie on the client; the session record lives **server-side** (`sessions` table, or stateless JWT). Server validates the cookie on every protected request → sets `req.userId`. **Logout = server deletes the session + clears the cookie; the client clears its UI only after the server confirms.**
+- **Session:** Firebase session cookie lives **server-side** (verified via `verifySessionCookie`); server validates cookie on every protected request -> sets `req.userId`. Alternative is `sessions` table / stateless JWT if you later swap auth, but Firebase cookie gives you the session view for free. **Logout = server deletes the session + clears the cookie; the client clears its UI only after the server confirms.**
 
-- **Storage: ONE store, not three.** Same swappable seam as the doc (5a). In a relational DB: 3 tables — `users`, `sessions` (token→user, expiry), `portfolios` (user_id, slug, JSON). In KV: 3 key prefixes (`user:*`, `session:*`, `portfolio:*`). Stateless JWT drops the sessions table.
+- **Storage: ONE store, not three.** Same swappable seam as the doc (5a). In Turso: 3 tables — `users` (mirrors Firebase `uid`), `sessions` (if you need extra, but Firebase cookie is primary), `portfolios` (user_id, slug, JSON). In KV: 3 key prefixes (`user:*`, `portfolio:*`) + Firebase cookie for sessions. Keeps Firebase Auth (UX) + your `R2/KV` / `Drive/Custom API` triad (cost) decoupled — `route.ts` still only checks `req.userId === portfolio.user_id`.
 
-- **Access model — public render vs private edit:**
-  - **Public** (no auth): the *published* portfolio render + the images it references. That's the product — visitors must be able to see it.
-  - **Private** (session + ownership): editing the doc, uploading images, drafts/unpublished, the dashboard. Every read/write checks `req.userId === portfolio.user_id` (the IDOR/ownership check).
+- **Access model — public vs authed (JSON):**
+  - **Public (no auth):** `GET /u/:slug` published render + `GET /api/portfolio/:slug/export?public=1` (sanitized public JSON, drafts filtered) + the images it references. Anyone can view/export the live portfolio — no leak.
+  - **Authed (session + ownership, `req.userId === portfolio.user_id` IDOR check):** `POST /api/portfolio/import`, `PUT /api/portfolio`, `POST /api/upload`, `DELETE /api/upload`, `GET /api/portfolio/export?full=1` (includes drafts/unpublished), dashboard, Site settings, storage pref (`Hosted/Drive/Custom API`). Every read/write checks ownership.
 
-- **Images:** public when part of a published render (visitors see them); **upload is owner-only**; unpublished/draft images are private (session-gated). Storage behind `/api/upload` (swap internals for R2/S3); the doc stores URLs only.
+- **Images:** public when part of a published render (visitors see them); **upload/delete is owner-only** (triad `HOSTED/R2` vs `Drive` vs `Custom API`, doc stores URLs only, `POST /api/upload` + `DELETE /api/upload?url=...` both authed + quota `50MB/user`); unpublished/draft images are private (session-gated). Storage behind `/api/upload` (swap internals).
 
-- **Import is server-confirmed:** client POSTs the JSON → server validates (`isPortfolioData`/`prepareDocument`) **and sanitizes HTML** (rich_text/custom_html — the stored-XSS path) → persists → returns success. Export returns the sanitized doc from the server.
-
+- **Import is server-confirmed (authed):** client POSTs JSON -> server `authenticate -> authorize -> validate (isPortfolioData/prepareDocument) + sanitize HTML (rich_text/custom_html stored-XSS) -> persist -> return confirmed doc`. **Export-public is unauthed** (filtered, sanitized); **export-full is authed** (owner-only, includes drafts).
 - **Also:** rate-limit login, CSRF (SameSite + token), session expiry/idle timeout, HTML sanitization, server-side password hashing.
 
 - **Scope note:** this is the Product A lift — do NOT build it during Phase 4. The JSON **format** is the bridge (B ↔ A import/export).
 
-### 5d — Dashboard & onboarding
+### 5d — SEO & discoverability (ships with the MVP)
+- Dynamic `<title>`, Open Graph image, favicon — derived from document data. Nearly free and high-impact: a portfolio invisible to search engines undermines the product, so this is NOT deferred to Phase 6.
+- The public render (`/u/<slug>`) is server-rendered from the stored doc — metadata comes from the server, not client-side storage.
+- Applies to Product B too (same metadata helpers read `content/portfolio.json`).
+
+### 5e — Dashboard & onboarding
 - Post-login dashboard: list of user's portfolios, create new, settings.
 - Onboarding flow: pick a design → fill in name/role → auto-generate initial blocks.
 - Design picker as the first screen (not the editor) — non-devs choose visually, not structurally.
 
-### 5e — Export/import bridge
-- Product B → Product A: "Import from file" in dashboard.
-- Product A → Product B: "Export JSON" in Site Settings → fork repo → import.
-- Both directions seamless (JSON format is identical).
-
-### 5f — Hub / showcase / marketing landing page
+### 5f — Export/import bridge (public export vs authed import)
+- **Product B -> Product A:** Dashboard `Import from file` (authed `POST /api/portfolio/import` -> server-confirmed) -> hosted.
+- **Product A -> Product B:** `GET /api/portfolio/:slug/export?public=1` unauthed (live public JSON) or `?full=1` authed (includes drafts) -> `Site Settings -> Export JSON -> fork repo -> import`. Or public visitors just `Export` the live portfolio without login.
+- Both directions seamless (JSON format is identical, `prepareDocument` migrates). Import is always authed + sanitized; public export never leaks drafts.
+### 5g — Hub / showcase / marketing landing page
 The public face of Product A. Three jobs in one site:
 
 - **Showcase gallery**: grid of hosted portfolios (social proof). "Built with overengineered-portfolio" badge in each hosted site's footer → links back to the hub. Free organic marketing.
@@ -273,20 +288,16 @@ URL structure: `yoursite.com` (hub) → `yoursite.com/u/username` (hosted portfo
 
 Features that benefit both products or are deferred from earlier phases.
 
+### Accessibility
+- Keyboard navigation audit, focus rings, screen reader labels
+- Motion system is a11y-aware (`prefers-reduced-motion`) but editor UI hasn't been audited
+
 ### UI/UX polish
 - Popover enter/exit animations (IconPicker)
 - `DragOverlay` drag previews
 - Skeleton loading states
 - Keyboard-focus styling audit
 - Responsive editor audit (tablet/mobile: touch-friendly dnd, bigger tap targets, collapsible sidebar)
-
-### SEO & discoverability
-- Dynamic `<title>`, Open Graph image, favicon — derived from document data
-- Currently invisible to search engines
-
-### Accessibility
-- Keyboard navigation audit, focus rings, screen reader labels
-- Motion system is a11y-aware (`prefers-reduced-motion`) but editor UI hasn't been audited
 
 ### PWA / offline
 - Already works offline (localStorage). Service worker + manifest makes it installable.

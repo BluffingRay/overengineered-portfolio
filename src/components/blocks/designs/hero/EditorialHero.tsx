@@ -4,11 +4,11 @@ import {
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
+  HeroPlaceholder,
   STATUS_STYLES,
   legacyLayout,
 } from './shared';
 import type { HeroDesignProps } from '../types';
-
 function EditorialMedia({
   block,
   className,
@@ -93,7 +93,21 @@ export default function EditorialHero({
               : 'order-first justify-self-end md:order-none'
         }
       />
-    ) : null;
+    ) : (
+      <HeroPlaceholder
+        size={block.mediaSize ?? 'md'}
+        ratio={block.mediaRatio ?? 'portrait'}
+        className={
+          layout === 'centered'
+            ? block.mediaPosition === 'top'
+              ? 'order-first mx-auto'
+              : 'mx-auto'
+            : splitLeft
+              ? 'order-first justify-self-start'
+              : 'order-first justify-self-end md:order-none'
+        }
+      />
+    );
 
   const isSplit = layout === 'split';
   const isBanner = layout === 'banner';
@@ -192,7 +206,9 @@ export default function EditorialHero({
 
   if (isSplit) {
     return (
-      <section className="dsn-editorial grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <section
+        className={`dsn-editorial grid gap-10 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:items-end`}
+      >
         {/* copy */}
         <header className={`border-t-2 border-current pt-6 ${splitLeft ? 'md:order-1' : ''}`}>
           {(block.eyebrow || badge) && (
