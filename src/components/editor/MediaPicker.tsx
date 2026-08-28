@@ -146,7 +146,12 @@ export default function MediaPicker({
             </label>
           </div>
         </div>
-        {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+        <div className="mt-2 flex items-center gap-1.5 text-[10px]">
+          <span className="opacity-50">Storage:</span>
+          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-medium text-emerald-700">● Hosted (R2 + uploads/)</span>
+          <span className="rounded-full bg-black/5 px-2 py-0.5">Drive — will work</span>
+          <span className="rounded-full bg-black/5 px-2 py-0.5 opacity-50">Custom API (BYOK) — Coming soon</span>
+        </div>
         {inventory.length > 0 ? (
           <ul className="mt-3 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
             {inventory.map((asset) => (
