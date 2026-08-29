@@ -19,6 +19,7 @@ import { getUserIdFromSessionCookie, isAdminConfigured } from '@/lib/firebase/ad
  *   prefix; cross-user keys 403. FIX-E2: `?list=1` lists the caller's
  *   own prefix only (legacy flat files dev-only).
  * Accepts multiple env aliases so `R2_ACCOUNT_ID`/`R2_BUCKET_NAME`/`R2_PUBLIC_BASE_URL` just work.
+ * The `LOCAL` switch accepts aliases too — `USE_LOCAL`/`STORAGE_LOCAL` act exactly like `LOCAL`.
  */
 function pickEnv(...keys: string[]): string | undefined {
   for (const k of keys) {
@@ -29,12 +30,13 @@ function pickEnv(...keys: string[]): string | undefined {
 }
 function isLocalMode(): boolean | null {
   const raw = pickEnv('LOCAL', 'USE_LOCAL', 'STORAGE_LOCAL');
-  if (raw == null) return true; // B-core frictionless: no env => offline local, not hybrid
+  // FIX-E restores 5b: unset = auto/hybrid — R2 if configured, else local.
+  if (raw == null) return null;
   const v = raw.toLowerCase().trim();
   if (['true', '1', 'yes', 'local', 'offline'].includes(v)) return true;
   if (['false', '0', 'no', 'r2', 'remote'].includes(v)) return false;
   if (['hybrid', 'auto', 'both', 'coexist', 'mixed'].includes(v)) return null;
-  return true;
+  return null; // FIX-E: unrecognized values degrade to auto, never silently-local
 }
 async function getUserPrefix(request: Request): Promise<string> {
   // FIX-B/FIX-H: the session cookie is the ONLY identity source. The old
