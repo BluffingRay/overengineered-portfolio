@@ -231,6 +231,17 @@ export interface ThemeConfig {
   fontFamily?: string;
   /** When true, visitors can't switch skins — the official skin is forced. */
   lockSkin?: boolean;
+  /** Admin's default view scale (desktop zoom, 1 = 100%). Additive optional —
+      no version bump; visitors override it locally, never in the document. */
+  viewScale?: number;
+}
+
+export const VIEW_SCALE_MIN = 0.8;
+export const VIEW_SCALE_MAX = 1.2;
+
+export function clampViewScale(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(VIEW_SCALE_MAX, Math.max(VIEW_SCALE_MIN, Math.round(value * 100) / 100));
 }
 
 export interface FooterConfig {

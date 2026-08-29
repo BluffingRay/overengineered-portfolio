@@ -3,6 +3,7 @@ import {
   BLOCK_DESIGNS,
   BLOCK_WIDTHS,
   BLOG_VARIANTS,
+  clampViewScale,
   HERO_MEDIA_FRAMES,
   MARQUEE_SPEEDS,
   MEDIA_POSITIONS,
@@ -378,6 +379,12 @@ function sanitizeThemeFont(theme: unknown): Record<string, unknown> {
     delete clean.accentColor;
   } else if (typeof clean.accentColor === 'string') {
     clean.accentColor = clean.accentColor.slice(0, 32);
+  }
+  // Additive optional — no version bump. Absent at the default (1).
+  if (typeof clean.viewScale === 'number' && Number.isFinite(clean.viewScale) && clean.viewScale !== 1) {
+    clean.viewScale = clampViewScale(clean.viewScale);
+  } else {
+    delete clean.viewScale;
   }
   return clean;
 }
