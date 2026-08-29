@@ -45,6 +45,8 @@ Block-based, **local-first portfolio CMS** built with Next.js (App Router), Type
 - The installed lucide-react has **removed brand icons** (`Github`, `Twitter`, `Linkedin` do not exist). Social platforms map to neutral glyphs in `ui/SocialIcon.tsx` (`PLATFORM_ICONS`); custom icons still resolve via `iconMap`.
 - `prepareDocument()` sanitizes the optional root sections (`socials`, `footer`) — malformed imports are dropped/normalized before the type guard, so components can trust their shapes. Additive optional schema fields (socials/footer, hero extras) did **not** bump document version; readers apply `??` defaults.
 - Full-project `npm run lint` can be very slow alongside `next dev` in WSL2; prefer targeted checks and let the user verify visually.
+- **This modified Next build enforces ONE `next dev` per project directory** — a second prints "Another next dev server is already running" and exits at boot. With `stdio: 'ignore'` that failure is invisible and reads as readiness timeouts (cost fix-e a confusing 6-FAILURES run). Verify scripts that spawn their own servers (fix-e/fix-f) preflight via a /proc cmdline+cwd scan and abort loudly; stop your dev server first, restart after.
+- **TipTap: extending a StarterKit-bundled node collides by name** — `Paragraph.extend(...)` keeps the name `'paragraph'`, StarterKit bundles another, and v3 warns (`Duplicate extension names found`) + dedupes last-one-wins. Disable the bundle member instead: `StarterKit.configure({ paragraph: false })` — ClearableParagraph is the one true Paragraph.
 
 ## Current Status
 
@@ -129,6 +131,10 @@ All workstreams shipped: v3 card library, rich text engine + site settings, soci
 - **Marquee textarea fix**: local draft state + blur commit pattern so typing spaces and pressing Enter to add new entries works naturally (was fighting controlled-from-store re-renders).
 
 Known deferred polish → **Phase 6** (see below): popover enter/exit animations (IconPicker), `DragOverlay` drag previews, skeleton states, keyboard-focus styling audit.
+
+### Adjustable view scale (shipped 2026-08-29)
+- `ThemeConfig.viewScale?: number` (additive, no version bump; clamped 0.8–1.2, absent at 1) — the admin's default, edited in GlobalSettings ("Default view scale" slider, one undo entry per drag via draft+commit). Visitors override via the public `ViewScaleControl` dropdown-slider (localStorage `portfolio-view-scale-override` — same model as the skin override); PC-only: the control hides below `md` AND the applied zoom is gated on the same media query (phones render at 1, live-reactive).
+- Applied pre-paint via `html.style.zoom` in layout.tsx (no flash). Root zoom scales the ICB, so B routes fill the window with no compensation. `/u/` is excluded from B stamping (pathname guard — zoom cannot be subtree-overridden like tokens) and applies the DOC's scale on its wrapper: inline `zoom` + `minHeight: calc(100dvh / scale)` (zoom multiplies viewport units) + the same style on the FloatingPage sheet via `themeStyle`. Details: docs/specs/view-scale.md (local).
 
 ## Two-Product Architecture — one core, two shells
 
@@ -277,6 +283,7 @@ The bullets above (One rule / Identity / Session / Storage / Access model / Imag
 - Onboarding flow: pick a design → fill in name/role → auto-generate initial blocks.
 - Design picker as the first screen (not the editor) — non-devs choose visually, not structurally.
 - **Current state:** `/dashboard` is a 5c stub — reachable only by typing the URL (no nav links), empty "no portfolios" placeholder, and (incoherently) themed with the *visitor's* skin tokens. Rebuild per the design below.
+- **Blog deep-links on /u/ (deferred from FIX-F):** post clicks there float via the in-memory doc (covered), but standalone hosted post URLs don't exist — the B `/blog?post=` route reads the visitor's localStorage. 5e's slugs + hosted post routes close this.
 
 **Dashboard design (user-locked, post-FIX-F):**
 - **Two sections, "yours" first:** **Your portfolio** (the user's doc — Edit → the editor, View → `/u/<slug>`, copy share link, published state) and **Other portfolios** (showcase of other users' public work). The owner's portfolio is the hero of the page, not one card in a grid.
@@ -302,7 +309,7 @@ Built with the project itself (dogfooding): Product B instance with custom HTML 
 
 URL structure: `yoursite.com` (hub) → `yoursite.com/u/username` (hosted portfolio). Subdomain or path-based routing for hosted portfolios.
 
-## Phase 5-Fix — Repair the 5c gaps (active workstream)
+## Phase 5-Fix — Repair the 5c gaps (A–E ✅, F ✅ landed — G/H open)
 
 Post-5c audit found the hosted shell unshippable as-is: two security holes (one explicitly required by the 5c spec and skipped), a missing core product loop, and several regressions. Each fix below is a self-contained part with problem → context → exact fix → verify. **Build in order (A→H); do not deploy hosted before A–E land.** Small, reviewable diffs — one part per session, tick the checkbox when verified.
 
@@ -351,10 +358,11 @@ Post-5c audit found the hosted shell unshippable as-is: two security holes (one 
 - [x] Server-driven `hosted` flag consumed by `useAuth` + `PortfolioView`
 - **Shipped:** `/api/auth/status` returns `hosted: isHosted()` (Firebase admin + KV configured). `useAuth` exposes `hosted` + `gated` (= `hosted || enabled`) and computes `authenticated` per shell: **hosted → Firebase cookie ONLY** (the B localStorage token is not an identity source there); B → password gate as before. `PortfolioView`/`WriteView` gate on `auth.gated`/`auth.authenticated` instead of `auth.enabled` — hosted mode without `ADMIN_PASSWORD` now shows `FirebaseLoginCard` on `?edit=true` instead of an open editor that 401s on every mutation. `useFirebaseLogin = auth.hosted || isFirebaseConfigured()`. Dead exports removed (`authChecked`/`isUsingFirebase` — FIX-H item 3 done); logout comment/behavior aligned (server-confirm rule). Rides the existing `ready` mount gate — no unauthed editor flash.
 - **Verify (covered):** fix-c-verify checks `hosted: true` exposure + 401 paths. Browser check remains manual: hosted `?edit=true` w/o cookie → login card; with cookie → editor; Product B env unchanged (zero-config).
-- **⚠️ Manual pass still pending (user was in the browser):** confirm the two hosted-mode renders by eye — `?edit=true` unauthenticated shows FirebaseLoginCard, and post-login the editor + Save pill appear. Also verify Product B mode (no Firebase/KV env) still opens the editor zero-config. Logic is simple + tsc clean, but tick this off before calling D fully done.
+- **Manual pass DONE (2026-08-29):** user confirmed both hosted renders live — FirebaseLoginCard on the gated surfaces (including /write) and the signed-in editor + Save flow (real docs exist in KV).
 
-### FIX-E — Restore 5b `LOCAL` semantics (regression)
-- [ ] `isLocalMode()` unset behavior + `GET ?list` cross-user leak (contains FIX-E2)
+### FIX-E — Restore 5b `LOCAL` semantics (regression) — DONE ✅
+- [x] `isLocalMode()` unset behavior + `GET ?list` cross-user leak (contains FIX-E2)
+- **Shipped (2026-08-29):** `isLocalMode()` unset → `null` (auto/hybrid), garbage → `null`; the `LOCAL`/`USE_LOCAL`/`STORAGE_LOCAL` alias trio is documented in the route header + `.env.example`. Verified by `scripts/fix-e-verify.ts` — 6 spawned-server cases, 27 checks ALL PASS (the script preflights the one-dev-server-per-dir lock, see Hard-Won Gotchas).
 - **Problem:** 5b spec + the route's own header comment (`upload/route.ts:11-13`) say unset = auto/hybrid (R2 if configured else local). The 5c edit changed unset → `true` (local-only) at `upload/route.ts:27` — a hosted deploy relying on unset=hybrid silently stops writing to R2. Also undocumented: `LOCAL` was triple-aliased to `USE_LOCAL`/`STORAGE_LOCAL` — fine, but document it.
 - **Fix:** `raw == null` → return `null` (hybrid/auto) as 5b shipped and the comment says. Update the header comment block if the alias set changed. Note the AGENTS.md 5b section (LOCAL semantics sentence) stays the source of truth — make code match it, not the reverse.
 - **Verify:** no `LOCAL` env + R2 configured → POST upload goes to R2 (`?list=1` shows `source:'r2'`); `LOCAL=true` → local only; `LOCAL=false` + no R2 → 500 with the loud hint.
@@ -362,11 +370,14 @@ Post-5c audit found the hosted shell unshippable as-is: two security holes (one 
 ### FIX-E2 — `GET /api/upload?list` leaks every user's files — DONE ✅ (folded into FIX-B)
 - [x] Scope the list to the caller's own prefix — shipped with FIX-B (see above); unauthed list shows dev-scope only, never other users' objects.
 
-### FIX-F — `/u/[slug]` public render: make it real (product)
-- [ ] Server-render the full portfolio correctly from KV
+### FIX-F — `/u/[slug]` public render: make it real (product) — DONE ✅
+- [x] Server-render the full portfolio correctly from KV
 - **Problem:** The stub renders only `doc.tabs[0]` (multi-tab portfolios lose content), applies no `data-skin`/accent/font from the doc (falls to `:root` clean — or worse, the visitor's own B `localStorage` theme via the root pre-paint script), and unknown slug **renders the seed portfolio instead of 404ing** (`(a-shell)/u/[slug]/page.tsx:23`). slug = uid with no slug registry also means user pages are enumerable by Firebase uid.
 - **Fix:** Reuse `PortfolioView`'s render pipeline minus its client-only editor organs: extract a shared server-safe `PortfolioRender` (blocks + tabs nav + footer + socials + `data-skin` from doc + inline `--accent`/`--font`) from what PortfolioView renders today; `/u/[slug]` mounts it with KV data + published-only posts. `notFound()` when `kvGet` misses — an unknown slug must NOT fall back to `initialData`. Tab navigation server-side: render tab panels via searchParam (e.g. `/u/<slug>?t=<tabId>`) or accept a no-JS single-scroll (decide; searchParam is closer to current UX). Keep this page out of `localStorage` reach: the root pre-paint script reads B keys — hosted render must be deterministic from the doc (suppress/param-guard the pre-paint for this route or apply doc-derived tokens inline). Slug registry: minimal MVP = doc field `slug` set at signup (5e) — until then accept uid-slugs but 404 on miss (never seed).
 - **Verify:** `GET /u/<known-uid>` renders all tabs (or the chosen tab) with the doc's skin/accent/font; `GET /u/nonexistent` → 404; `?edit=true` on `/u/` does nothing (no editor there); posts show published only.
+- **Shipped (2026-08-29):** `HostedPortfolioView` client wrapper (doc-driven skin/accent/font/viewScale, zero editor organs — phase-1 duplication of PortfolioView's render region, unification deferred) + a rewritten server page: 404-on-miss / never-seed, FIX-A sanitize RETURN used, `searchParams.t` tab resolution (unknown → first tab), and **drafts stripped before props** (the RSC flight payload serializes props into HTML source — raw doc would leak draft titles into view-source). Verify: `scripts/fix-f-verify.ts` ALL PASS (23 checks) + user browser pass.
+- **UX pass (same day):** hybrid tabs (plain clicks switch locally from the in-memory doc + `history.pushState`; deep links/back-forward still server-render; `popstate` re-sync) — no more KV read per tab press; floating reader on `/u/` (`onOpenPost` → FloatingPage + BlogSite `posts` override — card links too; all four grid designs already guarded on `onOpenPost`); FloatingPage gained `themeSkin`/`themeStyle` props (body-level portals escape the wrapper's token subtree — without them the reader wore the visitor's localStorage theme).
+- **Deferred to 5e/5f:** standalone hosted post URLs (clicks float, but `/blog?post=` deep-links still hit the B store); slug registry (uid-slugs); PortfolioView unification (phase-2); Reveal leaves SSR content opacity-0 until hydration (no-JS note).
 
 ### FIX-G — Bundle hygiene: don't ship Firebase to Product B (perf)
 - [ ] Lazy-load the A shell client-side

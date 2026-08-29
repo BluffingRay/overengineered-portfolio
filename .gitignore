@@ -43,3 +43,6 @@ next-env.d.ts
 
 # uploaded media artifacts (storage-swap principle)
 /public/uploads
+
+# internal task specs — detailed local working docs (AGENTS.md is the repo-facing summary)
+/docs/
