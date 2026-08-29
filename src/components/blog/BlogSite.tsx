@@ -17,11 +17,16 @@ import { PostReader } from './BlogViews';
 export default function BlogSite({
   postId: postIdProp,
   onClose,
+  posts: postsProp,
 }: {
   /** Overlay mode: which post to read (prop wins over ?post=). */
   postId?: string;
   /** Overlay mode: close the floating sheet. Absent = standalone. */
   onClose?: () => void;
+  /** Overlay data override: the hosted public render passes the doc's
+      published posts — the B localStorage store is the wrong source there.
+      B modes pass nothing and read the store as before. */
+  posts?: Post[];
 } = {}) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -58,9 +63,10 @@ export default function BlogSite({
     );
   }
 
-  const posts: Post[] = (data.posts ?? []).filter(
-    (post) => post.status === 'published',
-  );
+  // Hosted overlay passes the doc's published posts; B modes read the store.
+  const posts: Post[] =
+    postsProp ??
+    (data.posts ?? []).filter((post) => post.status === 'published');
   const post = posts.find((candidate) => candidate.id === activeId);
 
   if (!post) {
