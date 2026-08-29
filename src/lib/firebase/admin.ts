@@ -34,7 +34,9 @@ export function isAdminConfigured(): boolean {
 }
 
 // Session cookie helpers — 5c: HttpOnly + Secure + SameSite=Lax, 5-day expiry.
-const SESSION_COOKIE_NAME = "portfolio-session";
+// FIX-H: named `hosted-session` (was `portfolio-session`) — the B shell keeps
+// that name for its localStorage session key; different stores, no collision.
+const SESSION_COOKIE_NAME = "hosted-session";
 const SESSION_MAX_AGE_MS = 5 * 24 * 60 * 60 * 1000;
 
 export function getSessionCookieName(): string {

@@ -32,8 +32,6 @@ export function useAuth() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [bAuthenticated, setBAuthenticated] = useState(() => hasValidSession());
   const [firebaseAuthenticated, setFirebaseAuthenticated] = useState(false);
-  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
-  const [firebaseEmail, setFirebaseEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -51,12 +49,12 @@ export function useAuth() {
       });
     fetch('/api/auth/session')
       .then((res) => res.json())
-      .then((data: { authenticated?: unknown; uid?: unknown; email?: unknown }) => {
+      .then((data: { authenticated?: unknown; uid?: unknown }) => {
         if (!active) return;
-        const authed = data.authenticated === true && typeof data.uid === 'string';
-        setFirebaseAuthenticated(authed);
-        setFirebaseUid(authed && typeof data.uid === 'string' ? data.uid : null);
-        setFirebaseEmail(typeof data.email === 'string' ? data.email : null);
+        // uid presence is part of the authed check (cookie must decode to a
+        // real user); the uid/email values themselves have no consumer — the
+        // session endpoint remains the source of truth (FIX-H).
+        setFirebaseAuthenticated(data.authenticated === true && typeof data.uid === 'string');
       })
       .catch(() => {
         if (!active) return;
@@ -109,11 +107,6 @@ export function useAuth() {
       const data: { ok?: unknown; error?: unknown } = await res.json().catch(() => ({}));
       if (res.ok && data.ok === true) {
         setFirebaseAuthenticated(true);
-        const status = await fetch('/api/auth/session').then((r) => r.json()).catch(() => ({}));
-        if (status.authenticated === true && typeof status.uid === 'string') {
-          setFirebaseUid(status.uid);
-          setFirebaseEmail(typeof status.email === 'string' ? status.email : null);
-        }
         return { ok: true };
       }
       return { ok: false, error: typeof data.error === 'string' ? data.error : 'Could not sign you in.' };
@@ -130,8 +123,6 @@ export function useAuth() {
       // Reflect only after the server confirms (the rule this hook cites).
       if (res.ok) {
         setFirebaseAuthenticated(false);
-        setFirebaseUid(null);
-        setFirebaseEmail(null);
       }
     } catch {
       // Server unreachable — keep Firebase state (may still be signed in
@@ -164,8 +155,5 @@ export function useAuth() {
     loginWithIdToken,
     logout,
     allowEdit,
-    firebaseAuthenticated,
-    firebaseUid,
-    firebaseEmail,
   };
 }

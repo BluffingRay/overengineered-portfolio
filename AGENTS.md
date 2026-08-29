@@ -1,5 +1,34 @@
 # Portfolio CMS — Agent Context
 
+## Session Ground Rules (user contract — read before any work)
+
+- **Plan from this file + `docs/specs/*`, never from Next.js priors** — this is
+  a modified Next build; read the relevant guide in `node_modules/next/dist/docs/`
+  before using an unfamiliar API, and heed deprecation notices. Check that
+  docs/files you're told to use actually exist; question instructions that seem
+  weird or contradictory instead of guessing.
+- **Workflow per task:** short plan into `docs/specs/<task>.md` → do the work →
+  append outcome + verification to the SAME file → verify serially (WSL2 —
+  NEVER run heavy commands in parallel) → report what changed, results, risk
+  flags. One task at a time; wait for the user's next instruction after
+  reporting (unless the user explicitly queues a multi-chunk run, e.g. 5e).
+- **Never commit unless the user says.** Commit style: conventional prefix
+  (`feat/fix/docs(scope):`) + bullet body (see `git log`).
+- **Never touch or print `.env.local` values.** Programmatic env use without
+  printing is fine; swapping the file itself only with explicit user go.
+- **Risky = stop and flag** (auth, data loss, cross-file architecture, unsure)
+  — don't guess.
+- **The user runs the dev server (`:3000`)** — never kill or restart it without
+  asking; spawned servers need explicit go (ONE `next dev` per project
+  directory — see Hard-Won Gotchas).
+- **The user is the reviewer + final hoster.** Skip lint/tsc unless the task
+  truly needs it; self-verify rigorously (browser checks where relevant).
+- **Subagent protocol (5e model, decided 2026-08-29):** subagents write code
+  ONE at a time (serial, never parallel) under strict file allowlists; they
+  never run builds/servers/tsc and never use Browser Use. The orchestrator
+  reviews every diff, runs all verification serially itself, does the browser
+  gates, ticks AGENTS.md, reports between chunks.
+
 ## Project Overview
 
 Block-based, **local-first portfolio CMS** built with Next.js (App Router), TypeScript strict mode, and Tailwind CSS v4. All content lives in a single JSON document persisted to `localStorage`; no backend in Phase 1. Phase 3.5 added art direction designs (default/cutie/editorial/riso) for every block type, global font picker, and theme lock.
@@ -188,7 +217,7 @@ Lightweight **admin gate** for the self-hosted version. Purpose is **governance/
 - Known limits (guardrail): the session token is opaque and unsigned (bypassable by writing the key — accepted); the `/write` standalone authoring route is NOT yet independently gated (reachable only through the already-gated Posts UI). Both are fine for a guardrail, note for Phase 4c docs.
 - **Log out**: a header button (edit mode only, `handleLogout` in PortfolioView) clears the session and exits edit mode back to visitor UI. `.env.example` is the committed `ADMIN_PASSWORD` template (copy to `.env.local`, which `.gitignore` excludes); `.gitignore` un-ignores `.env.example` only (`!.env.example`).
 - **`ALLOW_EDIT` read-only switch:** `ALLOW_EDIT=false|0|no|off` makes the deployed site read-only — no editor, no shortcut toggle, `?edit=true` shows nothing; `/write` bounces home. Exposed via `/api/auth/status` (`allowEdit`, default true), consumed by `useAuth` → `PortfolioView` (`canEdit`/`showLogin`/shortcut guard) and `WriteView` (redirect). Solves "editing reachable on a public self-host"; local dev stays zero-config (unset = editing on).
-- **`/write` gate closed:** `WriteView` now calls `useAuth()` and renders `LoginCard` when `enabled && !authenticated` — so a direct visit to `/write` (not via the gated Posts overlay) is blocked too. Same guardrail pattern as the main view; the overlay path was already gated.
+- **`/write` gate closed:** `WriteView` now calls `useAuth()` and renders `LoginCard` when `enabled && !authenticated` — so a direct visit to `/write` (not via the gated Posts overlay) is blocked too. Same guardrail pattern as the main view; the overlay path was already gated. **Stance (user, 2026-08-29):** standalone `/write` staying reachable-but-gated is a deliberate easter egg — leave it, no hosted-mode redirects.
 
 **Phase 4c shipped — README:** `README.md` rewritten from the create-next-app boilerplate into a real project readme (setup, editing, the optional admin gate, storage-swap note, roadmap). The auth-gate section documents the bcrypt generation (project's own `bcryptjs` one-liner + htpasswd fallback), the `ADMIN_PASSWORD` setup, and the **`$`-in-`.env` trap** (never put a bcrypt hash in a `.env`; plaintext for dev, real env var for prod).
 
@@ -264,21 +293,21 @@ TODOs (Phase 5b) — CLOSED ✅:
 
 - **Scope note:** this is the Product A lift — do NOT build it during Phase 4. The JSON **format** is the bridge (B ↔ A import/export).
 
-### 5c — Firebase Auth + cookie sessions + per-user storage — SHIPPED ⚠️ WITH GAPS
+### 5c — Firebase Auth + cookie sessions + per-user storage — DONE ✅ (gaps closed by Phase 5-Fix)
 The bullets above (One rule / Identity / Session / Storage / Access model / Images / Import) are the 5c spec. What landed (uncommitted): `src/lib/firebase/{client,admin}.ts`, `src/app/api/auth/session/route.ts` (mint/verify/revoke HttpOnly cookie — solid), per-user KV keys `portfolio:<uid>:default`, per-user R2 upload prefixes, TEMP 5b UI removed, `/u/[slug]` + `/dashboard` stubs, `useAuth` dual-shell hook, `FirebaseLoginCard`.
 
 **Console decisions (recorded):**
 - **Email enumeration protection: KEEP ON** (default). Forgot-password shows "email sent" for ANY syntactically-valid email but only actually sends to registered accounts — attackers can't probe which emails exist. The "garbage gets a fake success" behavior is deliberate and standard (Google does the same). If honest per-email feedback is ever wanted: Firebase Console → Authentication → Settings → User actions → toggle off — zero code change, `humanizeFirebaseError` already maps `user-not-found` to "No account with that email yet — sign up instead?".
 - **Reset emails often land in spam** (Firebase default sender `noreply@…firebaseapp.com`) — the login card's message now says "check your inbox (and spam folder)". Later polish (5e): `ActionCodeSettings` with `continueUrl` back to the app so the reset flow doesn't dead-end on Firebase's generic page.
 
-**Review verdict (post-5c audit): the auth plumbing is real, but 5c is NOT done.** Critical gaps: no HTML sanitization (stored XSS on `/u/`), upload DELETE IDOR (cross-user delete), no editor→KV save path (hosted edits are never persisted), editor gating falls through to B logic in hosted mode. All fixes live in **Phase 5-Fix** below — build them before any hosted deployment. Do not treat 5c as closed until FIX-A…H are ticked.
+**Review verdict (post-5c audit) — RESOLVED:** every critical gap the audit found is now closed via Phase 5-Fix (FIX-A…H, all landed 2026-08-29): stored-XSS sanitization (FIX-A), upload DELETE IDOR + list scoping (FIX-B/E2), editor→KV save path (FIX-C), hosted-mode gating (FIX-D), `LOCAL` semantics (FIX-E), `/u/[slug]` public render (FIX-F), Firebase bundle hygiene (FIX-G), cleanup/docs/cookie naming (FIX-H). 5c is DONE — the "do not deploy hosted before this list is ticked" blocker is lifted. Remaining pre-MVP work: **Phase 5e** (dashboard & onboarding — slugs, KV index, the seed-overwrite landmine from FIX-C's known gap).
 
 ### 5d — SEO & discoverability (ships with the MVP)
 - Dynamic `<title>`, Open Graph image, favicon — derived from document data. Nearly free and high-impact: a portfolio invisible to search engines undermines the product, so this is NOT deferred to Phase 6.
 - The public render (`/u/<slug>`) is server-rendered from the stored doc — metadata comes from the server, not client-side storage.
 - Applies to Product B too (same metadata helpers read `content/portfolio.json`).
 
-### 5e — Dashboard & onboarding (design locked — build after FIX-F)
+### 5e — Dashboard & onboarding (design locked — chunked build, one chunk per fresh session)
 - Post-login dashboard: list of user's portfolios, create new, settings.
 - Onboarding flow: pick a design → fill in name/role → auto-generate initial blocks.
 - Design picker as the first screen (not the editor) — non-devs choose visually, not structurally.
@@ -293,6 +322,13 @@ The bullets above (One rule / Identity / Session / Storage / Access model / Imag
 - **Entry points:** FirebaseLoginCard success → `/dashboard` (not back to `?edit=true`); a small "Dashboard" link/button wherever the user is authenticated (UtilityBar in edit mode). Sign-in should never dead-end at the editor.
 - **Slugs:** dashboard links need stable pretty slugs (`/u/jane`, not `/u/<firebase-uid>`). Minimal MVP: a `slug` field on the doc (set at onboarding, editable in dashboard settings, uniqueness enforced by the KV index) — pairs with FIX-F's slug resolution.
 - **Onboarding (unchanged scope, restated):** first dashboard visit with no doc → pick a design → name/role → auto-generate initial blocks → land in editor with the save pill (FIX-C) already explaining the publish loop. Design picker as the first screen — non-devs choose visually, not structurally.
+
+**Chunked build plan (decided 2026-08-29 — all chunks run in ONE session, executed strictly one by one; each chunk: `docs/specs/5e-<chunk>.md` plan → build → verify → tick BEFORE the next starts; NEVER one mega-diff):**
+- **5e-a — Foundation:** schema `slug?` / `visibility?: 'private' | 'public'` / `showcase?: boolean` (additive root fields, no version bump) + `prepareDocument` sanitizers (slug format + reserved list, visibility enum, showcase boolean — invalid → dropped, absent = private/not-shown). `portfolios:index` KV key = **complete per-uid registry** (`{[uid]: {slug, visibility, showcase, updatedAt}}`) — completeness is required for slug-uniqueness enforcement; the showcase filters on read. Read-modify-write maintained in `PUT /api/portfolio` (race window = accepted MVP limit, document beside last-save-wins). Slug conflict with another uid → 409 before persist. New `GET /api/portfolio/slug` availability check (authed).
+- **5e-b — Slug resolution:** `/u/<slug>` resolves via the registry (404-on-miss, never seed); uid-slug stays compatible until onboarding assigns slugs.
+- **5e-c — Dashboard:** neutral `admin` token theme (no skin tokens, ignores the pre-paint script); **A-only route** (`/dashboard` bounces home in B); hero card (Edit → editor, View → `/u/<slug>`, copy share link, published state) + showcase from the index; **sign-in front door** — hosted login success → `/dashboard`, and signed-out deep-links to `/?edit=true` / `/write` REDIRECT to `/dashboard` in hosted mode (editor login cards demote to fallbacks; Product B keeps its root gate untouched); UtilityBar "Dashboard" link when authenticated.
+- **5e-d — Onboarding:** design picker as the first screen → name/role → auto-generated blocks → editor; slug claim happens here; only for accounts with no doc.
+- **5e-e — Load path (defuses the FIX-C seed-overwrite landmine):** fresh-device signed-in editor offers "Load your hosted portfolio" via the seed-vs-hosted resolution that 5e-a/c built.
 
 ### 5f — Export/import bridge (public export vs authed import)
 - **Product B -> Product A:** Dashboard `Import from file` (authed `POST /api/portfolio/import` -> server-confirmed) -> hosted.
@@ -309,7 +345,7 @@ Built with the project itself (dogfooding): Product B instance with custom HTML 
 
 URL structure: `yoursite.com` (hub) → `yoursite.com/u/username` (hosted portfolio). Subdomain or path-based routing for hosted portfolios.
 
-## Phase 5-Fix — Repair the 5c gaps (A–E ✅, F ✅ landed — G/H open)
+## Phase 5-Fix — Repair the 5c gaps (A–H ✅ — CLOSED)
 
 Post-5c audit found the hosted shell unshippable as-is: two security holes (one explicitly required by the 5c spec and skipped), a missing core product loop, and several regressions. Each fix below is a self-contained part with problem → context → exact fix → verify. **Build in order (A→H); do not deploy hosted before A–E land.** Small, reviewable diffs — one part per session, tick the checkbox when verified.
 
@@ -379,14 +415,18 @@ Post-5c audit found the hosted shell unshippable as-is: two security holes (one 
 - **UX pass (same day):** hybrid tabs (plain clicks switch locally from the in-memory doc + `history.pushState`; deep links/back-forward still server-render; `popstate` re-sync) — no more KV read per tab press; floating reader on `/u/` (`onOpenPost` → FloatingPage + BlogSite `posts` override — card links too; all four grid designs already guarded on `onOpenPost`); FloatingPage gained `themeSkin`/`themeStyle` props (body-level portals escape the wrapper's token subtree — without them the reader wore the visitor's localStorage theme).
 - **Deferred to 5e/5f:** standalone hosted post URLs (clicks float, but `/blog?post=` deep-links still hit the B store); slug registry (uid-slugs); PortfolioView unification (phase-2); Reveal leaves SSR content opacity-0 until hydration (no-JS note).
 
-### FIX-G — Bundle hygiene: don't ship Firebase to Product B (perf)
-- [ ] Lazy-load the A shell client-side
+### FIX-G — Bundle hygiene: don't ship Firebase to Product B (perf) — DONE ✅
+- [x] Lazy-load the A shell client-side
+- **Shipped (2026-08-29):** `FirebaseLoginCard` is now an SDK-free host — the form moved to `FirebaseLoginForm.tsx` (the ONLY module reaching the SDK), loaded via `next/dynamic({ ssr: false })` behind a **compile-time gate** on the inlined `NEXT_PUBLIC_FIREBASE_*` trio (mirrors `getFirebaseConfig()`): B builds fold the branch away and emit **zero** firebase chunks; hosted builds ship the SDK in an async chunk fetched only when a hosted login surface renders. Consumers unchanged (0 diff); `SignInNotConfigured` fallback preserves the hosted-flag-but-no-client-config behavior; `useFirebaseLogin` stays (still the runtime picker, not dead).
+- **Verify:** hosted build → the SDK chunk (`identitytoolkit` marker) carries no `<script>`/`<link>` tag in any prerendered route HTML; B-mode build (empty-string `NEXT_PUBLIC_FIREBASE_*` env override, `.env.local` untouched) → no SDK chunk emitted at all (only `firebaseUid`/`firebaseEmail` identifiers from useAuth match the word "firebase" — FIX-H item 3 removes those); live prod check: temp `next start -p 3100`, `127.0.0.1` (different cookie host → signed-out; no dev-origin block in prod) → login card renders on demand on `/` **and** `/write`. Details: docs/specs/fix-g.md (local).
 - **Problem:** `FirebaseLoginCard` + `lib/firebase/client.ts` statically import the `firebase` SDK, so every Product B visitor downloads it even when unconfigured. "B never requires any of A" holds functionally, but the bundle cost ships anyway — against the spirit of the layer rule.
 - **Fix:** In `PortfolioView`/`WriteView`, render `FirebaseLoginCard` via `next/dynamic` with `ssr: false` ONLY when the login surface shows AND the hosted/Firebase flag is on (FIX-D's `hosted` flag gates this naturally — `isFirebaseConfigured()` alone reads `NEXT_PUBLIC_*` client-side, fine for the gate, but the *component* should stay out of the initial bundle). Remove the now-dead `useFirebaseLogin` local if it remains unused.
 - **Verify:** B-mode build (`npm run build`) does not include `firebase` in client chunks (`grep -r "firebase" .next/static/chunks/` or check bundle analyzer); hosted mode shows the login card on demand.
 
-### FIX-H — Cleanup, docs, and dead code (hygiene)
-- [ ] `.env.example`, AGENTS.md, dead exports, dead loops, cookie naming
+### FIX-H — Cleanup, docs, and dead code (hygiene) — DONE ✅
+- [x] `.env.example`, AGENTS.md, dead exports, dead loops, cookie naming
+- **Shipped (2026-08-29):** `.env.example` gained the full hosted-stack template — Firebase client `NEXT_PUBLIC_*` (noting the trio that gates the FIX-G lazy login card), Firebase admin keys with the `\n`-escaping + `$`-in-`.env` warnings (and the `FIREBASE_PROJECT_ID` → client-value fallback), KV trio, R2 family + alias pointer; every value empty, unset = feature off = B mode. Dead `useAuth` exports removed: `firebaseUid`/`firebaseEmail` (states + setters + `loginWithIdToken`'s second status GET — write-only since 5c) and the unread `firebaseAuthenticated` export (state stays, feeds `authenticated`); `authChecked`/`isUsingFirebase` were already gone (FIX-D); `enabled` kept (semantic B-gate flag, not audit-named). Session cookie renamed `portfolio-session` → `hosted-session` — one constant in `admin.ts`; B's localStorage key keeps its name (different store); the session route uses the helpers; no script hardcodes the cookie. ⚠️ One-time effect: existing hosted sessions invalidate (re-login). Already closed by earlier fixes, recorded: logout comment/behavior alignment (FIX-D), dead loop (FIX-E2 rewrite), Bearer prefix spoof (FIX-B).
+- **Verify:** `npx tsc --noEmit` clean + targeted eslint clean; greps confirm `firebaseUid`/`firebaseEmail` gone from `src/`, `firebaseAuthenticated` useAuth-internal only, `portfolio-session` only on B's localStorage key (+ comment references), `hosted-session` only in `admin.ts`; B-mode build (empty-string env override, `.env.local` untouched) → `grep -ri firebase .next/static/chunks/` = **zero matches** (FIX-G's grep is now fully clean); hosted build restored after; dev server healthy. Details: docs/specs/fix-h.md (local).
 - **Problem (audit finds):** (1) `.env.example` has no `NEXT_PUBLIC_FIREBASE_*` / `FIREBASE_PRIVATE_KEY` etc. template — a deployer has no reference. (2) AGENTS.md has no 5c-shipped section (uncommitted diff only rewrites 5b). (3) `useAuth` exports `authChecked`/`firebaseUid`/`firebaseEmail`/`isUsingFirebase` consumed nowhere. (4) `logout` catch-block clears Firebase state while its comment says it keeps it — contradicts the "client reflects only after server confirms" rule it cites. (5) `upload/route.ts:97-98` dead loop: `if (… && !f.includes('.')) {}` (condition impossible) followed by a duplicate loop doing the real work. (6) Bearer-token `getUserPrefix` decodes an **unverified** base64 JWT payload to pick the upload prefix (`upload/route.ts:39-47`) — only reachable when admin unconfigured, but it's an unauthenticated prefix-spoof; remove the Bearer branch entirely (cookie is the only identity source; 401 otherwise). (7) Firebase cookie reuses the name `portfolio-session` — a different store than B's `localStorage` key of the same name; rename cookie to `hosted-session` (update `admin.ts` const + serialize/clear + session route) to avoid confusion.
 - **Fix:** Each item is one small commit. `.env.example` gains a commented Firebase block (client keys are public-safe `NEXT_PUBLIC_`; `FIREBASE_PRIVATE_KEY` gets the same `$`/newline warnings as the bcrypt gotcha — note the `\n` → newline note already handled in `admin.ts:10`). Write the 5c-shipped section in AGENTS.md (this section: mark FIX-A…H as they land). Delete dead exports + dead loop. Align logout behavior with its comment (keep Firebase state on network failure; clear only on server confirm — or flip the comment, but pick one).
 - **Verify:** `npx tsc --noEmit` + targeted lint pass; `grep -r "authChecked\|isUsingFirebase" src/` returns nothing outside `useAuth.ts` (or its legit consumers if FIX-C uses them); fresh clone + `.env.example` → `npm run dev` works B-zero-config.
