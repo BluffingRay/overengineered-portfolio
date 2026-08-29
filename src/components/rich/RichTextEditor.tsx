@@ -79,7 +79,10 @@ export default function RichTextEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      // ClearableParagraph below IS the Paragraph node (extended with the
+      // clear-float attribute) — StarterKit's bundled copy is disabled so
+      // the editor doesn't register two extensions named 'paragraph'.
+      StarterKit.configure({ paragraph: false }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TextStyle,
       FontSize,
