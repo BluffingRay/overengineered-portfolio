@@ -19,7 +19,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SocialLink, SocialPlatform, ThemeConfig } from '@/types/schema';
-import { SOCIAL_PLATFORMS, THEME_SKINS } from '@/types/schema';
+import {
+  clampViewScale,
+  SOCIAL_PLATFORMS,
+  THEME_SKINS,
+  VIEW_SCALE_MAX,
+  VIEW_SCALE_MIN,
+} from '@/types/schema';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import SocialIcon from '@/components/ui/SocialIcon';
 import {
@@ -275,6 +281,19 @@ export default function GlobalSettings({
     mutate((current) => ({ ...current, theme: { ...current.theme, ...p } }));
   }
 
+  // Slider draft + commit-on-release: dragging fires dozens of input
+  // events and every mutate is an undo entry — one commit per gesture.
+  const [scaleDraft, setScaleDraft] = useState<number | null>(null);
+  const officialViewScale = clampViewScale(
+    typeof data.theme.viewScale === 'number' ? data.theme.viewScale : 1,
+  );
+  function commitViewScale() {
+    if (scaleDraft === null) return;
+    const v = clampViewScale(scaleDraft / 100);
+    patchTheme({ viewScale: v === 1 ? undefined : v });
+    setScaleDraft(null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -352,6 +371,33 @@ export default function GlobalSettings({
             see {data.skin.toUpperCase()}.
           </p>
         </div>
+      </div>
+      <div>
+        <Field label="Default view scale — desktop zoom for the whole site">
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={VIEW_SCALE_MIN * 100}
+              max={VIEW_SCALE_MAX * 100}
+              step={5}
+              value={scaleDraft ?? Math.round(officialViewScale * 100)}
+              onChange={(event) => setScaleDraft(Number(event.target.value))}
+              onPointerUp={commitViewScale}
+              onBlur={commitViewScale}
+              onKeyUp={commitViewScale}
+              className="w-full accent-accent"
+              aria-label="Default view scale percentage"
+            />
+            <span className="w-10 text-right font-mono text-xs">
+              {scaleDraft ?? Math.round(officialViewScale * 100)}%
+            </span>
+          </div>
+        </Field>
+        <p className="mt-1 text-[10px] opacity-50">
+          Applies on desktop widths (phones always stay 100%). Visitors can
+          adjust further for themselves; the hosted /u/ render uses this
+          scale.
+        </p>
       </div>
       <div>
         <Field label="Edit-mode shortcut — press a combo to remap">

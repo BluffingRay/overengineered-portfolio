@@ -3,20 +3,30 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
+import { clampViewScale } from '@/types/schema';
 import type { ThemeSkin } from '@/types/schema';
 import BlockRenderer from '@/components/blocks/BlockRenderer';
 import SkinSwitcher from '@/components/SkinSwitcher';
+import ViewScaleControl from '@/components/ViewScaleControl';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 // Visitor skin pick — persisted separately from the document so it
 // survives navigation to the standalone /write and /blog routes.
 const SKIN_OVERRIDE_KEY = 'portfolio-skin-override';
+// Visitor view-scale pick — same persistence model as the skin override.
+const VIEW_SCALE_OVERRIDE_KEY = 'portfolio-view-scale-override';
 // Last-viewed tab — restored when visitors return from a standalone
 // route, so Back lands them where they left off (per browser session).
 const LAST_TAB_KEY = 'portfolio-last-tab';
 
 function subscribeSystemTheme(onChange: () => void) {
   const query = window.matchMedia(DARK_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function subscribeDesktopWidth(onChange: () => void) {
+  const query = window.matchMedia('(min-width: 768px)');
   query.addEventListener('change', onChange);
   return () => query.removeEventListener('change', onChange);
 }
@@ -55,11 +65,12 @@ export default function PortfolioView() {
   const canEdit = isEditMode && isAuthed && editingAllowed;
   // Login card follows the SERVER's hosted flag only — never Firebase
   // client env presence (NEXT_PUBLIC_* keys alone must not activate
-  // Product A UI; LOCAL=true runs B even with them present). The
-  // hostedLoaded gate prevents the wrong card flashing while the
-  // status fetch resolves; render nothing until it has.
+  // Product A UI; LOCAL=true runs B even with them present). The authReady
+  // gate waits for BOTH fetches (status + session cookie): hosted resolves
+  // first, and a card gated before the cookie check flashes for signed-in
+  // hosted users. Render nothing until it has.
   const showLogin =
-    isEditMode && gated && !auth.authenticated && editingAllowed && auth.hostedLoaded;
+    isEditMode && gated && !auth.authenticated && editingAllowed && auth.authReady;
   const useFirebaseLogin = auth.hosted;
 
   async function handleLogout() {
@@ -127,6 +138,32 @@ export default function PortfolioView() {
     }
   }
 
+  // Visitor view-scale pick — persisted under its own key (never in the
+  // document, never in undo history). Applied on desktop widths only; the
+  // admin's default (theme.viewScale) is what every new visitor sees.
+  const [scaleOverride, setScaleOverride] = useState<number | null>(() => {
+    try {
+      const raw = window.localStorage.getItem(VIEW_SCALE_OVERRIDE_KEY);
+      const parsed = raw === null ? NaN : Number(raw);
+      return Number.isFinite(parsed) ? clampViewScale(parsed) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  function changeScaleOverride(next: number | null) {
+    setScaleOverride(next);
+    try {
+      if (next === null) {
+        window.localStorage.removeItem(VIEW_SCALE_OVERRIDE_KEY);
+      } else {
+        window.localStorage.setItem(VIEW_SCALE_OVERRIDE_KEY, String(next));
+      }
+    } catch {
+      // Private mode etc. — the pick just stays ephemeral.
+    }
+  }
+
   // 'auto' maps the visitor's OS preference onto the skin trio:
   // dark → HUD (terminal night), light → Clean. Notebook stays a manual
   // pick (it's a read-mode flavor, not a light/dark state).
@@ -171,6 +208,30 @@ export default function PortfolioView() {
       root.style.removeProperty('--font-custom');
     }
   }, [data.theme.accentColor, data.theme.fontFamily]);
+
+  // Effective view scale: visitor override, else the admin's doc default,
+  // applied on desktop widths only (phones always render at 1). The
+  // pre-paint script set the first frame; this keeps it live with changes.
+  const officialViewScale =
+    typeof data.theme.viewScale === 'number'
+      ? clampViewScale(data.theme.viewScale)
+      : 1;
+  const pickedViewScale = scaleOverride ?? officialViewScale;
+  const isDesktopWidth = useSyncExternalStore(
+    subscribeDesktopWidth,
+    () => window.matchMedia('(min-width: 768px)').matches,
+    () => false,
+  );
+  const effectiveViewScale = isDesktopWidth ? pickedViewScale : 1;
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (effectiveViewScale !== 1) {
+      root.style.zoom = String(effectiveViewScale);
+    } else {
+      root.style.removeProperty('zoom');
+    }
+  }, [effectiveViewScale]);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   // Remember the visitor's place so returning from /write or /blog
@@ -427,6 +488,12 @@ export default function PortfolioView() {
 
           <div className="flex flex-wrap items-center justify-end gap-3 pb-3">
             {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} />}
+            <ViewScaleControl
+              value={pickedViewScale}
+              official={officialViewScale}
+              overridden={scaleOverride !== null}
+              onChange={changeScaleOverride}
+            />
             {!isSkinLocked ? (
               <SkinSwitcher
                 value={skinOverride ?? activeSkin}

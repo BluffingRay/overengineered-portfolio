@@ -19,33 +19,48 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   // Runs synchronously before the body paints: pulls the saved document
-  // straight from localStorage and applies skin/accent/font to <html>, so
-  // even the first frame already wears the visitor's theme (no HUD flash).
-  // A persisted visitor skin override (SkinSwitcher pick, incl. 'auto')
-  // wins over the document's official default — and survives navigation
-  // to the standalone /write and /blog routes.
+  // straight from localStorage and applies skin/accent/font/view-scale to
+  // <html>, so even the first frame already wears the visitor's theme (no
+  // HUD flash). A persisted visitor skin override (SkinSwitcher pick, incl.
+  // 'auto') wins over the document's official default — and survives
+  // navigation to the standalone /write and /blog routes. The view scale
+  // (admin default + visitor override) applies on desktop widths only.
+  // /u/<slug> is skipped entirely: the hosted public render is doc-
+  // deterministic (its wrapper applies the doc's own theme + scale), and
+  // zoom cannot be subtree-overridden the way tokens can.
   const prePaintTheme = `
     try {
-      var d = JSON.parse(localStorage.getItem('portfolio-data') || 'null');
       var el = document.documentElement;
-      var t = (d && typeof d === 'object' && d.theme) || {};
-      var locked = t.lockSkin === true;
-      var over = locked ? null : localStorage.getItem('portfolio-skin-override');
-      var skins = ['hud', 'notebook', 'clean'];
-      if (over === 'auto') {
-        over = window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'hud'
-          : 'clean';
-      }
-      if (!locked && skins.includes(over)) {
-        el.dataset.skin = over;
-      } else if (d && typeof d === 'object' && d.skin) {
-        el.dataset.skin = d.skin;
-      }
-      if (t.accentColor) el.style.setProperty('--accent', t.accentColor);
-      if (t.fontFamily) {
-        el.style.setProperty('--font', t.fontFamily);
-        el.style.setProperty('--font-custom', t.fontFamily);
+      if (location.pathname.lastIndexOf('/u/', 0) === 0) {
+        // /u/<slug> — doc-deterministic; B keys must not leak.
+      } else {
+        var d = JSON.parse(localStorage.getItem('portfolio-data') || 'null');
+        var t = (d && typeof d === 'object' && d.theme) || {};
+        var locked = t.lockSkin === true;
+        var over = locked ? null : localStorage.getItem('portfolio-skin-override');
+        var skins = ['hud', 'notebook', 'clean'];
+        if (over === 'auto') {
+          over = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'hud'
+            : 'clean';
+        }
+        if (!locked && skins.includes(over)) {
+          el.dataset.skin = over;
+        } else if (d && typeof d === 'object' && d.skin) {
+          el.dataset.skin = d.skin;
+        }
+        if (t.accentColor) el.style.setProperty('--accent', t.accentColor);
+        if (t.fontFamily) {
+          el.style.setProperty('--font', t.fontFamily);
+          el.style.setProperty('--font-custom', t.fontFamily);
+        }
+        var scaleOverride = parseFloat(localStorage.getItem('portfolio-view-scale-override'));
+        var viewScale = isFinite(scaleOverride)
+          ? scaleOverride
+          : (typeof t.viewScale === 'number' ? t.viewScale : 1);
+        if (viewScale !== 1 && window.matchMedia('(min-width: 768px)').matches) {
+          el.style.zoom = String(Math.min(1.2, Math.max(0.8, viewScale)));
+        }
       }
     } catch (e) {}
   `;
