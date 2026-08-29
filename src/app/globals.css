@@ -55,6 +55,32 @@
   font-family: var(--font);
 }
 
+/* ── Admin chrome (5e-c dashboard/onboarding) ─────────────────────
+   Fixed neutral app theme — NO skin tokens. The dashboard is app
+   chrome, not portfolio content: this block re-declares the full var
+   contract so nothing in the subtree inherits the visitor's skin (the
+   <html> may still carry data-skin styles from the pre-paint script,
+   which skips admin paths anyway — this wrapper is defense in depth).
+   Appliers: DashboardView + OnboardingView <main> (the admin surfaces). */
+[data-admin-theme] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #18181b;
+  --surface: #fafafa;
+  --border: #e4e4e7;
+  --accent: #2563eb;
+  --radius: 0.75rem;
+  --font: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Clean-like glide */
+  --dur: 150ms;
+  --ease: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --press: 0.97;
+
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font);
+}
+
 /* ── Motion system ────────────────────────────────────────────────
    Every interaction rides the skin's tokens: HUD snaps, Notebook
    springs, Clean glides. Base layer, so explicit utilities win. */

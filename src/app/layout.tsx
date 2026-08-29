@@ -25,14 +25,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   // 'auto') wins over the document's official default — and survives
   // navigation to the standalone /write and /blog routes. The view scale
   // (admin default + visitor override) applies on desktop widths only.
-  // /u/<slug> is skipped entirely: the hosted public render is doc-
-  // deterministic (its wrapper applies the doc's own theme + scale), and
-  // zoom cannot be subtree-overridden the way tokens can.
+  // Skipped entirely: /u/<slug> (the hosted public render is doc-
+  // deterministic — its wrapper applies the doc's own theme + scale, and
+  // zoom cannot be subtree-overridden the way tokens can) and the admin
+  // surfaces /dashboard + /onboarding (fixed neutral admin chrome — the
+  // visitor's B-localStorage theme must never leak into app chrome).
   const prePaintTheme = `
     try {
       var el = document.documentElement;
-      if (location.pathname.lastIndexOf('/u/', 0) === 0) {
-        // /u/<slug> — doc-deterministic; B keys must not leak.
+      if (
+        location.pathname.lastIndexOf('/u/', 0) === 0 ||
+        location.pathname.lastIndexOf('/dashboard', 0) === 0 ||
+        location.pathname.lastIndexOf('/onboarding', 0) === 0
+      ) {
+        // /u/<slug> — doc-deterministic; /dashboard + /onboarding — fixed
+        // admin chrome. B keys must not leak onto either.
       } else {
         var d = JSON.parse(localStorage.getItem('portfolio-data') || 'null');
         var t = (d && typeof d === 'object' && d.theme) || {};

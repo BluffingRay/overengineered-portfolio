@@ -44,5 +44,32 @@ export async function kvPut(key: string, value: string): Promise<void> {
   }
 }
 
+// 5e-i: delete a key entirely. A 404 is success (already gone — delete is
+// idempotent); any other failure throws the same message style as kvPut.
+export async function kvDelete(key: string): Promise<void> {
+  const res = await fetch(kvUrl(key), {
+    method: "DELETE",
+    headers: kvHeaders(),
+  });
+  if (res.status === 404) return;
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`KV DELETE ${key} failed ${res.status}: ${txt.slice(0, 200)}`);
+  }
+}
+
 // Hosted portfolio key — single-tenant MVP. Per-user later: `portfolio:${userId}:${slug}`
 export const HOSTED_PORTFOLIO_KEY = "portfolio:default";
+
+// Whether the KV env trio is present — the hosted doc store is opt-in via config.
+// (5e-a: moved here from api/portfolio/route.ts so other routes share the gate.)
+export function hasKv(): boolean {
+  return !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.KV_NAMESPACE_ID && process.env.CLOUDFLARE_API_TOKEN);
+}
+
+// Per-user doc key; null uid (legacy no-admin path) falls back to the
+// single-tenant key.
+export function portfolioKeyFor(uid: string | null): string {
+  if (uid) return `portfolio:${uid}:default`;
+  return HOSTED_PORTFOLIO_KEY;
+}

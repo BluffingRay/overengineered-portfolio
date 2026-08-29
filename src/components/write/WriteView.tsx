@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import type { PostStatus } from '@/types/schema';
@@ -47,6 +47,23 @@ export default function WriteView({
   useEffect(() => {
     if (!auth.allowEdit) router.replace('/');
   }, [auth.allowEdit, router]);
+
+  // 5e-c front door — same rule as PortfolioView: a signed-out hosted user
+  // deep-linking to /write is sent to the dashboard; the Firebase login
+  // card below demotes to a fallback. Fired once (ref guard for
+  // StrictMode's double effect; the write lives in the effect, not
+  // render). Waits for authReady so a signed-in user mid-session-check is
+  // never bounced. B (auth.hosted false) never fires. ALLOW_EDIT=false
+  // read-only deploys keep their documented bounce-home: the effect above
+  // wins and the front door never competes with it.
+  const frontDoorFired = useRef(false);
+  useEffect(() => {
+    if (!auth.authReady || !auth.hosted || auth.authenticated) return;
+    if (!auth.allowEdit) return;
+    if (frontDoorFired.current) return;
+    frontDoorFired.current = true;
+    router.replace('/dashboard');
+  }, [auth.authReady, auth.hosted, auth.authenticated, auth.allowEdit, router]);
   const { posts, createPost, updatePost, setPostStatus, deletePost } =
     usePosts();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -94,8 +111,15 @@ export default function WriteView({
   if (auth.gated && !auth.authenticated) {
     // Same rule as PortfolioView: the SERVER's hosted flag picks the
     // card — Firebase client env alone must never activate Product A UI.
+    // 5e-c: in hosted mode this is the demoted fallback — the effect up
+    // top already redirected to the dashboard front door.
     return auth.hosted ? (
-      <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+      <div>
+        <p className="pt-10 text-center text-xs opacity-50">
+          Taking you to sign-in…
+        </p>
+        <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+      </div>
     ) : (
       <LoginCard onLogin={auth.login} />
     );

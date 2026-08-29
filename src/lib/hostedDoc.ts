@@ -69,6 +69,42 @@ export function seedLastSaved(doc: PortfolioData): void {
 }
 
 /**
+ * True when this device already holds a last-saved snapshot. The mount
+ * seeding path needs this to tell "first visit — the baseline is about
+ * to come from the cloud" apart from "known device — the snapshot is
+ * the truth from the last save": seedLastSaved() silently no-ops when
+ * a snapshot exists, so callers must ask BEFORE seeding.
+ */
+export function hasLastSaved(): boolean {
+  return readLastSavedRaw() !== null;
+}
+
+/**
+ * 5e-e — the FIX-C seed-overwrite offer rule, single-sourced and pure.
+ *
+ * Offer "Load your hosted portfolio" ONLY when the mount-time seed
+ * proves the local draft is unverified:
+ * - fetchOk: the mount-time ?full=1 read succeeded (failures keep
+ *   today's behavior — no seed, no offer).
+ * - !hadSnapshot: no prior last-saved snapshot existed, so the dirty
+ *   baseline came from the cloud THIS mount. With a snapshot, dirty
+ *   here is a real edit on a device that already knows the truth.
+ * - dirtyNow: the local draft differs from the freshly seeded
+ *   baseline — the draft is not the user's confirmed content (a fresh
+ *   browser starts from the seed), so saving it would silently
+ *   overwrite their hosted portfolio. A no-doc account fails this leg
+ *   (draft(seed) == saved(seed)) and gets no offer — onboarding owns
+ *   those users.
+ */
+export function resolveLoadOffer(input: {
+  hadSnapshot: boolean;
+  fetchOk: boolean;
+  dirtyNow: boolean;
+}): boolean {
+  return input.fetchOk && !input.hadSnapshot && input.dirtyNow;
+}
+
+/**
  * Dirty = current draft ≠ last server-confirmed doc. Reads raw JSON
  * strings (byte compare is fine: both are produced by JSON.stringify
  * of prepared documents, key order stable within a session).

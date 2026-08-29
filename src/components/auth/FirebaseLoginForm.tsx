@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -44,6 +45,7 @@ function humanizeFirebaseError(e: unknown): string {
 export default function FirebaseLoginForm({
   onLoginWithIdToken,
 }: FirebaseLoginFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +57,17 @@ export default function FirebaseLoginForm({
 
   async function handleIdToken(idToken: string) {
     const result = await onLoginWithIdToken(idToken);
-    if (!result.ok) setError(result.error ?? 'Could not sign you in.');
-    return result.ok;
+    if (!result.ok) {
+      setError(result.error ?? 'Could not sign you in.');
+      return false;
+    }
+    // 5e-c front door — hosted login success lands on /dashboard,
+    // unconditionally (locked rule): the draft is localStorage so a
+    // mid-edit expiry login loses nothing, and sign-ins arriving from
+    // other surfaces get the same destination. useAuth's confirmed state
+    // update is what flips the dashboard into its content.
+    router.push('/dashboard');
+    return true;
   }
 
   async function handleGoogle(withDrive = false) {
@@ -126,7 +137,7 @@ export default function FirebaseLoginForm({
     return (
       <div className="mx-auto w-full max-w-xs pt-10">
         <div className="rounded-skin border border-[var(--border)] bg-surface p-5 text-center">
-          <p className="text-sm font-medium">Sign-in isn't set up on this site</p>
+          <p className="text-sm font-medium">Sign-in isn&apos;t set up on this site</p>
           <p className="mt-1 text-xs opacity-60">The site owner needs to connect an account provider first.</p>
         </div>
       </div>

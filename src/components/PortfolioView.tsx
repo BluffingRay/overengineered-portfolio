@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import { clampViewScale } from '@/types/schema';
 import type { ThemeSkin } from '@/types/schema';
@@ -72,6 +72,20 @@ export default function PortfolioView() {
   const showLogin =
     isEditMode && gated && !auth.authenticated && editingAllowed && auth.authReady;
   const useFirebaseLogin = auth.hosted;
+
+  // 5e-c front door: a signed-out hosted user on ?edit=true is sent to the
+  // dashboard — the login card below demotes to a fallback for if the
+  // redirect is interrupted. Fired ONCE: the ref guard exists for
+  // StrictMode's double effect invocation, and the write happens in the
+  // effect, never in render (the lint flags ref writes in render bodies).
+  // Product B never enters (auth.hosted false) — its gate is untouched.
+  const router = useRouter();
+  const frontDoorFired = useRef(false);
+  useEffect(() => {
+    if (!showLogin || !auth.hosted || frontDoorFired.current) return;
+    frontDoorFired.current = true;
+    router.replace('/dashboard');
+  }, [showLogin, auth.hosted, router]);
 
   async function handleLogout() {
     await auth.logout();
@@ -542,7 +556,12 @@ export default function PortfolioView() {
         {showLogin ? (
           <div className="flex-1">
             {useFirebaseLogin ? (
-              <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+              <>
+                <p className="pt-6 text-center text-xs opacity-50">
+                  Taking you to sign-in…
+                </p>
+                <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+              </>
             ) : (
               <LoginCard onLogin={auth.login} />
             )}

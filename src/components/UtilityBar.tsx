@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import { importPortfolioData } from '@/lib/storage';
 import { useHostedDoc } from '@/hooks/useHostedDoc';
@@ -160,19 +161,64 @@ export default function UtilityBar({
         />
       </div>
 
-      {hosted && (
+      {/* 5e-e — FIX-C landmine defusal: the mount-time seed proved this
+          draft is unverified (no prior snapshot + draft ≠ hosted doc).
+          OFFER, don't auto-load: Load replaces the draft with the hosted
+          doc; Keep is an explicit last-save-wins. Session-only; Save
+          stays available underneath. */}
+      {hosted && hostedDoc.loadOffer.active && (
+        <div className="w-full rounded-skin border border-amber-500/50 bg-amber-500/10 p-3">
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+            This draft isn&apos;t from the cloud
+          </p>
+          <p className="mt-0.5 text-[11px] opacity-70">
+            Loading replaces this draft with your saved portfolio.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void hostedDoc.loadOffer.load()}
+              disabled={hostedDoc.loadOffer.loading}
+              className="rounded-skin bg-accent px-3 py-1.5 text-xs font-semibold text-background hover:opacity-80 disabled:pointer-events-none disabled:opacity-40"
+            >
+              {hostedDoc.loadOffer.loading ? 'Loading…' : 'Load your portfolio'}
+            </button>
+            <button
+              type="button"
+              onClick={hostedDoc.loadOffer.dismiss}
+              disabled={hostedDoc.loadOffer.loading}
+              className={BTN}
+            >
+              Keep this draft
+            </button>
+          </div>
+          {hostedDoc.loadOffer.error && (
+            <p role="alert" className="mt-2 text-[11px] font-medium text-red-500">
+              {hostedDoc.loadOffer.error}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 5e-g, reworked per user — save status lives IN the toolbar row:
+          the full-width strip shoved the whole chrome around on every
+          dirty↔clean flip. Now it's one inline group in the same spot in
+          both states (only the 11px text swaps), so nothing reflows. The
+          5e-e offer banner keeps precedence — while it's up it IS the
+          explanation, so the status group stays hidden and Save waits
+          underneath. */}
+      {hosted && !hostedDoc.loadOffer.active && (
         <div className="flex items-center gap-1.5" role="status" aria-live="polite">
-          {hostedDoc.state.status === 'error' && (
+          {hostedDoc.dirty ? (
+            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+              ● Not saved — visitors see your last saved portfolio
+            </span>
+          ) : hostedDoc.state.status === 'error' ? (
             <span className="text-[11px] font-medium text-red-500">
               {hostedDoc.state.message}
             </span>
-          )}
-          {hostedDoc.dirty ? (
-            <span className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-              ● Unsaved changes
-            </span>
           ) : (
-            <span className="text-[10px] opacity-50">
+            <span className="text-[11px] opacity-50">
               Saved {savedAgoLabel(hostedDoc.savedAt) ?? '—'}
             </span>
           )}
@@ -190,6 +236,14 @@ export default function UtilityBar({
             {hostedDoc.state.status === 'saving' ? 'Saving…' : 'Save'}
           </button>
         </div>
+      )}
+
+      {/* 5e-c — dashboard entry point, authenticated hosted users only.
+          B mode (hosted=false) renders nothing new. */}
+      {hosted && authenticated && (
+        <Link href="/dashboard" className={BTN}>
+          Dashboard
+        </Link>
       )}
 
       <div className="flex items-center gap-1.5">

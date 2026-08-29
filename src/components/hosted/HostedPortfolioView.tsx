@@ -1,26 +1,41 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import Link from 'next/link';
 import { clampViewScale } from '@/types/schema';
-import type { PortfolioData } from '@/types/schema';
+import type { PortfolioData, ThemeSkin } from '@/types/schema';
 import BlockRenderer from '@/components/blocks/BlockRenderer';
 import SiteFooter from '@/components/ui/SiteFooter';
+import SkinSwitcher from '@/components/SkinSwitcher';
+import ViewScaleControl from '@/components/ViewScaleControl';
 import FloatingPage from '@/components/FloatingPage';
 import BlogSite from '@/components/blog/BlogSite';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+function subscribeSystemTheme(onChange: () => void) {
+  const query = window.matchMedia(DARK_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
 
 /**
  * FIX-F phase-1 — the hosted public render (Product A): the visitor
  * pipeline of PortfolioView (skin tokens + tab nav + panel + footer) with
  * every editor organ stripped, mounted from the /u/[slug] server page via
  * pure data props. Deliberately imports nothing that touches the B store,
- * localStorage, or useAuth — the DOC's skin/accent/font is the whole theme:
- * the wrapper's `data-skin` re-declares the full token contract for the
- * subtree (and the [data-skin] base rule paints it), so the page is
- * deterministic from the doc and immune to the root pre-paint script's
- * visitor-localStorage stamping on <html>. No SkinSwitcher, no edit mode —
- * ?edit=true is inert here by construction.
+ * localStorage, or useAuth — the DOC's skin/accent/font is the theme.
+ *
+ * Visitor controls (user decision, 2026-08-30): SkinSwitcher +
+ * ViewScaleControl render as LIVE, PER-VISIT adjustments — component state
+ * only, no localStorage, no override keys — so every fresh visit loads the
+ * owner's art direction and a pick never rides across other hosted
+ * portfolios. State seeds from the doc (SSR + hydration identical; picks
+ * arrive only through event handlers), `theme.lockSkin` hides the theme
+ * changer, and the scale pick applies to the wrapper exactly like the
+ * doc's own scale (never <html>; the html zoom-removal effect below keeps
+ * a scaled SPA navigation from leaking in).
  *
  * Tabs are hybrid: ?t= deep links still server-render (the page validates
  * the param), but plain clicks switch locally from the already-loaded doc
@@ -110,6 +125,27 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
     document.documentElement.style.removeProperty('zoom');
   }, []);
 
+  // Visitor controls — ephemeral by design (see docstring): picks live in
+  // component state only, seeded null = the doc's values, so SSR and
+  // hydration agree and nothing persists past the visit.
+  const isSkinLocked = doc.theme.lockSkin === true;
+  const [skinPick, setSkinPick] = useState<ThemeSkin | 'auto' | null>(null);
+  const [scalePick, setScalePick] = useState<number | null>(null);
+  const systemPrefersDark = useSyncExternalStore(
+    subscribeSystemTheme,
+    () => window.matchMedia(DARK_QUERY).matches,
+    () => false,
+  );
+  // Same resolution as PortfolioView's activeSkin (kept inline on purpose —
+  // phase-1 duplication, no shared lib yet).
+  const appliedSkin: ThemeSkin = isSkinLocked
+    ? doc.skin
+    : skinPick === 'auto'
+      ? systemPrefersDark
+        ? 'hud'
+        : 'clean'
+      : (skinPick ?? doc.skin);
+
   // Hero CTAs resolve against tabs — same matching as PortfolioView's
   // handleNavigate (only `#`-prefixed values are candidates; ids, `tab-…`
   // ids and label slugs all match), then a local switch + scroll to top.
@@ -161,14 +197,16 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
     tabRefs.current[next]?.focus();
   }
 
-  // The doc's tokens + scale, applied to the wrapper AND to body-level
-  // portals (FloatingPage) that sit outside the wrapper's [data-skin]
-  // subtree — otherwise the reader would wear the visitor's localStorage
-  // theme and an unscaled size.
+  // The doc's tokens + the APPLIED scale (doc default or the visitor's
+  // ephemeral pick), applied to the wrapper AND to body-level portals
+  // (FloatingPage) that sit outside the wrapper's [data-skin] subtree —
+  // otherwise the reader would wear the visitor's localStorage theme and
+  // an unscaled size.
   const viewScale =
     typeof doc.theme.viewScale === 'number'
       ? clampViewScale(doc.theme.viewScale)
       : 1;
+  const appliedScale = scalePick ?? viewScale;
   const themeStyle = {
     ...(doc.theme.accentColor
       ? { '--accent': doc.theme.accentColor }
@@ -179,16 +217,16 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
           '--font-custom': doc.theme.fontFamily,
         }
       : {}),
-    ...(viewScale !== 1 ? { zoom: viewScale } : {}),
+    ...(appliedScale !== 1 ? { zoom: appliedScale } : {}),
   } as CSSProperties;
   // zoom multiplies viewport units — divide dvh so the scaled wrapper
   // still fills the window.
   const wrapperMinHeight =
-    viewScale === 1 ? undefined : `calc(100dvh / ${viewScale})`;
+    appliedScale === 1 ? undefined : `calc(100dvh / ${appliedScale})`;
 
   return (
     <main
-      data-skin={doc.skin}
+      data-skin={appliedSkin}
       style={{ ...themeStyle, minHeight: wrapperMinHeight }}
       className="flex min-h-dvh flex-col overflow-x-clip"
     >
@@ -244,6 +282,24 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
               );
             })}
           </div>
+
+          {/* Public visitor controls — live per-visit adjustments, never
+              persisted (ephemeral model, see docstring). */}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <ViewScaleControl
+              value={appliedScale}
+              official={viewScale}
+              overridden={scalePick !== null}
+              onChange={(next) => setScalePick(next === null ? null : clampViewScale(next))}
+            />
+            {!isSkinLocked && (
+              <SkinSwitcher
+                value={skinPick ?? appliedSkin}
+                official={doc.skin}
+                onChange={setSkinPick}
+              />
+            )}
+          </div>
         </div>
 
         {activeTab && (
@@ -276,7 +332,7 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
       {overlayPostId && (
         <FloatingPage
           onClose={() => setOverlayPostId(null)}
-          themeSkin={doc.skin}
+          themeSkin={appliedSkin}
           themeStyle={themeStyle}
         >
           <BlogSite

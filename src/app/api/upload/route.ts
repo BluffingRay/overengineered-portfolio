@@ -2,8 +2,20 @@ import { mkdir, writeFile, unlink, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getUserIdFromSessionCookie, isAdminConfigured } from '@/lib/firebase/admin';
+// 5e-i: the R2 client construction, env-alias resolution, per-user prefix
+// derivation, and the ?list=1 listing logic live in r2Assets so the
+// portfolio delete purge shares the exact same setup. Behavior unchanged.
+import {
+  getR2Bucket,
+  getR2Client,
+  getR2PublicUrl,
+  getUserPrefix,
+  isLocalMode,
+  listAssetKeys,
+  r2Configured,
+} from '@/lib/r2Assets';
 
 /**
  * Asset vault — triad `HOSTED (throwaway R2) / GOOGLE DRIVE BYO / CUSTOM API BYO`.
@@ -21,34 +33,6 @@ import { getUserIdFromSessionCookie, isAdminConfigured } from '@/lib/firebase/ad
  * Accepts multiple env aliases so `R2_ACCOUNT_ID`/`R2_BUCKET_NAME`/`R2_PUBLIC_BASE_URL` just work.
  * The `LOCAL` switch accepts aliases too — `USE_LOCAL`/`STORAGE_LOCAL` act exactly like `LOCAL`.
  */
-function pickEnv(...keys: string[]): string | undefined {
-  for (const k of keys) {
-    const v = process.env[k];
-    if (v && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-function isLocalMode(): boolean | null {
-  const raw = pickEnv('LOCAL', 'USE_LOCAL', 'STORAGE_LOCAL');
-  // FIX-E restores 5b: unset = auto/hybrid — R2 if configured, else local.
-  if (raw == null) return null;
-  const v = raw.toLowerCase().trim();
-  if (['true', '1', 'yes', 'local', 'offline'].includes(v)) return true;
-  if (['false', '0', 'no', 'r2', 'remote'].includes(v)) return false;
-  if (['hybrid', 'auto', 'both', 'coexist', 'mixed'].includes(v)) return null;
-  return null; // FIX-E: unrecognized values degrade to auto, never silently-local
-}
-async function getUserPrefix(request: Request): Promise<string> {
-  // FIX-B/FIX-H: the session cookie is the ONLY identity source. The old
-  // Bearer-token branch decoded an UNVERIFIED base64 payload to pick the
-  // prefix — an unauthenticated prefix spoof (only reachable when admin
-  // was unconfigured, but it undermines ownership checks). Removed.
-  if (isAdminConfigured()) {
-    const uid = await getUserIdFromSessionCookie(request);
-    if (uid) return uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
-  }
-  return pickEnv("R2_USER_PREFIX", "UPLOADS_PREFIX") ?? "dev";
-}
 
 /**
  * FIX-B ownership check: a key belongs to the caller when it sits under
@@ -64,37 +48,6 @@ function ownsKey(key: string, myPrefix: string): boolean {
   const rest = key.slice('uploads/'.length);
   if (rest.includes('/')) return false; // someone else's folder — not ours
   return myPrefix === 'uploads/dev/'; // flat files are dev-owned
-}
-function getR2Endpoint(): string | undefined {
-  const direct = pickEnv('R2_ENDPOINT');
-  if (direct) return direct;
-  const accountId = pickEnv('R2_ACCOUNT_ID', 'CLOUDFLARE_ACCOUNT_ID');
-  if (accountId) return `https://${accountId}.r2.cloudflarestorage.com`;
-  return undefined;
-}
-function getR2Bucket(): string {
-  return pickEnv('R2_BUCKET', 'R2_BUCKET_NAME', 'CLOUDFLARE_R2_BUCKET') ?? 'overengineered-portfolio';
-}
-function getR2PublicBase(): string | undefined {
-  return pickEnv('R2_PUBLIC_URL', 'R2_PUBLIC_BASE_URL', 'R2_PUBLIC_DOMAIN', 'CLOUDFLARE_R2_PUBLIC_URL');
-}
-function getR2Client(): S3Client | null {
-  const endpoint = getR2Endpoint();
-  const accessKeyId = pickEnv('R2_ACCESS_KEY_ID', 'R2_ACCESS_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID');
-  const secretAccessKey = pickEnv('R2_SECRET_ACCESS_KEY', 'R2_SECRET_KEY', 'R2_SECRET_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY');
-  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
-  return new S3Client({ region: 'auto', endpoint, credentials: { accessKeyId, secretAccessKey } });
-}
-function getR2PublicUrl(key: string): string {
-  const pub = getR2PublicBase();
-  if (pub && !pub.includes('.r2.dev')) return `${pub.replace(/\/$/, '')}/${key}`;
-  return `/api/r2/${key}`;
-}
-function r2Configured(): { endpoint: boolean; accessKey: boolean; secretKey: boolean; bucket: string; publicBase: string | null; client: boolean } {
-  const endpoint = !!getR2Endpoint();
-  const accessKey = !!pickEnv('R2_ACCESS_KEY_ID', 'R2_ACCESS_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID');
-  const secretKey = !!pickEnv('R2_SECRET_ACCESS_KEY', 'R2_SECRET_KEY', 'R2_SECRET_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY');
-  return { endpoint, accessKey, secretKey, bucket: getR2Bucket(), publicBase: getR2PublicBase() ?? null, client: !!getR2Client() };
 }
 
 export async function GET(request: Request) {
@@ -126,14 +79,12 @@ export async function GET(request: Request) {
         }
       }
     } catch {}
-    const r2 = isLocalMode() === true ? null : getR2Client();
-    if (r2) {
-      try {
-        const bucket = getR2Bucket();
-        // Caller's own folder only — never a bare uploads/ scan.
-        const res = await r2.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: myPrefix, MaxKeys: 100 }));
-        for (const o of res.Contents ?? []) if (o.Key) out.push({ url: getR2PublicUrl(o.Key), key: o.Key, source: 'r2' });
-      } catch {}
+    // Same R2 setup + scoping the delete purge uses (extracted to
+    // r2Assets): the caller's own folder only, never a bare uploads/
+    // scan, and still a single MaxKeys-100 page — the long-standing
+    // media-library shape.
+    for (const key of await listAssetKeys(myPrefix)) {
+      out.push({ url: getR2PublicUrl(key), key, source: 'r2' });
     }
     const seen = new Set<string>();
     const dedup = out.filter((x) => (seen.has(x.url) ? false : seen.add(x.url)));

@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initialData } from "@/data/initialData";
 import { prepareDocument } from "@/lib/storage";
-import { kvGet, kvPut, HOSTED_PORTFOLIO_KEY } from "@/lib/kv";
+import { kvDelete, kvGet, kvPut, HOSTED_PORTFOLIO_KEY, hasKv, portfolioKeyFor } from "@/lib/kv";
+import { readIndex, removeFromIndex, updateIndexForDoc } from "@/lib/portfolioIndex";
+import { assetPrefixForUid, purgeAssetPrefix } from "@/lib/r2Assets";
 import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
 import { sanitizePortfolioDocument } from "@/lib/sanitize-html";
+import { normalizeSlug } from "@/types/schema";
 import type { PortfolioData } from "@/types/schema";
 export const runtime = "nodejs";
-
-function portfolioKeyFor(uid: string | null): string {
-  if (uid) return `portfolio:${uid}:default`;
-  return HOSTED_PORTFOLIO_KEY;
-}
 
 function filterPublicDoc(doc: PortfolioData | null): PortfolioData | null {
   if (!doc) return doc;
@@ -19,10 +17,6 @@ function filterPublicDoc(doc: PortfolioData | null): PortfolioData | null {
     posts: (doc.posts ?? []).filter((p) => p.status === "published"),
   };
   return filtered;
-}
-
-function hasKv(): boolean {
-  return !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.KV_NAMESPACE_ID && process.env.CLOUDFLARE_API_TOKEN);
 }
 
 // GET /api/portfolio — hosted JSON (KV) with local fallback for Product B.
@@ -86,6 +80,36 @@ export async function PUT(request: NextRequest) {
   }
   try {
     const body = await request.json();
+
+    // 5e-a: slug claim. "Present" = non-empty string — undefined/null/empty/
+    // whitespace-only is absent (no claim, no 400: clearing the slug is never
+    // rejected). Present but invalid rejects loudly (server is authority —
+    // the doc sanitizer silently drops, the API 400s); a non-string truthy
+    // value is also a rejected claim (it can never normalize).
+    let claim: string | null = null;
+    if (typeof body?.slug === "string") {
+      if (body.slug.trim() !== "") {
+        claim = normalizeSlug(body.slug);
+        if (!claim) {
+          return NextResponse.json({ error: "invalid-slug" }, { status: 400 });
+        }
+      }
+    } else if (body?.slug) {
+      return NextResponse.json({ error: "invalid-slug" }, { status: 400 });
+    }
+
+    // 5e-a: slug uniqueness — 409 against the registry BEFORE persist.
+    // Null uid = legacy no-admin path: no identity, no registry interaction.
+    if (claim && uid) {
+      const index = await readIndex();
+      const taken = Object.entries(index).some(
+        ([otherUid, entry]) => otherUid !== uid && entry.slug === claim,
+      );
+      if (taken) {
+        return NextResponse.json({ error: "slug-taken" }, { status: 409 });
+      }
+    }
+
     const doc = prepareDocument(body);
     if (!doc) {
       return NextResponse.json({ error: "Invalid PortfolioData" }, { status: 400 });
@@ -95,8 +119,63 @@ export async function PUT(request: NextRequest) {
     sanitizePortfolioDocument(doc);
     const key = portfolioKeyFor(uid);
     await kvPut(key, JSON.stringify(doc));
+    // 5e-a: maintain the per-uid registry (read-modify-write). Never fails
+    // the save — the next save heals the index; race window accepted alongside
+    // last-save-wins (see src/lib/portfolioIndex.ts).
+    if (uid) {
+      const indexed = await updateIndexForDoc(uid, doc);
+      if (!indexed) {
+        console.warn("[portfolio] index update failed for", uid, "— next save heals");
+      }
+    }
     return NextResponse.json(doc);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
+}
+
+// DELETE /api/portfolio — 5e-i: delete the caller's OWN hosted portfolio
+// (real data deletion: assets -> doc -> registry). Same template as the
+// meta route: hosted-only, session-cookie identity only, nothing to
+// validate — no client input reaches key selection (the uid comes from
+// the verified cookie, never the body), so cross-user deletion is
+// impossible by construction.
+// Layers are independent and run in order: a failed asset purge must NOT
+// abort the doc/registry deletion (the doc + public page are the
+// privacy-critical parts) — every layer's outcome is reported instead.
+export async function DELETE(request: NextRequest) {
+  if (!hasKv() || !isAdminConfigured()) {
+    return NextResponse.json({ error: "not-hosted" }, { status: 503 });
+  }
+  const uid = await getUserIdFromSessionCookie(request as unknown as Request);
+  if (!uid) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const warnings: string[] = [];
+  // (a) Assets — same prefix derivation as /api/upload (shared helpers);
+  // best-effort: failures arrive as a warning, never a throw.
+  const purge = await purgeAssetPrefix(`uploads/${assetPrefixForUid(uid)}/`);
+  if (purge.warning) warnings.push(purge.warning);
+  // (b) Doc — the privacy-critical layer. A real failure here must NOT
+  // read as success (the client would wipe local state while the doc —
+  // and its public page — live on), so this is the only layer that fails
+  // the request; the registry still runs (layers are independent).
+  let deleted = true;
+  try {
+    await kvDelete(portfolioKeyFor(uid));
+  } catch (e) {
+    deleted = false;
+    warnings.push(`The portfolio document could not be deleted (${(e as Error).message}).`);
+  }
+  // (c) Registry — never fails the request (same contract as the save
+  // path): a stale entry just 404s its link until a later write heals it.
+  const removed = await removeFromIndex(uid);
+  if (!removed) {
+    warnings.push("The portfolio registry entry could not be removed.");
+    console.warn("[portfolio] registry removal failed for", uid);
+  }
+  return NextResponse.json(
+    { deleted, assets: purge.assets, ...(warnings.length > 0 ? { warnings } : {}) },
+    { status: deleted ? 200 : 500 },
+  );
 }
