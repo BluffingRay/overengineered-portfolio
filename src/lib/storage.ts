@@ -9,6 +9,7 @@ import {
   MEDIA_POSITIONS,
   MEDIA_SIDES,
   NAME_FITS,
+  normalizeSlug,
   POST_STATUSES,
   HERO_MEDIA_RATIOS,
   HERO_MEDIA_RADIUS,
@@ -582,6 +583,11 @@ export function prepareDocument(parsed: unknown): PortfolioData | null {
     footer: sanitizeFooter(candidate.footer),
     assets: sanitizeAssets(candidate.assets),
     posts,
+    // 5e-a hosted metadata: explicitly override the raw spread so invalid
+    // values never ride through — invalid/dropped = absent = default.
+    slug: normalizeSlug(candidate.slug) ?? undefined,
+    visibility: candidate.visibility === 'public' ? 'public' : undefined,
+    showcase: candidate.showcase === true ? true : undefined,
   };
 
   return isPortfolioData(candidate) ? candidate : null;

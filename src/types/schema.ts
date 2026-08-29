@@ -250,6 +250,39 @@ export interface FooterConfig {
   showSocials?: boolean;
 }
 
+/**
+ * 5e — hosted portfolio metadata. All additive optional root fields, no
+ * version bump. Only NON-defaults are stored (absent = unset slug, private,
+ * not showcased) — same precedent as viewScale ("absent at 1").
+ */
+export const PORTFOLIO_VISIBILITIES = ['private', 'public'] as const;
+
+export type PortfolioVisibility = (typeof PORTFOLIO_VISIBILITIES)[number];
+
+/** Public slug contract: lowercase letters/digits/hyphens, 3–40, no edge hyphens. */
+export const SLUG_PATTERN = /^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])?$/;
+
+/** Route paths that win over /u/<slug> — never assignable as a slug. */
+export const RESERVED_SLUGS = [
+  'u', 'api', 'dashboard', 'write', 'blog', 'admin', 'login', 'signup',
+  'edit', 'assets', 'uploads', 'images', 'public', 'static', '_next',
+  'favicon.ico',
+] as const;
+
+/**
+ * Normalize a user-supplied slug candidate: trim → lowercase → validate
+ * against the pattern + reserved list. Returns the canonical slug or null
+ * (invalid/reserved) — the single source used by the doc sanitizer and the
+ * API's availability/conflict checks.
+ */
+export function normalizeSlug(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const slug = value.trim().toLowerCase();
+  if (!SLUG_PATTERN.test(slug)) return null;
+  if ((RESERVED_SLUGS as readonly string[]).includes(slug)) return null;
+  return slug;
+}
+
 export interface PortfolioData {
   version: 3;
   skin: ThemeSkin;
@@ -267,6 +300,14 @@ export interface PortfolioData {
   assets?: AssetItem[];
   /** Blog posts (budget Medium). Additive optional — no version bump. */
   posts?: Post[];
+  /**
+   * 5e hosted metadata — additive optional root fields, no version bump.
+   * Absent = defaults (slug unset, private, not showcased); only
+   * non-defaults are ever stored.
+   */
+  slug?: string;
+  visibility?: PortfolioVisibility;
+  showcase?: boolean;
 }
 
 export const POST_STATUSES = ['draft', 'published'] as const;
