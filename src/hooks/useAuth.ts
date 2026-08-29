@@ -26,6 +26,10 @@ export function useAuth() {
   // Status fetch resolved? Login-card picking waits on this so the B
   // password card and the A account card never flash in the wrong mode.
   const [hostedLoaded, setHostedLoaded] = useState(false);
+  // Session-cookie fetch resolved? `hosted` (status fetch) resolves BEFORE
+  // the cookie check does — gating the login card on hostedLoaded alone
+  // still flashed it for signed-in hosted users during that gap.
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [bAuthenticated, setBAuthenticated] = useState(() => hasValidSession());
   const [firebaseAuthenticated, setFirebaseAuthenticated] = useState(false);
   const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
@@ -52,11 +56,14 @@ export function useAuth() {
         const authed = data.authenticated === true && typeof data.uid === 'string';
         setFirebaseAuthenticated(authed);
         setFirebaseUid(authed && typeof data.uid === 'string' ? data.uid : null);
-        setFirebaseEmail(authed && typeof data.email === 'string' ? data.email : null);
+        setFirebaseEmail(typeof data.email === 'string' ? data.email : null);
       })
       .catch(() => {
         if (!active) return;
         setFirebaseAuthenticated(false);
+      })
+      .finally(() => {
+        if (active) setSessionLoaded(true);
       });
     return () => {
       active = false;
@@ -141,10 +148,16 @@ export function useAuth() {
     ? firebaseAuthenticated
     : !gated || bAuthenticated;
 
+  // Both auth checks settled — the login card must wait for THIS. The
+  // status fetch (`hosted`) resolves before the cookie check does, and a
+  // card gated only on hostedLoaded flashes for signed-in hosted users.
+  const authReady = hostedLoaded && sessionLoaded;
+
   return {
     enabled,
     hosted,
     hostedLoaded,
+    authReady,
     gated,
     authenticated,
     login,

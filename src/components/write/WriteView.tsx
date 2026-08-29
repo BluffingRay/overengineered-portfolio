@@ -77,6 +77,20 @@ export default function WriteView({
 
   if (!auth.allowEdit) return null;
 
+  // The login card waits for BOTH auth fetches (authReady = status +
+  // session cookie): a signed-in hosted user's cookie check resolves a
+  // beat after the status one, and without this gate the card flashes
+  // before the composer. Same gate as PortfolioView.
+  if (!auth.authReady) {
+    return (
+      <main className="grid min-h-dvh place-items-center">
+        <p className="animate-pulse font-mono text-sm opacity-40">
+          ~/loading…
+        </p>
+      </main>
+    );
+  }
+
   if (auth.gated && !auth.authenticated) {
     // Same rule as PortfolioView: the SERVER's hosted flag picks the
     // card — Firebase client env alone must never activate Product A UI.
