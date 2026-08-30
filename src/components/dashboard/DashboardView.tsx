@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
@@ -46,6 +46,27 @@ import type { PortfolioData, PortfolioVisibility } from '@/types/schema';
  * next save — then resets meta so the Get-started card renders naturally.
  * The client reflects only after the server confirms; any failure keeps
  * the confirm row (and local state) fully intact.
+ *
+ * 5f-b — the portability bridge (pure UI wiring on the 5f-a endpoints):
+ * a "Content" section in the settings panel (Export JSON = read-only
+ * ?full=1 download; Import from file = client-side size/parse guards,
+ * then a confirm disclosure, then POST /api/portfolio/import) plus a
+ * secondary import entry on the Get-started card — the B→A migration
+ * moment. ONE flow/state/disclosure for both entry points. Success
+ * reflects the confirmed doc through the SAME reflect step as
+ * settings-save (meta chip + hero title + local-key hygiene).
+ *
+ * 5g-a — the front door is now the PUBLIC dashboard: the showcase is
+ * browsable signed-out (public paginated feed + Load more) and the
+ * welcome card (where the hero card sits) pitches the product in the
+ * README's own words, toggling the existing FirebaseLoginCard inline.
+ * Sign-in flips `auth.authenticated` — already a dependency of the
+ * meta-load effect — so the authed dashboard (meta + hero card +
+ * caller-excluded feed) swaps in without a reload. /dashboard is A-only
+ * (the page redirects home in B), so the signed-out render is
+ * hosted-only by construction. Signed-out and authed feeds share ONE
+ * ShowcaseSection implementation — same cards, same Load more; only the
+ * empty-state copy differs.
  */
 
 interface PortfolioMeta {
@@ -61,6 +82,12 @@ interface ShowcaseCard {
   title: string | null;
 }
 
+/** 5g-a — client shape of GET /api/portfolio/showcase. The wire body is { entries, page, hasMore }; the client keeps only entries + hasMore (it owns its own page counter). `hasMore` drives the Load more button. */
+interface ShowcasePage {
+  entries: ShowcaseCard[];
+  hasMore: boolean;
+}
+
 function parseMeta(data: unknown): PortfolioMeta {
   const d = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
   return {
@@ -71,19 +98,28 @@ function parseMeta(data: unknown): PortfolioMeta {
   };
 }
 
-function parseShowcase(data: unknown): ShowcaseCard[] {
-  if (!Array.isArray(data)) return [];
+/**
+ * 5g-a — parse the showcase response body (was: a bare array; now the
+ * paginated envelope). Card-item rules unchanged: only entries with a
+ * non-empty slug survive; title passes through only as a non-empty
+ * string. Returns null for a body we don't trust (never cast blindly —
+ * the caller shows its error state).
+ */
+function parseShowcasePage(data: unknown): ShowcasePage | null {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  const rec = data as { entries?: unknown; hasMore?: unknown };
+  if (!Array.isArray(rec.entries)) return null;
   const cards: ShowcaseCard[] = [];
-  for (const item of data) {
+  for (const item of rec.entries) {
     if (typeof item !== 'object' || item === null) continue;
-    const rec = item as { slug?: unknown; title?: unknown };
-    if (typeof rec.slug !== 'string' || rec.slug === '') continue;
+    const entry = item as { slug?: unknown; title?: unknown };
+    if (typeof entry.slug !== 'string' || entry.slug === '') continue;
     cards.push({
-      slug: rec.slug,
-      title: typeof rec.title === 'string' && rec.title !== '' ? rec.title : null,
+      slug: entry.slug,
+      title: typeof entry.title === 'string' && entry.title !== '' ? entry.title : null,
     });
   }
-  return cards;
+  return { entries: cards, hasMore: rec.hasMore === true };
 }
 
 /** First featured_hero's name -> heading, else 'Untitled portfolio'. Same capture order as deriveIndexEntry (the doc is the truth). */
@@ -114,6 +150,9 @@ const INPUT =
 const SEGMENT =
   'rounded-skin border border-[var(--border)] bg-background px-3 py-1.5 text-sm font-medium';
 
+/** 5f-b — import size guard: rejected client-side, before any read or request. */
+const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+
 /** Same shape + stale-response discipline as OnboardingView's slug status (duplication accepted, unification later). */
 type SlugStatus =
   | { kind: 'idle' }
@@ -124,6 +163,118 @@ type SlugStatus =
   | { kind: 'invalid'; for: string }
   | { kind: 'error'; for: string };
 
+/**
+ * 5f-b — the ONE import confirm disclosure, mounted by both entry points
+ * (settings panel + Get-started card — mutually exclusive surfaces, so a
+ * single implementation serves both). Mild styling by design: default
+ * chrome, not the danger zone's red — the server confirm + local-key
+ * hygiene are the real safety. The file-title line always renders:
+ * extractDocTitle has no null path (it falls back to 'Untitled
+ * portfolio'), which stays honest for a parsed-but-not-a-portfolio file.
+ */
+function ImportConfirmBlock(props: {
+  docTitle: string;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-skin border border-[var(--border)] bg-background p-4">
+      <p className="text-sm">
+        Replace your current portfolio with the one in this file? This
+        overwrites everything saved to your account.
+      </p>
+      <p className="font-mono text-xs opacity-60">Found in file: “{props.docTitle}”</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={props.busy}
+          onClick={props.onConfirm}
+          className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:pointer-events-none disabled:opacity-40"
+        >
+          {props.busy ? 'Importing…' : 'Import'}
+        </button>
+        <button
+          type="button"
+          disabled={props.busy}
+          onClick={props.onCancel}
+          className={ACTION_BTN}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 5g-a — the ONE showcase section: the signed-out public dashboard and
+ * the authed dashboard render the exact same markup (same "Other
+ * portfolios" heading, same card grid, same Load more) — only the
+ * empty-state copy differs per surface. Cards are /u/<slug> links opening
+ * in a new tab (5e-h destination rule). Load more shows while `hasMore`,
+ * goes busy via `loadingMore`, and disappears once the feed is exhausted.
+ */
+function ShowcaseSection(props: {
+  items: ShowcaseCard[] | null;
+  error: string | null;
+  emptyCopy: string;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <section className="mt-10">
+      <h2 className="text-xs font-semibold uppercase tracking-wide opacity-50">
+        Other portfolios
+      </h2>
+      {props.error ? (
+        <p role="alert" className={`mt-3 text-sm text-red-500 ${CARD}`}>
+          {props.error}
+        </p>
+      ) : props.items === null ? (
+        <div className={`mt-3 ${CARD}`}>
+          <p className="text-sm opacity-50">Loading…</p>
+        </div>
+      ) : props.items.length === 0 ? (
+        <div className={`mt-3 ${CARD}`}>
+          <p className="text-sm opacity-60">{props.emptyCopy}</p>
+        </div>
+      ) : (
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+          {props.items.map((item) => (
+            <li key={item.slug}>
+              <Link
+                href={`/u/${item.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-skin border border-[var(--border)] bg-surface p-4 hover:border-accent"
+              >
+                <span className="block text-sm font-medium">
+                  {item.title ?? item.slug}
+                </span>
+                <span className="mt-0.5 block font-mono text-xs opacity-50">
+                  /u/{item.slug}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {props.hasMore && props.items !== null && (
+        <button
+          type="button"
+          disabled={props.loadingMore}
+          onClick={props.onLoadMore}
+          className={`mt-3 ${ACTION_BTN}`}
+        >
+          {props.loadingMore ? 'Loading…' : 'Load more'}
+        </button>
+      )}
+    </section>
+  );
+}
+
 export default function DashboardView() {
   const auth = useAuth();
   const router = useRouter();
@@ -133,6 +284,34 @@ export default function DashboardView() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [showcase, setShowcase] = useState<ShowcaseCard[] | null>(null);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);
+  // 5g-a — the feed is paginated: page 1 loads in the meta-load effect
+  // (signed-out public OR authed), Load more appends page+1 in its click
+  // handler. showcasePage tracks the last loaded page (0 = none yet);
+  // the epoch ref lets a stale Load-more response detect that the effect
+  // replaced the feed meanwhile (sign-in swap) and discard itself.
+  const [showcasePage, setShowcasePage] = useState(0);
+  const [showcaseHasMore, setShowcaseHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const feedEpochRef = useRef(0);
+  // 5g-a — the welcome card's inline sign-in toggle. Ephemeral disclosure
+  // state — nothing persisted, nothing in the document.
+  const [signInOpen, setSignInOpen] = useState(false);
+  // 5g-a (review finding) — close the swap window: the meta-load effect
+  // bumps the epoch before fetching, so a Load-more clicked AFTER the
+  // sign-in swap's effect started would capture the new epoch and append
+  // authed page 2 beneath the still-mounted public page 1. Resetting the
+  // feed synchronously when the feed's OWNER changes (the React
+  // "adjust state during render" pattern, same family as UtilityBar's hex
+  // draft) closes that window: from the swap render on, the feed is empty
+  // and belongs to the new owner. The effect then fills it exactly once.
+  const [feedOwner, setFeedOwner] = useState(auth.authenticated);
+  if (feedOwner !== auth.authenticated) {
+    setFeedOwner(auth.authenticated);
+    setShowcase([]);
+    setShowcasePage(0);
+    setShowcaseHasMore(false);
+    setLoadingMore(false);
+  }
   // Hero title: null until the ?full=1 fetch settles — 'Untitled portfolio'
   // is a real loaded value, hence the separate ready flag.
   const [heroTitle, setHeroTitle] = useState<string | null>(null);
@@ -157,6 +336,18 @@ export default function DashboardView() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // 5f-b — Content portability (export/import). All ephemeral: the stash
+  // holds the parsed file for ONE confirm cycle, wrapped as { doc } so a
+  // literal-null JSON body stays distinguishable from "nothing stashed".
+  // Component state only — never written into the document.
+  const [exporting, setExporting] = useState(false);
+  const [importStash, setImportStash] = useState<{ doc: unknown } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  // One file-input ref serves both entry points — the surfaces never
+  // coexist, so it can only ever point at the mounted one.
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
   // Admin chrome is fixed-scale: a view-scale zoom set by a skinned page
   // persists on <html> across SPA navigation (zoom cannot be subtree-
   // overridden — see the pre-paint script's /u/ note), so remove it here;
@@ -165,10 +356,44 @@ export default function DashboardView() {
     document.documentElement.style.removeProperty('zoom');
   }, []);
 
+  // Meta + showcase load — the ONE data-loading effect of this view. Deps
+  // include auth.authenticated: the 5g-a sign-in swap IS this effect
+  // re-running (the welcome card's login flips the flag; FirebaseLoginForm
+  // pushes /dashboard, already here — no navigation, no reload). Signed
+  // out, the same effect loads only the PUBLIC feed (page 1) for the
+  // public dashboard; /api/portfolio/meta is authed-only and is not
+  // fetched. No synchronous setState here — everything applies after
+  // awaits; Load more appends in its own click handler, never here.
   useEffect(() => {
-    if (!auth.authReady || !auth.authenticated) return;
+    if (!auth.authReady) return;
+    // Every effect run replaces the feed — bump the epoch so a Load-more
+    // response still in flight from the previous feed discards itself.
+    feedEpochRef.current += 1;
     let active = true;
     async function load() {
+      // Signed-out hosted visitor: the showcase is publicly browsable
+      // (5g-a) — public feed only; no meta/hero fetch (nothing is "yours"
+      // on this surface).
+      if (!auth.authenticated) {
+        try {
+          const res = await fetch('/api/portfolio/showcase');
+          if (!active) return;
+          const page = res.ok ? parseShowcasePage(await res.json()) : null;
+          if (!active) return;
+          if (page === null) {
+            setShowcaseError('Could not load other portfolios.');
+            return;
+          }
+          setShowcase(page.entries);
+          setShowcasePage(1);
+          setShowcaseHasMore(page.hasMore);
+          setShowcaseError(null);
+        } catch {
+          if (!active) return;
+          setShowcaseError('Could not load other portfolios.');
+        }
+        return;
+      }
       try {
         const [metaRes, showcaseRes] = await Promise.all([
           fetch('/api/portfolio/meta'),
@@ -184,8 +409,15 @@ export default function DashboardView() {
           setMetaError('Could not load your portfolio.');
         }
         if (showcaseRes.ok) {
-          setShowcase(parseShowcase(await showcaseRes.json()));
-          setShowcaseError(null);
+          const page = parseShowcasePage(await showcaseRes.json());
+          if (page !== null) {
+            setShowcase(page.entries);
+            setShowcasePage(1);
+            setShowcaseHasMore(page.hasMore);
+            setShowcaseError(null);
+          } else {
+            setShowcaseError('Could not load other portfolios.');
+          }
         } else {
           setShowcaseError('Could not load other portfolios.');
         }
@@ -207,6 +439,39 @@ export default function DashboardView() {
       active = false;
     };
   }, [auth.authReady, auth.authenticated]);
+
+  // 5g-a — Load more: append the next page in the click handler (user-
+  // initiated; never in an effect). The epoch captured at click detects a
+  // feed replacement by the meta-load effect (sign-in swap) while this
+  // fetch was in flight — a stale append must never mix pages across
+  // feeds, so it discards itself.
+  async function loadMoreShowcase() {
+    if (loadingMore || showcase === null || !showcaseHasMore) return;
+    const epoch = feedEpochRef.current;
+    const targetPage = showcasePage + 1;
+    setLoadingMore(true);
+    setShowcaseError(null);
+    try {
+      const res = await fetch(`/api/portfolio/showcase?page=${targetPage}`);
+      const page = res.ok ? parseShowcasePage(await res.json()) : null;
+      if (epoch !== feedEpochRef.current) return;
+      if (page === null) {
+        setShowcaseError('Could not load more portfolios.');
+        return;
+      }
+      setShowcase((prev) => (prev === null ? page.entries : [...prev, ...page.entries]));
+      setShowcasePage(targetPage);
+      setShowcaseHasMore(page.hasMore);
+    } catch {
+      if (epoch === feedEpochRef.current) {
+        setShowcaseError('Could not load more portfolios.');
+      }
+    } finally {
+      // This handler owns the busy flag it set — clear it even when the
+      // epoch check discarded the response.
+      setLoadingMore(false);
+    }
+  }
 
   async function copyShareLink(slug: string) {
     // Clipboard can reject (permission denied / insecure origin) — keep it
@@ -284,6 +549,32 @@ export default function DashboardView() {
     meta?.slug != null && normalizedSettingsSlug !== null && normalizedSettingsSlug === meta.slug;
   const canSave =
     normalizedSettingsSlug !== null && (availability.kind === 'available' || slugUnchanged) && !saving;
+
+  // 5f-b — the reflect step shared by settings-save and file-import: the
+  // UI updates ONLY from the server's confirmed doc (meta chip, hero
+  // title, saved feedback), and the local keys are touched ONLY when the
+  // editor's local draft is clean — a dirty editor tab's unsaved work is
+  // never clobbered (last-save-wins, accepted MVP limit).
+  function reflectConfirmedDoc(confirmed: PortfolioData) {
+    setMeta({
+      exists: true,
+      slug:
+        typeof confirmed.slug === 'string' && confirmed.slug !== '' ? confirmed.slug : null,
+      visibility: confirmed.visibility === 'public' ? 'public' : 'private',
+      showcase: confirmed.showcase === true,
+    });
+    setHeroTitle(extractDocTitle(confirmed));
+    setHeroTitleReady(true);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 1500);
+    // Local-key hygiene: only a CLEAN local draft may be overwritten.
+    // When the editor tab is dirty, touch NOTHING local — its unsaved
+    // work wins later (last-save-wins, accepted MVP limit).
+    if (!isDirty()) {
+      savePortfolioData(confirmed);
+      recordLastSaved(confirmed);
+    }
+  }
 
   async function handleSaveSettings() {
     if (!meta?.exists) return;
@@ -366,24 +657,7 @@ export default function DashboardView() {
       }
       // Reflect the CONFIRMED doc: chip + share link show the new slug at
       // once, hero title re-extracted from the same source of truth.
-      setMeta({
-        exists: true,
-        slug:
-          typeof confirmed.slug === 'string' && confirmed.slug !== '' ? confirmed.slug : null,
-        visibility: confirmed.visibility === 'public' ? 'public' : 'private',
-        showcase: confirmed.showcase === true,
-      });
-      setHeroTitle(extractDocTitle(confirmed));
-      setHeroTitleReady(true);
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 1500);
-      // Local-key hygiene: only a CLEAN local draft may be overwritten.
-      // When the editor tab is dirty, touch NOTHING local — its unsaved
-      // work wins later (last-save-wins, accepted MVP limit).
-      if (!isDirty()) {
-        savePortfolioData(confirmed);
-        recordLastSaved(confirmed);
-      }
+      reflectConfirmedDoc(confirmed);
       closeSettings();
     } catch {
       setSaveError('Could not save settings — try again.');
@@ -430,6 +704,116 @@ export default function DashboardView() {
     }
   }
 
+  // 5f-b — export is READ-ONLY: download the confirmed doc (?full=1 is
+  // caller-keyed — works with or without a slug; drafts included) and
+  // reflect NOTHING. Blob + object URL, revoked right after the click.
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    setContentError(null);
+    try {
+      const res = await fetch('/api/portfolio?full=1');
+      if (!res.ok) {
+        setContentError('Export failed — try again.');
+        return;
+      }
+      const data: unknown = await res.json();
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data)], { type: 'application/json' }),
+      );
+      const anchor = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      anchor.href = url;
+      anchor.download = meta?.slug
+        ? `portfolio-${meta.slug}-${date}.json`
+        : `portfolio-export-${date}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setContentError('Export failed — try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // 5f-b — pick: size + parse guards BEFORE any request; the parsed
+  // object is stashed until the confirm disclosure resolves it. Clearing
+  // input.value lets the same file be re-picked after a cancel.
+  function handleImportFilePicked(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (!file) return;
+    setContentError(null);
+    if (file.size > IMPORT_MAX_BYTES) {
+      setContentError('That file is too large — exports stay under 5 MB.');
+      return;
+    }
+    void (async () => {
+      try {
+        setImportStash({ doc: JSON.parse(await file.text()) });
+      } catch {
+        setContentError("That file isn't valid JSON.");
+      }
+    })();
+  }
+
+  // 5f-b — confirm: POST the stashed file, reflect ONLY the server's
+  // confirmed doc (same template as the PUT path). Error copy is fixed by
+  // the 5f-a contract: 401 session, 400 not-a-portfolio, else retry.
+  async function handleImportConfirmed() {
+    if (importStash === null || importing) return;
+    setImporting(true);
+    setContentError(null);
+    try {
+      const res = await fetch('/api/portfolio/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(importStash.doc),
+      });
+      if (res.status === 401) {
+        setContentError('Your session expired — sign in again.');
+        return;
+      }
+      if (res.status === 400) {
+        setContentError("That file isn't a portfolio export.");
+        return;
+      }
+      if (!res.ok) {
+        setContentError('Import failed — try again.');
+        return;
+      }
+      const confirmed: PortfolioData | null = await res
+        .json()
+        .then((data: unknown) =>
+          typeof data === 'object' &&
+          data !== null &&
+          Array.isArray((data as PortfolioData).tabs)
+            ? (data as PortfolioData)
+            : null,
+        );
+      if (!confirmed) {
+        setContentError('Import failed — try again.');
+        return;
+      }
+      reflectConfirmedDoc(confirmed);
+      setImportStash(null);
+    } catch {
+      setContentError('Import failed — try again.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // Cancel clears ALL stashed import state — the disclosure's only exit
+  // besides success.
+  function cancelImport() {
+    setImportStash(null);
+    setContentError(null);
+  }
+
   // House splash (hydration-safe): both auth fetches must settle first.
   if (!auth.authReady) {
     return (
@@ -439,17 +823,59 @@ export default function DashboardView() {
     );
   }
 
-  // The front door: the card's own success handler navigates to
-  // /dashboard (FirebaseLoginForm pushes after the server confirms).
+  // 5g-a — the front door is the PUBLIC dashboard: browsable showcase +
+  // a welcome card that pitches the product and toggles the login card
+  // inline. No editor organs, no document data — the feed is the public
+  // endpoint's entries (slug/title only). /dashboard is A-only (the page
+  // redirects home in B), so this branch runs hosted-only by construction.
+  // Sign-in success flips auth.authenticated: the meta-load effect re-runs
+  // (it is keyed on that flag) and the authed dashboard swaps in below —
+  // no manual reload.
   if (!auth.authenticated) {
     return (
-      <main data-admin-theme="" className="flex min-h-dvh flex-col">
-        <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+      <main data-admin-theme="" className="min-h-dvh">
+        <div className="mx-auto w-full max-w-3xl px-6 py-12">
           <header>
             <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-            <p className="mt-1 text-sm opacity-60">Sign in to manage your portfolio.</p>
           </header>
-          <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+
+          {/* The welcome card sits where the hero card sits. One-liner in
+              the README's own words — no invented marketing. */}
+          <section className="mt-8">
+            <div className={`settle-in ${CARD}`}>
+              <p className="font-mono text-lg font-semibold">
+                overengineered-portfolio
+              </p>
+              <p className="mt-2 text-sm opacity-60">
+                A block-based, local-first portfolio CMS. Your entire
+                portfolio is one JSON document — fork it, or host it here.
+              </p>
+              <button
+                type="button"
+                aria-expanded={signInOpen}
+                onClick={() => setSignInOpen((open) => !open)}
+                className="mt-4 rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
+              >
+                {signInOpen ? 'Hide sign-in' : 'Sign in to create yours'}
+              </button>
+            </div>
+            {signInOpen && (
+              <div className="mt-3">
+                <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
+              </div>
+            )}
+          </section>
+
+          {/* Same section implementation as the authed dashboard — only
+              the empty-state copy differs (signed-out pitch). */}
+          <ShowcaseSection
+            items={showcase}
+            error={showcaseError}
+            emptyCopy="No public portfolios yet — yours could be first."
+            hasMore={showcaseHasMore}
+            loadingMore={loadingMore}
+            onLoadMore={() => void loadMoreShowcase()}
+          />
         </div>
       </main>
     );
@@ -491,6 +917,42 @@ export default function DashboardView() {
               >
                 Get started
               </button>
+              {/* 5f-b — the B→A migration moment: the SAME confirm flow as
+                  the panel's Content section (one implementation — the two
+                  surfaces never coexist, so the shared input ref is safe).
+                  Success reflects the confirmed doc and this card swaps to
+                  the hero card without a reload. */}
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => importInputRef.current?.click()}
+                className="mt-2 block text-sm underline underline-offset-2 opacity-60 hover:opacity-100"
+              >
+                Import a portfolio file instead
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                aria-label="Import a portfolio JSON file"
+                onChange={handleImportFilePicked}
+              />
+              {importStash !== null && (
+                <div className="mt-3">
+                  <ImportConfirmBlock
+                    docTitle={extractDocTitle(importStash.doc)}
+                    busy={importing}
+                    onConfirm={() => void handleImportConfirmed()}
+                    onCancel={cancelImport}
+                  />
+                </div>
+              )}
+              {contentError !== null && (
+                <p role="alert" className="mt-3 text-sm text-red-500">
+                  {contentError}
+                </p>
+              )}
             </div>
           ) : (
             <div className={`settle-in mt-3 ${CARD}`}>
@@ -723,6 +1185,56 @@ export default function DashboardView() {
                     )}
                   </div>
 
+                  {/* 5f-b — Content: the portability bridge. Export is a
+                      read-only download of the confirmed doc; import is
+                      confirm-gated and reflects only the server's confirmed
+                      doc. Lives between Save/Cancel and the danger zone
+                      (which stays last). */}
+                  <div className="mt-4 border-t border-[var(--border)] pt-4">
+                    <span className="mb-1 block text-sm font-medium">Content</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={exporting}
+                        onClick={() => void handleExport()}
+                        className={ACTION_BTN}
+                      >
+                        {exporting ? 'Exporting…' : 'Export JSON'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={importing}
+                        onClick={() => importInputRef.current?.click()}
+                        className={ACTION_BTN}
+                      >
+                        Import from file…
+                      </button>
+                      <input
+                        ref={importInputRef}
+                        type="file"
+                        accept=".json,application/json"
+                        className="hidden"
+                        aria-label="Import a portfolio JSON file"
+                        onChange={handleImportFilePicked}
+                      />
+                    </div>
+                    {importStash !== null && (
+                      <div className="mt-3">
+                        <ImportConfirmBlock
+                          docTitle={extractDocTitle(importStash.doc)}
+                          busy={importing}
+                          onConfirm={() => void handleImportConfirmed()}
+                          onCancel={cancelImport}
+                        />
+                      </div>
+                    )}
+                    {contentError !== null && (
+                      <p role="alert" className="mt-3 text-sm text-red-500">
+                        {contentError}
+                      </p>
+                    )}
+                  </div>
+
                   {/* 5e-i — danger zone (lives INSIDE the settings panel,
                       per user: a permanent red button on the hero card is
                       too loud): irreversible deletion behind a typed
@@ -795,48 +1307,17 @@ export default function DashboardView() {
           )}
         </section>
 
-        {/* Other portfolios — the showcase (server-filtered, client reflects). */}
-        <section className="mt-10">
-          <h2 className="text-xs font-semibold uppercase tracking-wide opacity-50">
-            Other portfolios
-          </h2>
-          {showcaseError ? (
-            <p role="alert" className={`mt-3 text-sm text-red-500 ${CARD}`}>
-              {showcaseError}
-            </p>
-          ) : showcase === null ? (
-            <div className={`mt-3 ${CARD}`}>
-              <p className="text-sm opacity-50">Loading…</p>
-            </div>
-          ) : showcase.length === 0 ? (
-            <div className={`mt-3 ${CARD}`}>
-              <p className="text-sm opacity-60">
-                Nothing here yet — portfolios published to the showcase will
-                appear here.
-              </p>
-            </div>
-          ) : (
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-              {showcase.map((item) => (
-                <li key={item.slug}>
-                  <Link
-                    href={`/u/${item.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-skin border border-[var(--border)] bg-surface p-4 hover:border-accent"
-                  >
-                    <span className="block text-sm font-medium">
-                      {item.title ?? item.slug}
-                    </span>
-                    <span className="mt-0.5 block font-mono text-xs opacity-50">
-                      /u/{item.slug}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {/* Other portfolios — the showcase (server-filtered, client
+            reflects). ONE section implementation shared with the signed-out
+            public dashboard (5g-a); the Load more button lives inside it. */}
+        <ShowcaseSection
+          items={showcase}
+          error={showcaseError}
+          emptyCopy="Nothing here yet — portfolios published to the showcase will appear here."
+          hasMore={showcaseHasMore}
+          loadingMore={loadingMore}
+          onLoadMore={() => void loadMoreShowcase()}
+        />
       </div>
     </main>
   );

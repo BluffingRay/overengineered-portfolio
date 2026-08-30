@@ -229,6 +229,63 @@ export function filterShowcase(
 }
 
 /**
+ * 5g-a — pure 1-based pagination for the showcase feed. `page` is clamped
+ * to >= 1 (non-finite/garbage — NaN, 0, negatives, Infinity — becomes 1),
+ * the slice is [(page-1)*size, page*size) and `hasMore` reports whether
+ * another page follows (`end < items.length`). Never mutates `items`.
+ * The route owns the page size (PAGE_SIZE = 24); this helper only does
+ * the page math.
+ */
+export function pageOf<T>(
+  items: T[],
+  page: number,
+  pageSize: number,
+): { items: T[]; page: number; hasMore: boolean } {
+  const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+  const start = (safePage - 1) * pageSize;
+  const end = safePage * pageSize;
+  return {
+    items: items.slice(start, end),
+    page: safePage,
+    hasMore: end < items.length,
+  };
+}
+
+/**
+ * 5g-b — one sitemap feed entry: a public portfolio's slug + last-save
+ * time (the sitemap route turns these into /u/<slug> + lastmod).
+ */
+export interface PublicSitemapEntry {
+  slug: string;
+  lastModified: number;
+}
+
+/**
+ * 5g-b — THE sitemap filter (callers must not re-filter): every PUBLIC
+ * portfolio with a slug is sitemap-worthy — showcase opt-in is NOT
+ * required (the public /u/<slug> render is the product; the gallery is a
+ * separate surface). PURE — reads `index`, never mutates it; returns a
+ * fresh array collected in `Object.entries` order then sorted by
+ * updatedAt desc (stable sort keeps insertion order on ties, same
+ * convention as the showcase). Never throws on malformed entries:
+ * parseIndex already drops those, and the optional chaining here is
+ * belt-and-braces for hand-built indexes.
+ */
+export function publicSitemapEntries(
+  index: PortfolioIndex,
+): PublicSitemapEntry[] {
+  const entries: PublicSitemapEntry[] = [];
+  for (const entry of Object.values(index)) {
+    const slug = entry?.slug;
+    if (typeof slug !== 'string' || slug === '') continue;
+    if (entry?.visibility !== 'public') continue;
+    entries.push({ slug, lastModified: entry?.updatedAt ?? 0 });
+  }
+  entries.sort((a, b) => b.lastModified - a.lastModified);
+  return entries;
+}
+
+/**
  * Registry lookup for the /u/<slug> page: resolve a URL slug to its owning
  * uid, threaded out as `{ uid }` (5e-h — the visibility gate needs the OWNER
  * identity, not just "someone owns this slug"). Delegates to

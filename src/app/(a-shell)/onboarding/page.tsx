@@ -4,6 +4,13 @@ import OnboardingView from '@/components/onboarding/OnboardingView';
 
 export const runtime = 'nodejs';
 
+// 5d-a — admin chrome: absolute neutral title + noindex (same shape as
+// /dashboard — the hosted seed name must not leak into its tags).
+export const metadata = {
+  title: { absolute: 'Onboarding' },
+  robots: { index: false, follow: false },
+};
+
 // 5e-d — A-only route (same gate as /dashboard): without the hosted config
 // (Product B, or LOCAL=true) this bounces home instead of 404ing. The
 // neutral admin theme, the auth front door and the stepper live in

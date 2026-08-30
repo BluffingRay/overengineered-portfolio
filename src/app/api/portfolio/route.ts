@@ -6,18 +6,9 @@ import { readIndex, removeFromIndex, updateIndexForDoc } from "@/lib/portfolioIn
 import { assetPrefixForUid, purgeAssetPrefix } from "@/lib/r2Assets";
 import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
 import { sanitizePortfolioDocument } from "@/lib/sanitize-html";
+import { stripDrafts } from "@/lib/loadHostedDoc";
 import { normalizeSlug } from "@/types/schema";
-import type { PortfolioData } from "@/types/schema";
 export const runtime = "nodejs";
-
-function filterPublicDoc(doc: PortfolioData | null): PortfolioData | null {
-  if (!doc) return doc;
-  const filtered: PortfolioData = {
-    ...doc,
-    posts: (doc.posts ?? []).filter((p) => p.status === "published"),
-  };
-  return filtered;
-}
 
 // GET /api/portfolio — hosted JSON (KV) with local fallback for Product B.
 // 5c: per-user when Firebase session present, else Hosted default. Query:
@@ -59,7 +50,10 @@ export async function GET(request: NextRequest) {
     // clean at read time too, so every response is render-safe.
     sanitizePortfolioDocument(doc);
     if (wantPublic || (!wantFull && !uid && isAdminConfigured())) {
-      return NextResponse.json(filterPublicDoc(doc) ?? doc);
+      // 5f-a — filterPublicDoc moved to the shared stripDrafts (src/lib/
+      // loadHostedDoc.ts): same published-only filter, plus the /u/
+      // page's publishedAt desc sort (the canonical public shape).
+      return NextResponse.json(stripDrafts(doc));
     }
     return NextResponse.json(doc);
   } catch (e) {
