@@ -6,85 +6,435 @@
   },
   "cards": [
     {
-      "id": "card-art-directions",
-      "name": "4 art directions",
-      "description": "One click per block: default, cutie, editorial, riso. Same data, four personalities.",
-      "href": "https://github.com/BluffingRay/overengineered-portfolio",
-      "icon": "palette",
-      "tags": [
-        "design",
-        "per-block"
-      ],
-      "category": "Design",
-      "title": "Four art directions"
-    },
-    {
-      "id": "card-skins",
-      "name": "3 skins",
-      "description": "HUD, notebook, clean — the whole site changes character when you switch.",
-      "href": "https://github.com/BluffingRay/overengineered-portfolio",
-      "icon": "layers",
-      "tags": [
-        "theming"
-      ],
-      "category": "Design",
-      "title": "Three skins"
-    },
-    {
-      "id": "card-rich-text",
-      "name": "Rich text editor",
-      "description": "Bold, tables, task lists, colors, image resizing — a word processor in your portfolio.",
+      "id": "card-fast",
+      "name": "Need it today",
+      "description": "Tabs, blocks, and a design picker instead of a blank file. A real portfolio in one sitting.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "pen-tool",
       "tags": [
-        "tiptap",
-        "writing"
+        "speed"
       ],
-      "category": "Editor",
-      "title": "A real editor"
+      "category": "Why"
     },
     {
-      "id": "card-blog",
-      "name": "Blog engine",
-      "description": "Write posts at /write, publish them here. You are reading its output right now.",
+      "id": "card-nocode",
+      "name": "No code required",
+      "description": "Hosted accounts edit and publish from the browser. Developers can fork the whole thing instead.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "layers",
+      "tags": [
+        "beginner"
+      ],
+      "category": "Why"
+    },
+    {
+      "id": "card-json",
+      "name": "One JSON document",
+      "description": "Your entire portfolio — tabs, blocks, posts, theme — is a single portable file. Export it anywhere.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "star",
       "tags": [
-        "blog",
-        "posts"
+        "portable"
       ],
-      "category": "Content",
-      "title": "A blog engine"
+      "category": "Why"
     },
     {
-      "id": "card-media-vault",
+      "id": "card-media",
       "name": "Media vault",
-      "description": "Upload once, reuse everywhere. Drag-drop, paste URLs, done.",
+      "description": "Upload once, reuse everywhere. Drag, drop, paste a URL — done.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "image",
       "tags": [
-        "uploads"
+        "images"
       ],
-      "category": "Content",
-      "title": "Media vault"
+      "category": "Editor"
     },
     {
-      "id": "card-drag-drop",
-      "name": "Drag and drop everything",
-      "description": "Blocks, cards, tabs, entries — grab the handle and move it. With undo, so go wild.",
+      "id": "card-dnd",
+      "name": "Drag everything",
+      "description": "Blocks, cards, tabs, entries — grab a handle and move it. Undo has your back.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "kanban",
       "tags": [
-        "dnd-kit",
         "ux"
       ],
-      "category": "Editor",
-      "title": "Drag everything"
+      "category": "Editor"
+    },
+    {
+      "id": "card-blogcard",
+      "name": "A real blog",
+      "description": "Write at /write, publish, done. You are reading its output right now.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "palette",
+      "tags": [
+        "writing"
+      ],
+      "category": "Editor"
+    }
+  ],
+  "tabs": [
+    {
+      "id": "tab-start",
+      "label": "1 · Start",
+      "blocks": [
+        {
+          "id": "pg-b-001",
+          "type": "featured_hero",
+          "design": "default",
+          "eyebrow": "~/playground — overengineered portfolio",
+          "name": "Playground",
+          "heading": "Welcome. This is your portfolio's first draft.",
+          "subheading": "You are inside the real editor with a demo document. Edit anything, break anything — nothing is saved, and a refresh resets it all. Five short steps and you will know the whole machine.",
+          "ctaLabel": "Begin the tour →",
+          "ctaHref": "#tab-blocks",
+          "layout": "centered",
+          "roles": [
+            "need a portfolio fast?",
+            "you are in the right place"
+          ],
+          "secondaryAction": {
+            "label": "Fork it on GitHub",
+            "url": "https://github.com/BluffingRay/overengineered-portfolio",
+            "target": "_blank"
+          }
+        },
+        {
+          "id": "pg-b-002",
+          "type": "rich_text",
+          "design": "default",
+          "spacing": "normal",
+          "content": "<h2>Why use this?</h2><p>Because a portfolio should not take a weekend. Three honest pitches:</p><ul><li><strong>Need it today.</strong> Tabs, blocks, and a design picker instead of a blank file — a real portfolio in one sitting.</li><li><strong>No code required.</strong> Hosted accounts edit and publish entirely in the browser; developers can fork the repo and own every line.</li><li><strong>One JSON document.</strong> Everything you build here — tabs, blocks, posts, theme — is a single portable file you can export anywhere.</li></ul>"
+        },
+        {
+          "id": "grid-why",
+          "type": "app_grid",
+          "design": "cutie",
+          "title": "The pitch, in three cards",
+          "apps": [
+            "card-fast",
+            "card-nocode",
+            "card-json"
+          ]
+        },
+        {
+          "id": "pg-b-003",
+          "type": "rich_text",
+          "design": "cutie",
+          "spacing": "normal",
+          "content": "<h2>How this tour works</h2><p>Five tabs across the top, one idea each. You are on <strong>1 · Start</strong>. The big button at the bottom of every step jumps you to the next — or click the tabs yourself. And remember: <strong>everything is editable right now</strong>. Press <strong>Ctrl/Cmd + Shift + E</strong>, open the editor, and poke the very words you are reading.</p>"
+        },
+        {
+          "id": "pg-b-004",
+          "type": "featured_hero",
+          "design": "default",
+          "eyebrow": "the tour — step 1 of 5",
+          "heading": "Done here?",
+          "subheading": "That was step 1 of 5. Next up: blocks.",
+          "ctaLabel": "Next: Blocks →",
+          "ctaHref": "#tab-blocks",
+          "layout": "centered"
+        }
+      ]
+    },
+    {
+      "id": "tab-blocks",
+      "label": "2 · Blocks",
+      "blocks": [
+        {
+          "id": "pg-b-005",
+          "type": "rich_text",
+          "design": "default",
+          "spacing": "normal",
+          "content": "<h2>Everything is a block</h2><p>Hero, marquee, card grid, entry list, rich text, blog, custom HTML — your portfolio is a stack of blocks. Add one with the <strong>+ buttons</strong> in the editor, drag them by the ⠿ handle, delete fearlessly: <strong>Ctrl/Cmd + Z</strong> undoes everything. This tab is just blocks, one after another.</p>"
+        },
+        {
+          "id": "pg-b-006",
+          "type": "marquee",
+          "design": "default",
+          "spacing": "none",
+          "items": [
+            "hero",
+            "marquee",
+            "app grid",
+            "entry list",
+            "rich text",
+            "blog",
+            "custom html"
+          ],
+          "separator": "·",
+          "speed": "normal"
+        },
+        {
+          "id": "el-try",
+          "type": "entry_list",
+          "design": "editorial",
+          "preset": "experience",
+          "title": "The entry list — work history made pretty",
+          "columns": 2,
+          "entries": [
+            {
+              "id": "pg-el-1",
+              "title": "Drag me",
+              "subtitle": "Grab the ⠿ handle in the editor",
+              "meta": "try it"
+            },
+            {
+              "id": "pg-el-2",
+              "title": "Reorder me",
+              "subtitle": "Entries, blocks, cards, tabs — all draggable",
+              "meta": "2024 — now"
+            },
+            {
+              "id": "pg-el-3",
+              "title": "Design me",
+              "subtitle": "Every block wears its own art direction",
+              "meta": "one click"
+            }
+          ]
+        },
+        {
+          "id": "grid-editor",
+          "type": "app_grid",
+          "design": "default",
+          "title": "The card library — edit once, reuse everywhere",
+          "apps": [
+            "card-media",
+            "card-dnd",
+            "card-blogcard"
+          ]
+        },
+        {
+          "id": "pg-b-007",
+          "type": "custom_html",
+          "design": "default",
+          "html": "<section style=\"border:2px dashed currentColor;padding:24px;border-radius:12px;\"><h2 style=\"margin:0 0 8px;font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;\">Custom HTML — the escape hatch</h2><p style=\"margin:0 0 16px;opacity:0.75;\">Raw markup with real CSS, and embeds on approved hosts. You know what this one is.</p><iframe src=\"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ\" title=\"A classic, embed-host approved\" allowfullscreen=\"\" style=\"width:100%;aspect-ratio:16/9;border:0;border-radius:8px;\"></iframe></section>"
+        },
+        {
+          "id": "pg-b-008",
+          "type": "blog",
+          "design": "default",
+          "title": "The blog block — your posts, newest first",
+          "variant": "latest"
+        },
+        {
+          "id": "pg-b-009",
+          "type": "featured_hero",
+          "design": "default",
+          "eyebrow": "the tour — step 2 of 5",
+          "heading": "Done here?",
+          "subheading": "That was step 2 of 5. Next up: designs.",
+          "ctaLabel": "Next: Designs →",
+          "ctaHref": "#tab-designs",
+          "layout": "centered"
+        }
+      ]
+    },
+    {
+      "id": "tab-designs",
+      "label": "3 · Designs",
+      "blocks": [
+        {
+          "id": "pg-b-010",
+          "type": "rich_text",
+          "design": "default",
+          "spacing": "normal",
+          "content": "<h2>One click, new personality</h2><p>Every block picks its own <strong>art direction</strong>: default, cutie, editorial, riso. Same data, four voices. Watch the same marquee block below wear each one — then flip the designs yourself in the editor.</p>"
+        },
+        {
+          "id": "pg-b-011",
+          "type": "marquee",
+          "design": "default",
+          "spacing": "none",
+          "items": [
+            "default — the quiet one"
+          ],
+          "separator": "·",
+          "speed": "slow"
+        },
+        {
+          "id": "pg-b-012",
+          "type": "marquee",
+          "design": "cutie",
+          "spacing": "none",
+          "items": [
+            "cutie — soft and sweet"
+          ],
+          "separator": "♡",
+          "speed": "normal"
+        },
+        {
+          "id": "pg-b-013",
+          "type": "marquee",
+          "design": "editorial",
+          "spacing": "none",
+          "items": [
+            "editorial — the magazine"
+          ],
+          "separator": "—",
+          "speed": "fast"
+        },
+        {
+          "id": "pg-b-014",
+          "type": "marquee",
+          "design": "riso",
+          "spacing": "none",
+          "items": [
+            "riso — the poster print"
+          ],
+          "separator": "//",
+          "speed": "normal"
+        },
+        {
+          "id": "pg-b-015",
+          "type": "featured_hero",
+          "design": "riso",
+          "heading": "Heroes wear designs too",
+          "subheading": "Split layout, riso ink, offset shadow — every hero layout works in every design.",
+          "ctaLabel": "See the entry list below ↓",
+          "ctaHref": "#tab-designs",
+          "thumbnail": "https://picsum.photos/seed/tour-riso/1200/800",
+          "layout": "split"
+        },
+        {
+          "id": "pg-el-cert",
+          "type": "entry_list",
+          "design": "riso",
+          "preset": "certifications",
+          "title": "Riso entry list — three columns",
+          "columns": 3,
+          "entries": [
+            {
+              "id": "pg-c-1",
+              "title": "Certified block flipper",
+              "subtitle": "Design picker",
+              "meta": "step 3"
+            },
+            {
+              "id": "pg-c-2",
+              "title": "Skin switcher",
+              "subtitle": "Top-right menu",
+              "meta": "also try it"
+            },
+            {
+              "id": "pg-c-3",
+              "title": "Accent owner",
+              "subtitle": "Editor toolbar",
+              "meta": "one click"
+            }
+          ]
+        },
+        {
+          "id": "pg-b-016",
+          "type": "featured_hero",
+          "design": "default",
+          "eyebrow": "the tour — step 3 of 5",
+          "heading": "Done here?",
+          "subheading": "That was step 3 of 5. Next up: blog and site settings.",
+          "ctaLabel": "Next: Blog & Site →",
+          "ctaHref": "#tab-blog",
+          "layout": "centered"
+        }
+      ]
+    },
+    {
+      "id": "tab-blog",
+      "label": "4 · Blog & Site",
+      "blocks": [
+        {
+          "id": "pg-b-017",
+          "type": "rich_text",
+          "design": "default",
+          "spacing": "normal",
+          "content": "<h2>Write like you mean it</h2><p>The <strong>Posts</strong> button (top right, while editing) opens the post manager; every post opens in the full-screen writer at <strong>/write</strong> — borderless title, live formatting, editable publish date. Published posts flow into the blog block you saw in step 2. Drafts stay private until you flip them.</p>"
+        },
+        {
+          "id": "pg-b-018",
+          "type": "blog",
+          "design": "editorial",
+          "title": "Fresh from the writer",
+          "variant": "latest"
+        },
+        {
+          "id": "pg-b-019",
+          "type": "rich_text",
+          "design": "editorial",
+          "spacing": "normal",
+          "content": "<h2>Site-wide settings, one panel</h2><p>The <strong>Site</strong> button next to Posts holds the global knobs: skins (<strong>HUD / Notebook / Clean</strong> — also switchable top-right, live, for every visitor), accent color, global font, view scale, socials, and the footer. Try flipping the skin right now — the whole tour re-skins around you.</p>"
+        },
+        {
+          "id": "pg-b-020",
+          "type": "featured_hero",
+          "design": "default",
+          "eyebrow": "the tour — step 4 of 5",
+          "heading": "Done here?",
+          "subheading": "That was step 4 of 5. Next up: shipping.",
+          "ctaLabel": "Next: Ship it →",
+          "ctaHref": "#tab-ship",
+          "layout": "centered"
+        }
+      ]
+    },
+    {
+      "id": "tab-ship",
+      "label": "5 · Ship it",
+      "blocks": [
+        {
+          "id": "pg-b-021",
+          "type": "rich_text",
+          "design": "default",
+          "spacing": "normal",
+          "content": "<h2>Make it real</h2><p>Two doors out of the playground, both starting from what you just learned:</p><ul><li><strong>The fork (Product B).</strong> Fork the repo, run it, and edit for real — then publish by exporting the JSON and pasting it over <em>content/portfolio.json</em> in your fork. Git push, rebuild, live.</li><li><strong>The hosted account (Product A).</strong> Sign up from the hub, onboard in two minutes, press <strong>Save</strong> — your portfolio is at <em>/u/your-name</em> instantly, no rebuilds ever.</li></ul><p>Both speak the same JSON, so you can jump between them whenever you like.</p>"
+        },
+        {
+          "id": "pg-recap",
+          "type": "entry_list",
+          "design": "default",
+          "preset": "experience",
+          "title": "What you just learned",
+          "columns": 1,
+          "entries": [
+            {
+              "id": "pg-r-1",
+              "title": "Everything is a block",
+              "subtitle": "Add, drag, design, undo",
+              "meta": "step 2"
+            },
+            {
+              "id": "pg-r-2",
+              "title": "Four art directions x three skins",
+              "subtitle": "Same data, any voice",
+              "meta": "step 3"
+            },
+            {
+              "id": "pg-r-3",
+              "title": "Blog + site settings",
+              "subtitle": "Write posts, tune the whole site",
+              "meta": "step 4"
+            }
+          ]
+        },
+        {
+          "id": "pg-b-022",
+          "type": "featured_hero",
+          "design": "riso",
+          "eyebrow": "the tour — that's everything",
+          "heading": "Now go build yours.",
+          "subheading": "Refresh this page anytime for a pristine demo — or start your real one today.",
+          "ctaLabel": "Replay the tour →",
+          "ctaHref": "#tab-start",
+          "layout": "centered",
+          "secondaryAction": {
+            "label": "Fork it on GitHub",
+            "url": "https://github.com/BluffingRay/overengineered-portfolio",
+            "target": "_blank"
+          }
+        }
+      ]
     }
   ],
   "footer": {
     "enabled": true,
-    "copyrightText": "Demo portfolio — replace everything with your own. © {year}"
+    "copyrightText": "Playground tour — nothing here is saved. © {year}"
   },
   "posts": [
     {
@@ -100,330 +450,6 @@
       "content": "<p>A practical recipe, from empty fork to published site — plus the fine print worth knowing before you start.</p><h2>1. Get the code running</h2><p>Fork the repository, run npm install and npm run dev, and open localhost:3000. That is the whole setup — the editor works with zero configuration.</p><h2>2. Enter edit mode</h2><p>Visit with ?edit=true or press Ctrl/Cmd + Shift + E. You get the block editor, the hidden Posts and Site tabs, and undo/redo history.</p><h2>3. Fill in your content</h2><p>Add a hero, an app grid, an entry list, a marquee. Give each block its own art direction — the four designs are siblings, so the same data renders four different ways. Reorder by dragging, duplicate cards from the library, set skins, accent color, font, and view scale in Site settings.</p><h2>4. Publish (the fork path)</h2><p>Press Export in the editor toolbar, open the downloaded JSON, and copy-paste its contents over content/portfolio.json in your repo. Commit any images you reference under public/images (uploads are gitignored), then git push. The rebuild is the publish — the site bakes the document at build time.</p><h2>5. Or go hosted</h2><p>Deploy with the Vercel checklist in the README (Firebase + Cloudflare KV + R2), sign up from the hub, onboard, and press Save — visitors get your work at /u/your-name immediately, no rebuilds. The export/import bridge moves an existing portfolio between the two worlds; just remember it carries content, not image bytes.</p><h2>The fine print</h2><ul><li>Editing is desktop-first; mobile renders but is untested for real work.</li><li>Hosted saves are last-save-wins — one editor at a time is the safe assumption.</li><li>The self-hosted password gate is a guardrail, not security; hosted accounts use real Firebase auth.</li><li>If something breaks, open an issue on the repository — a lot of this is young and untested, and reports directly shape the roadmap.</li></ul>",
       "status": "published",
       "publishedAt": "2026-08-29"
-    }
-  ],
-  "tabs": [
-    {
-      "id": "tab-home",
-      "label": "Home",
-      "blocks": [
-        {
-          "id": "block-hero-home",
-          "type": "featured_hero",
-          "design": "default",
-          "eyebrow": "~/demo — overengineered portfolio",
-          "name": "Demo",
-          "heading": "Yes, this whole site is editable.",
-          "subheading": "You are standing inside the demo portfolio. Nothing here is precious — it exists to be poked, dragged, and deleted. Press the big button and we will walk you through it.",
-          "ctaLabel": "Start the tour",
-          "ctaHref": "#tab-guide",
-          "thumbnail": "https://picsum.photos/seed/demo-hero/1200/800",
-          "layout": "centered",
-          "roles": [
-            "Product B — the fork",
-            "Product A — the hosted SaaS"
-          ],
-          "statusBadge": {
-            "enabled": true,
-            "text": "Demo",
-            "color": "blue"
-          },
-          "secondaryAction": {
-            "label": "Fork it on GitHub",
-            "url": "https://github.com/BluffingRay/overengineered-portfolio",
-            "target": "_blank"
-          },
-          "mediaRatio": "landscape",
-          "mediaRadius": "theme",
-          "mediaSize": "md",
-          "mediaFrame": "subtle"
-        },
-        {
-          "id": "rt-home-try-this",
-          "type": "rich_text",
-          "design": "cutie",
-          "spacing": "normal",
-          "content": "<h2>Three things to try right now</h2><p><strong>1. Press Ctrl/Cmd + Shift + E.</strong> Seriously, do it. This entire page just became editable — drag things, break things, there is an undo button.</p><p><strong>2. Click the tabs up top.</strong> Showcase, Guide, Playground — same engine, four art directions, and a playground with custom CSS and a video embed.</p><p><strong>3. Scroll down a little.</strong> The blog is right there — two stories about turning this demo into <em>your</em> portfolio. Go read them, then come back and press that button up top.</p>"
-        },
-        {
-          "id": "block-marquee-home",
-          "type": "marquee",
-          "design": "default",
-          "spacing": "none",
-          "items": [
-            "4 art directions",
-            "3 skins",
-            "one JSON document",
-            "local-first",
-            "rich text",
-            "drag and drop",
-            "a blog engine"
-          ],
-          "separator": "//",
-          "speed": "normal"
-        },
-        {
-          "id": "block-blog-home",
-          "type": "blog",
-          "design": "default",
-          "title": "From the demo blog",
-          "variant": "latest"
-        },
-        {
-          "id": "block-grid-home",
-          "type": "app_grid",
-          "design": "default",
-          "title": "Steal these ideas",
-          "spacing": "normal",
-          "apps": [
-            "card-art-directions",
-            "card-skins",
-            "card-rich-text",
-            "card-blog",
-            "card-media-vault",
-            "card-drag-drop"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab-showcase",
-      "label": "Showcase",
-      "blocks": [
-        {
-          "id": "block-showcase-intro",
-          "type": "rich_text",
-          "design": "default",
-          "content": "<p>Every block picks its own <strong>art direction</strong>. This tab shows the same building blocks wearing all four — <em>default, cutie, editorial, riso</em> — because design is a per-block choice, not a site-wide one.</p>"
-        },
-        {
-          "id": "block-marquee-default",
-          "type": "marquee",
-          "design": "default",
-          "spacing": "none",
-          "items": [
-            "default — quiet and structural",
-            "the original voice",
-            "content first"
-          ],
-          "speed": "normal"
-        },
-        {
-          "id": "block-marquee-cutie",
-          "type": "marquee",
-          "design": "cutie",
-          "spacing": "none",
-          "items": [
-            "cutie — soft, rounded, alive",
-            "blobs and stickers",
-            "playful by default"
-          ],
-          "speed": "slow"
-        },
-        {
-          "id": "block-marquee-editorial",
-          "type": "marquee",
-          "design": "editorial",
-          "spacing": "none",
-          "items": [
-            "editorial — serif and certain",
-            "drop caps and rules",
-            "print energy"
-          ],
-          "speed": "fast",
-          "reverse": true
-        },
-        {
-          "id": "block-marquee-riso",
-          "type": "marquee",
-          "design": "riso",
-          "spacing": "none",
-          "items": [
-            "riso — misprint poster",
-            "hard offsets, mono caps",
-            "ink everywhere"
-          ],
-          "speed": "normal"
-        },
-        {
-          "id": "block-hero-riso",
-          "type": "featured_hero",
-          "design": "riso",
-          "heading": "Same hero, riso direction",
-          "subheading": "Split layout, media pinned right — every hero design supports the full layout API.",
-          "ctaLabel": "Read the guide",
-          "ctaHref": "#tab-guide",
-          "thumbnail": "https://picsum.photos/seed/demo-riso/1200/800",
-          "layout": "split",
-          "mediaSide": "right",
-          "mediaRatio": "landscape",
-          "mediaFrame": "none"
-        },
-        {
-          "id": "block-grid-cutie",
-          "type": "app_grid",
-          "design": "cutie",
-          "title": "Same cards, cutie skin",
-          "apps": [
-            "card-art-directions",
-            "card-skins",
-            "card-drag-drop"
-          ]
-        },
-        {
-          "id": "block-entries-experience",
-          "type": "entry_list",
-          "design": "editorial",
-          "preset": "experience",
-          "title": "Experience — the entry list block",
-          "columns": 2,
-          "entries": [
-            {
-              "id": "entry-exp-1",
-              "title": "Blocks, all of them",
-              "subtitle": "The demo portfolio",
-              "meta": "Phase 6 — Now",
-              "description": "Heroes, grids, marquees, rich text, custom HTML, blog sections, and this entry list — seven block types, four designs each.",
-              "link": "https://github.com/BluffingRay/overengineered-portfolio"
-            },
-            {
-              "id": "entry-exp-2",
-              "title": "One card library",
-              "subtitle": "v3 card library",
-              "meta": "Referenced, not copied",
-              "description": "These grid cards live in a shared library; the Home grid and the cutie grid above reference the same ids. Edit once, propagate everywhere."
-            },
-            {
-              "id": "entry-exp-3",
-              "title": "Presets are labels",
-              "subtitle": "Experience / Education / Certifications",
-              "meta": "Form only",
-              "description": "The preset swaps the form's field labels — the schema never changes. This one uses the Experience labels."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab-guide",
-      "label": "Guide",
-      "blocks": [
-        {
-          "id": "rt-guide-first-time",
-          "type": "rich_text",
-          "design": "cutie",
-          "content": "<h2>First time here? Start exactly here.</h2><p>This tab is the tour. Nothing you do can break the site — the demo resets from one file, and there is undo.</p><p><strong>Step 1.</strong> Press <strong>Ctrl/Cmd + Shift + E</strong> right now. Poof — edit mode. Panels appeared, the page grew little handles.</p><p><strong>Step 2.</strong> Find the <strong>+ Entry List</strong> button at the bottom of the side panel and press it. You just added a block. Change its words. Drag it by the ⠿ handle.</p><p><strong>Step 3.</strong> Feel the power? Press <strong>Ctrl/Cmd + Z</strong> a few times and watch it un-happen. That is undo. Welcome to the rest of the tour below.</p>"
-        },
-        {
-          "id": "block-guide-yours",
-          "type": "rich_text",
-          "design": "default",
-          "content": "<h2>Make it yours</h2><p>Everything below happens in the browser — no code, no restart.</p><ul><li><strong>Edit mode:</strong> visit with ?edit=true or press Ctrl/Cmd + Shift + E</li><li><strong>Per-block design:</strong> every block has a design picker — default, cutie, editorial, riso</li><li><strong>Entry lists:</strong> pick a preset for the form labels and 1–3 columns for the layout</li><li><strong>Site settings:</strong> skins, accent color, global font, and view scale live in the hidden Site tab</li><li><strong>Ordering:</strong> drag and drop blocks, cards, tabs, and entry rows — keyboard reordering works too</li><li><strong>History:</strong> Ctrl/Cmd + Z and Ctrl/Cmd + Shift + Z undo and redo everything</li><li><strong>Media vault:</strong> upload images or paste https URLs, then reference them anywhere</li></ul>"
-        },
-        {
-          "id": "block-guide-publish",
-          "type": "rich_text",
-          "design": "default",
-          "content": "<h2>Publish it</h2><p>Two products share this codebase, and the JSON document is the bridge between them.</p><ul><li><strong>Product B (fork, zero-config):</strong> export the JSON and replace content/portfolio.json, then git push — a rebuild publishes it</li><li><strong>Product A (hosted):</strong> sign in, edit, and press Save in the toolbar — the server sanitizes and persists the document</li><li><strong>Bridge:</strong> the export/import endpoints move a portfolio between the two; only image URLs travel, so externally hosted pictures migrate cleanly</li></ul>"
-        },
-        {
-          "id": "rt-guide-hosted",
-          "type": "rich_text",
-          "design": "editorial",
-          "content": "<h2>Or skip the code entirely — go hosted</h2><p>Everything you are looking at can run as a <strong>hosted service</strong>: sign up, pick a design, and your portfolio is live at <strong>/u/your-name</strong> the moment you press Save. No repository, no rebuilds, no git — edits go straight to the cloud and visitors see them instantly.</p><ul><li><strong>Live in minutes:</strong> deploy once with the README checklist, then the dashboard is your home — create, edit, publish, and browse everyone else's public portfolios in the showcase.</li><li><strong>Onboarding builds it for you:</strong> pick an art direction, type your name, and a real starter portfolio is generated before you ever see the editor.</li><li><strong>Real accounts:</strong> email or Google sign-in, your document stored server-side, images on cloud storage — your work follows you to any device.</li><li><strong>Bring this demo with you:</strong> the export/import bridge moves portfolios between the fork and the hosted product in both directions.</li></ul><p>The fork is for tinkerers; hosted is for everyone else. Same editor, same designs, same document — pick the workflow that fits.</p>"
-        },
-        {
-          "id": "block-guide-replace",
-          "type": "rich_text",
-          "design": "default",
-          "content": "<h2>Replace the demo</h2><p>This entire portfolio is one JSON document — edit it, export it, wipe it. The README documents the demo seed, the hosted setup, and the deploy checklist on <a href=\"https://github.com/BluffingRay/overengineered-portfolio\" target=\"_blank\" rel=\"noopener noreferrer nofollow\">GitHub</a>.</p>"
-        },
-        {
-          "id": "block-entries-curriculum",
-          "type": "entry_list",
-          "design": "default",
-          "preset": "education",
-          "title": "The curriculum",
-          "entries": [
-            {
-              "id": "entry-edu-1",
-              "title": "Editing basics",
-              "meta": "Lesson 1",
-              "description": "Edit mode (?edit=true or Ctrl/Cmd + Shift + E), the block forms, undo and redo, drag-and-drop ordering."
-            },
-            {
-              "id": "entry-edu-2",
-              "title": "Design layer",
-              "meta": "Lesson 2",
-              "description": "The four art directions, skins and the accent color, global font, view scale — and mixing them per block."
-            },
-            {
-              "id": "entry-edu-3",
-              "title": "Content systems",
-              "meta": "Lesson 3",
-              "description": "The blog composer at /write, the media vault, and the card library that app grids reference."
-            },
-            {
-              "id": "entry-edu-4",
-              "title": "Shipping",
-              "meta": "Lesson 4",
-              "description": "The publish loop for forks and hosted accounts, plus the export/import bridge for moving between them."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab-playground",
-      "label": "Playground",
-      "blocks": [
-        {
-          "id": "block-playground-css",
-          "type": "custom_html",
-          "html": "<section style=\"border:2px dashed currentColor;padding:24px;border-radius:12px;\"><h2 style=\"margin:0 0 8px;font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;\">Custom HTML block</h2><p style=\"margin:0 0 16px;opacity:0.75;\">This block takes raw markup with real CSS — scripts stay out, styles stay in. Below: a scoped video embed, which only passes sanitization on approved https embed hosts.</p><iframe src=\"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ\" title=\"A classic, embed-host approved\" allowfullscreen=\"\" style=\"width:100%;aspect-ratio:16/9;border:0;border-radius:8px;\"></iframe></section>"
-        },
-        {
-          "id": "block-playground-marquee",
-          "type": "marquee",
-          "design": "cutie",
-          "spacing": "compact",
-          "items": [
-            "custom CSS",
-            "video embeds",
-            "raw markup",
-            "sanitized, not neutered"
-          ],
-          "speed": "fast"
-        },
-        {
-          "id": "block-entries-certs",
-          "type": "entry_list",
-          "design": "riso",
-          "preset": "certifications",
-          "title": "Certifications — three columns, riso voice",
-          "columns": 3,
-          "entries": [
-            {
-              "id": "entry-cert-1",
-              "title": "Byte-stable by design",
-              "meta": "CERT-001",
-              "description": "Clean documents survive sanitization byte-for-byte — this file round-trips the pipeline untouched."
-            },
-            {
-              "id": "entry-cert-2",
-              "title": "Absent, never null",
-              "meta": "CERT-002",
-              "description": "Optional fields vanish from the stored JSON when unset — no null soup anywhere."
-            },
-            {
-              "id": "entry-cert-3",
-              "title": "URLs are policed",
-              "meta": "CERT-003",
-              "description": "Every link, image, and iframe src is scheme-checked; embeds only on allowlisted hosts."
-            }
-          ]
-        }
-      ]
     }
   ]
 }
