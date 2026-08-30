@@ -64,6 +64,22 @@ function buildHero(input: BuildInitialDocInput): FeaturedHeroBlock {
   };
 }
 
+
+/**
+ * The playground pointer, right under the generated hero: a first-timer's
+ * own portfolio tells them about /playground. The link opens a NEW tab
+ * (their editor session is never navigated away); the href is
+ * root-relative, which the rich-text sanitizer's safe-URL rule allows.
+ */
+function buildPlaygroundPointer(): RichTextBlock {
+  return {
+    id: crypto.randomUUID(),
+    type: 'rich_text',
+    content:
+      '<p>Don\'t know what to do? Open the <a href="/playground" target="_blank" rel="noopener noreferrer">demo playground</a> — it opens in a new tab and nothing you do there is saved.</p>',
+  };
+}
+
 function buildIntro(input: BuildInitialDocInput): RichTextBlock {
   const name = escapeHtml(input.name.trim());
   return {
@@ -84,7 +100,7 @@ export function buildInitialDoc(input: BuildInitialDocInput): PortfolioData {
   const home: Tab = {
     id: crypto.randomUUID(),
     label: 'Home',
-    blocks: [buildHero(input), buildIntro(input)],
+    blocks: [buildHero(input), buildPlaygroundPointer(), buildIntro(input)],
   };
 
   return {
