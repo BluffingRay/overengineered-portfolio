@@ -60,21 +60,44 @@ export async function GET(request: Request) {
     // user's folder); the server derives the scope from the session.
     const myPrefix = `uploads/${await getUserPrefix(request)}/`;
     const out: { url: string; key: string; source: 'r2' | 'local' }[] = [];
-    // Local public/uploads/<myPrefix>/
+    const IMAGE_RE = /\.(png|jpg|jpeg|webp|gif|avif)$/i;
+    // Local branch. In local/hybrid storage modes this walks EVERY folder
+    // under public/uploads (all uid folders + legacy flat files): local
+    // storage is single-machine, and switching an account between R2 and
+    // local scatters its files across prefixes the caller otherwise could
+    // never see. R2 below stays strictly own-prefix (FIX-E2 unchanged).
+    const forcedLocal = isLocalMode() !== false;
     try {
-      const dir = path.join(process.cwd(), 'public', myPrefix);
-      const files = await readdir(dir).catch(() => [] as string[]);
-      for (const f of files) {
-        if (!/^[A-Za-z0-9._-]+$/.test(f)) continue; // no dirs, no weird names
-        if (/\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) out.push({ url: `/${myPrefix}${f}`, key: `${myPrefix}${f}`, source: 'local' });
-      }
-      // Legacy flat files are dev-visible only (same ownership rule as DELETE)
-      if (myPrefix === 'uploads/dev/') {
-        const flat = await readdir(path.join(process.cwd(), 'public', 'uploads')).catch(() => [] as string[]);
-        for (const f of flat) {
-          if (/^[A-Za-z0-9._-]+$/.test(f) && /\.(png|jpg|jpeg|webp|gif|avif)$/i.test(f)) {
-            const key = `uploads/${f}`;
-            if (!out.some((x) => x.key === key)) out.push({ url: `/${key}`, key, source: 'local' });
+      if (forcedLocal) {
+        const walk = async (rel: string, depth: number): Promise<void> => {
+          const entries = await readdir(path.join(process.cwd(), 'public', rel), { withFileTypes: true }).catch(() => []);
+          for (const e of entries) {
+            if (!/^[A-Za-z0-9._-]+$/.test(e.name)) continue;
+            const key = `${rel}${e.name}`;
+            if (e.isDirectory()) {
+              if (depth < 4) await walk(`${key}/`, depth + 1);
+            } else if (IMAGE_RE.test(e.name)) {
+              out.push({ url: `/${key}`, key, source: 'local' });
+            }
+          }
+        };
+        await walk('uploads/', 0);
+      } else {
+        // R2-scoped (LOCAL=false): local list stays own-prefix only.
+        const dir = path.join(process.cwd(), 'public', myPrefix);
+        const files = await readdir(dir).catch(() => [] as string[]);
+        for (const f of files) {
+          if (!/^[A-Za-z0-9._-]+$/.test(f)) continue; // no dirs, no weird names
+          if (IMAGE_RE.test(f)) out.push({ url: `/${myPrefix}${f}`, key: `${myPrefix}${f}`, source: 'local' });
+        }
+        // Legacy flat files are dev-visible only (same ownership rule as DELETE)
+        if (myPrefix === 'uploads/dev/') {
+          const flat = await readdir(path.join(process.cwd(), 'public', 'uploads')).catch(() => [] as string[]);
+          for (const f of flat) {
+            if (/^[A-Za-z0-9._-]+$/.test(f) && IMAGE_RE.test(f)) {
+              const key = `uploads/${f}`;
+              if (!out.some((x) => x.key === key)) out.push({ url: `/${key}`, key, source: 'local' });
+            }
           }
         }
       }
