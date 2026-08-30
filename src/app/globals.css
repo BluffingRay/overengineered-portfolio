@@ -522,6 +522,23 @@ html {
   .caret-blink {
     animation: caret-blink 1.1s steps(1) infinite;
   }
+
+  /* 6-f — the hosted save cluster's dirty state: a soft two-beat nudge so
+     unsaved changes actually register. Reduced-motion users get the
+     static amber border (the cluster itself renders outside this block). */
+  @keyframes save-nudge {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  .save-nudge {
+    animation: save-nudge 1.6s ease-in-out infinite;
+  }
 }
 
 /* Riso — misregistered ink, halftone field, paper grain, duotone. */

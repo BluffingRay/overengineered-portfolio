@@ -89,7 +89,15 @@ export default function PortfolioView() {
 
   async function handleLogout() {
     await auth.logout();
-    setIsEditMode(false);
+    // 6-f: hosted logout lands on /dashboard (the 5e-c front door); B
+    // exits to a clean visitor view. A full reload guarantees the gate
+    // state (and every organ reading it) re-decides from scratch instead
+    // of relying on in-place flag flips.
+    if (auth.hosted) {
+      window.location.href = '/dashboard';
+    } else {
+      window.location.reload();
+    }
   }
   // its own localStorage key (like the skin override). It's a dependency of
   // the keydown effect below, so that listener re-subscribes only when it

@@ -902,7 +902,10 @@ export default function DashboardView() {
                 >
                   fork it on GitHub ↗
                 </a>
-                <Link href="/playground" className="font-mono text-xs opacity-40 hover:opacity-70">
+                <Link
+                  href="/playground"
+                  className="rounded-skin border border-accent/50 px-2.5 py-1 font-mono text-xs font-medium text-accent hover:bg-accent hover:text-background"
+                >
                   Try the demo ↗
                 </Link>
               </div>
@@ -950,17 +953,30 @@ export default function DashboardView() {
           {/* 5g-b (followup) — signed-in users get the same quiet exit as
               the hub's welcome card. 6-e pivot: the how-to link targets
               /playground (the demo is editable there, unsaved). */}
-          <a
-            href="https://github.com/BluffingRay/overengineered-portfolio"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-xs opacity-40 hover:opacity-70"
-          >
-            fork it on GitHub ↗
-          </a>
-          <Link href="/playground" className="font-mono text-xs opacity-40 hover:opacity-70">
-            How to build ↗
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/playground"
+              className="rounded-skin border border-accent/50 px-2.5 py-1 font-mono text-xs font-medium text-accent hover:bg-accent hover:text-background"
+            >
+              How to build ↗
+            </Link>
+            <a
+              href="https://github.com/BluffingRay/overengineered-portfolio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs opacity-40 hover:opacity-70"
+            >
+              fork it on GitHub ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => void auth.logout()}
+              title="End this session and return to the public hub"
+              className="rounded-skin border border-[var(--border)] px-2.5 py-1 font-mono text-xs opacity-60 hover:opacity-100"
+            >
+              Log out
+            </button>
+          </div>
         </header>
 
         {/* Your portfolio — the hero of the page. */}

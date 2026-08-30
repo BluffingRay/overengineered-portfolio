@@ -303,7 +303,11 @@ export default function UtilityBar({
           )}
           {!hostedDoc.loadOffer.active && (
             <div
-              className="flex items-center gap-2 rounded-skin border border-current/15 bg-background/95 px-2.5 py-1.5 shadow-lg backdrop-blur"
+              className={`flex items-center gap-2 rounded-skin border bg-background/95 px-2.5 py-1.5 shadow-lg backdrop-blur ${
+                hostedDoc.dirty
+                  ? 'save-nudge border-amber-500/70 bg-amber-500/10'
+                  : 'border-current/15'
+              }`}
               role="status"
               aria-live="polite"
             >
