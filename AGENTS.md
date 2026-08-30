@@ -269,7 +269,7 @@ Provider switch (same `POST /api/upload -> {url,name}` contract):
 - else -> local `public/uploads/` (Product B fallback, `AGENTS.md:102`)
 
 Quota & future-proofing (so central never bricks future users):
-- **50MB per user** cap in `route.ts` (`10GB / 50MB = 200 classmates` free before central fills). `POST` returns `413 + "Connect your Drive or Custom API to keep uploading"` when `perUserBytes > 50MB || bucketBytes > 8GB` *(enforcement deferred until per-user `uid` from 5c; single-tenant `dev` not capped in 5b)*.
+- - **50MB per user** cap in `route.ts` — ENFORCED (2026-08-31, 6-f): `getUsedBytes(prefix)` in r2Assets (paginated R2 Content-Length sum / local fs walk) + `UPLOAD_QUOTA_BYTES` check on POST → `413` with a media-vault hint; shared `dev` prefix uncapped; listing hiccup reads as 0 = allow (quota never hard-blocks on flake).
 - Old R2/Drive/Custom/`/uploads/` URLs coexist — no migration, no version bump.
 
 TODOs (Phase 5b) — CLOSED ✅:

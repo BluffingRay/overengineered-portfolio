@@ -121,7 +121,7 @@ On hosted deploys, new users who sign up get the **onboarding** flow (pick a des
 - **Auth is a guardrail, not a fortress** — the B session token is opaque/unsigned and client-writable; for real auth use the hosted Firebase shell.
 - **Last-save-wins** document persistence (see above); no conflict detection.
 - **KV index race window**: the `portfolios:index` registry is read-modify-write, so concurrent first-saves can race (the next save heals it).
-- **Single-tenant `dev` uploads are uncapped** (no per-user quota without a session).
+- **Upload quota: 50MB per account** on hosted deploys (the `dev` prefix on a local single-tenant B setup stays uncapped). Full quota? Delete uploads from the media vault or host images externally.
 - **The bridge migrates URLs, not bytes** (see Demo seed above).
 
 ## Vercel deploy checklist

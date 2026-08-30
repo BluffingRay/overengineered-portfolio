@@ -22,7 +22,7 @@
  * shared `dev` prefix, by design.
  */
 import path from 'node:path';
-import { rm } from 'node:fs/promises';
+import { readdir, rm, stat } from 'node:fs/promises';
 import {
   DeleteObjectsCommand,
   ListObjectsV2Command,
@@ -215,5 +215,62 @@ export async function purgeAssetPrefix(prefix: string): Promise<AssetPurgeResult
     const message = (e as Error).message ?? 'unknown error';
     console.warn(`[r2Assets] local purge failed for ${prefix}:`, message);
     return { assets: 'skipped', warning: `Uploaded files could not be deleted (${message}).` };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5b upload quota — 50MB per user, enforced at upload time. The speced cap
+// was deferred until per-user uids existed (5c); this closes it. The
+// shared `dev` prefix (Product B local / anonymous) stays uncapped — it is
+// single-tenant by design.
+// ---------------------------------------------------------------------------
+
+export const UPLOAD_QUOTA_BYTES = 50 * 1024 * 1024;
+
+/** Bytes currently stored under `prefix` (R2 Content-Length sum with
+ * pagination, or a local recursive walk). Failures read as 0 — the quota
+ * check must never hard-block uploads on a listing hiccup. */
+export async function getUsedBytes(prefix: string): Promise<number> {
+  const r2 = isLocalMode() === true ? null : getR2Client();
+  if (r2) {
+    try {
+      const bucket = getR2Bucket();
+      let token: string | undefined;
+      let total = 0;
+      do {
+        const res = await r2.send(
+          new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            MaxKeys: 1000,
+            ContinuationToken: token,
+          }),
+        );
+        for (const o of res.Contents ?? []) total += o.Size ?? 0;
+        token = res.IsTruncated ? res.NextContinuationToken : undefined;
+      } while (token);
+      return total;
+    } catch {
+      return 0;
+    }
+  }
+  try {
+    const root = path.join(process.cwd(), 'public', prefix);
+    let total = 0;
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory() && depth < 4) await walk(full, depth + 1);
+        else if (entry.isFile()) {
+          const st = await stat(full).catch(() => null);
+          total += st?.size ?? 0;
+        }
+      }
+    };
+    await walk(root, 0);
+    return total;
+  } catch {
+    return 0;
   }
 }

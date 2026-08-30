@@ -11,10 +11,12 @@ import {
   getR2Bucket,
   getR2Client,
   getR2PublicUrl,
+  getUsedBytes,
   getUserPrefix,
   isLocalMode,
   listAssetKeys,
   r2Configured,
+  UPLOAD_QUOTA_BYTES,
 } from '@/lib/r2Assets';
 
 /**
@@ -136,9 +138,10 @@ const ALLOWED_TYPES: Record<string, string> = {
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  let sessionUid: string | null = null;
   if (isAdminConfigured()) {
-    const uid = await getUserIdFromSessionCookie(request);
-    if (!uid) return NextResponse.json({ error: "unauthorized — sign in to upload" }, { status: 401 });
+    sessionUid = await getUserIdFromSessionCookie(request);
+    if (!sessionUid) return NextResponse.json({ error: "unauthorized — sign in to upload" }, { status: 401 });
   }
   let file: File | null = null;
   try {
@@ -154,6 +157,22 @@ export async function POST(request: Request) {
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image is larger than 8MB" }, { status: 413 });
 
   const prefix = `uploads/${await getUserPrefix(request)}/`;
+  // 5b quota closed: 50MB per user (the speced cap, deferred until 5c
+  // per-user uids existed). The shared single-tenant `dev` prefix is
+  // uncapped by design. The used-bytes read failing = 0 = allow (the
+  // quota never hard-blocks on a listing hiccup).
+  if (prefix !== 'uploads/dev/') {
+    const used = await getUsedBytes(prefix);
+    if (used + file.size > UPLOAD_QUOTA_BYTES) {
+      return NextResponse.json(
+        {
+          error:
+            'Upload quota reached (50MB per account) — delete some uploads in the media vault or host images externally.',
+        },
+        { status: 413 },
+      );
+    }
+  }
   const id = randomUUID();
   const key = `${prefix}${id}${ext}`;
   const forced = isLocalMode();
