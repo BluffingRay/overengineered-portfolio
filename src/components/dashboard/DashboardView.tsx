@@ -902,8 +902,8 @@ export default function DashboardView() {
                 >
                   fork it on GitHub ↗
                 </a>
-                <Link href="/u/demo" className="font-mono text-xs opacity-40 hover:opacity-70">
-                  How to build ↗
+                <Link href="/playground" className="font-mono text-xs opacity-40 hover:opacity-70">
+                  Try the demo ↗
                 </Link>
               </div>
             </div>
@@ -948,8 +948,8 @@ export default function DashboardView() {
             <span className="caret-blink text-accent">▌</span>
           </h1>
           {/* 5g-b (followup) — signed-in users get the same quiet exit as
-              the hub's welcome card. 6-d: the how-to link targets /u/demo,
-              where the demo seed's how-to post lives (floating reader). */}
+              the hub's welcome card. 6-e pivot: the how-to link targets
+              /playground (the demo is editable there, unsaved). */}
           <a
             href="https://github.com/BluffingRay/overengineered-portfolio"
             target="_blank"
@@ -958,7 +958,7 @@ export default function DashboardView() {
           >
             fork it on GitHub ↗
           </a>
-          <Link href="/u/demo" className="font-mono text-xs opacity-40 hover:opacity-70">
+          <Link href="/playground" className="font-mono text-xs opacity-40 hover:opacity-70">
             How to build ↗
           </Link>
         </header>

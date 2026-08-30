@@ -200,52 +200,6 @@ export default function UtilityBar({
         </div>
       )}
 
-      {/* 5e-g, reworked per user — save status lives IN the toolbar row:
-          the full-width strip shoved the whole chrome around on every
-          dirty↔clean flip. Now it's one inline group in the same spot in
-          both states (only the 11px text swaps), so nothing reflows. The
-          5e-e offer banner keeps precedence — while it's up it IS the
-          explanation, so the status group stays hidden and Save waits
-          underneath. */}
-      {hosted && !hostedDoc.loadOffer.active && (
-        <div className="flex items-center gap-1.5" role="status" aria-live="polite">
-          {hostedDoc.dirty ? (
-            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-              ● Not saved — visitors see your last saved portfolio
-            </span>
-          ) : hostedDoc.state.status === 'error' ? (
-            <span className="text-[11px] font-medium text-red-500">
-              {hostedDoc.state.message}
-            </span>
-          ) : (
-            <span className="text-[11px] opacity-50">
-              Saved {savedAgoLabel(hostedDoc.savedAt) ?? '—'}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => void hostedDoc.save()}
-            disabled={!hostedDoc.dirty || hostedDoc.state.status === 'saving'}
-            title={
-              hostedDoc.dirty
-                ? 'Save to your hosted portfolio'
-                : 'No changes to save'
-            }
-            className={`${BTN} border-accent/60 text-accent hover:bg-accent hover:text-background disabled:pointer-events-none disabled:opacity-40`}
-          >
-            {hostedDoc.state.status === 'saving' ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      )}
-
-      {/* 5e-c — dashboard entry point, authenticated hosted users only.
-          B mode (hosted=false) renders nothing new. */}
-      {hosted && authenticated && (
-        <Link href="/dashboard" className={BTN}>
-          Dashboard
-        </Link>
-      )}
-
       <div className="flex items-center gap-1.5">
         <button
           type="button"
@@ -307,6 +261,86 @@ export default function UtilityBar({
         <p role="alert" className="w-full text-xs text-red-500">
           {importError}
         </p>
+      )}
+
+      {/* 6-f — hosted save status + Dashboard live in a FIXED bottom-right
+          cluster instead of the toolbar row: the status text changes
+          width on every dirty<->clean flip, and inline placement shoved
+          the accent picker / Edit button around. Fixed = the toolbar
+          never reflows. The transient load-offer banner moved here too
+          (it is wide and self-removing; up top it shoved everything). */}
+      {hosted && (
+        <div className="fixed bottom-3 right-3 z-50 flex max-w-[min(92vw,26rem)] flex-col items-end gap-1.5">
+          {hostedDoc.loadOffer.active && (
+            <div className="rounded-skin border border-amber-500/50 bg-amber-500/10 p-2.5 shadow-lg">
+              <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                This draft isn&apos;t from the cloud
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void hostedDoc.loadOffer.load()}
+                  disabled={hostedDoc.loadOffer.loading}
+                  className="rounded-skin bg-accent px-2.5 py-1 text-xs font-semibold text-background hover:opacity-80 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  {hostedDoc.loadOffer.loading ? 'Loading…' : 'Load your portfolio'}
+                </button>
+                <button
+                  type="button"
+                  onClick={hostedDoc.loadOffer.dismiss}
+                  disabled={hostedDoc.loadOffer.loading}
+                  className={BTN}
+                >
+                  Keep this draft
+                </button>
+              </div>
+              {hostedDoc.loadOffer.error && (
+                <p role="alert" className="mt-1.5 text-[11px] font-medium text-red-500">
+                  {hostedDoc.loadOffer.error}
+                </p>
+              )}
+            </div>
+          )}
+          {!hostedDoc.loadOffer.active && (
+            <div
+              className="flex items-center gap-2 rounded-skin border border-current/15 bg-background/95 px-2.5 py-1.5 shadow-lg backdrop-blur"
+              role="status"
+              aria-live="polite"
+            >
+              {hostedDoc.dirty ? (
+                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  ● Not saved
+                </span>
+              ) : hostedDoc.state.status === 'error' ? (
+                <span className="text-[11px] font-medium text-red-500">
+                  {hostedDoc.state.message}
+                </span>
+              ) : (
+                <span className="text-[11px] opacity-50">
+                  Saved {savedAgoLabel(hostedDoc.savedAt) ?? '—'}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => void hostedDoc.save()}
+                disabled={!hostedDoc.dirty || hostedDoc.state.status === 'saving'}
+                title={
+                  hostedDoc.dirty
+                    ? 'Save to your hosted portfolio'
+                    : 'No changes to save'
+                }
+                className="rounded-skin border border-accent/60 bg-background px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-background disabled:pointer-events-none disabled:opacity-40"
+              >
+                {hostedDoc.state.status === 'saving' ? 'Saving…' : 'Save'}
+              </button>
+              {authenticated && (
+                <Link href="/dashboard" className={BTN}>
+                  Dashboard
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
