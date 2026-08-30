@@ -126,6 +126,11 @@ Migrating **your real content** (B -> A or between accounts): the dashboard's **
 
 ## Limitations
 
+- **A lot of this is untested.** The project moves fast and many paths
+  (browsers, devices, flows, edge-case documents) have never been
+  exercised. If you hit a bug, please **open an issue at
+  https://github.com/BluffingRay/overengineered-portfolio/issues** —
+  include what you did, what you expected, and what happened.
 - **Mobile view is not properly tested yet** — the product is
   desktop-first; phones render everything but expect rough edges
   (editor density, drag-and-drop touch targets, dashboard layout).
