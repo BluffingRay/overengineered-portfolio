@@ -618,6 +618,31 @@ seed is authored after the block exists:
   title = "overengineered-portfolio — build yours" signed-out ("Dashboard"
   signed-in); caret blink (`caret-blink`, steps(1)) defined inside the
   prefers-reduced-motion: no-preference block (static for reduced motion).
+- **6-e — Demo playground — DONE ✅ (2026-08-31, post-pivot):** the
+  first 6-e (sandbox flag through the storage seam on /u/demo) was
+  DISCARDED — review caught re-seed-on-reload wiping visitor edits +
+  stale-flag hijacking the owner's editor, and live testing showed the
+  hosted-only /u/demo had no B counterpart. PIVOT (user direction):
+  /u/demo + seed account + RESERVED_SLUGS 'demo' + the whole 6-b
+  seed machinery REMOVED; replaced by a self-contained **/playground**
+  (works identically in A and B, no auth, no config):
+  `src/playground/` owns everything — in-memory store seeded from its
+  OWN `content/playground.json` (separate from the B publish file),
+  never touching web storage/network; a refresh is the reset. The ONE
+  new seam: `usePortfolioData` reads a `PortfolioStore` from context
+  (null = the global localStorage store, old behavior byte-identical)
+  — the entire editor tree (BlockList/forms/TabsManager/usePosts) runs
+  on the playground store unchanged via `PortfolioStoreProvider`.
+  Onboarding's generated portfolio carries a pointer block under the
+  hero linking /playground in a new tab. Verify:
+  scripts/playground-verify.ts (19 pure checks) ALL PASS +
+  fix-a/6-a/6-b/6-c/5e-a regressions ALL PASS; SSR + browser
+  isolation spot-checks. Review loop for the discarded take: 2
+  blockers (re-seed data loss, stale-flag hijack) — moot after the
+  pivot, but they define the design constraints the new architecture
+  satisfies by construction (no shared state at all). NOTE: the
+  user's dev server was accidentally killed during verification
+  (pkill mishap) — respawned by the user with their own env.
 - **6-d — "How to build" link — DONE ✅ (2026-08-30, shipped with 6-b):**
   the quiet mono `How to build ↗` link (next/link → `/u/demo`, where the
   demo seed's how-to post lives; floating reader opens it) sits in BOTH
