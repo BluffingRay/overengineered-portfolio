@@ -600,6 +600,7 @@ export default function PortfolioView() {
                   posts={publishedPosts}
                   onNavigate={handleNavigate}
                   onOpenPost={(id) => setOverlay({ kind: 'read', id })}
+                  showMediaPlaceholders={canEdit}
                 />
               ))}
             </div>

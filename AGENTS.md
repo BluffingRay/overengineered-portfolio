@@ -468,7 +468,37 @@ hygiene. Locked decisions from the planning discussion:
   design-independent and locked once.
 - **Keyboard-focus audit absorbed** into this phase (cheap, high-value).
 
-Chunks (build in order; each: spec -> build -> verify -> tick):
+Chunks (build in order; each: spec -> build -> verify -> tick).
+**Order update (user, 2026-08-30, mid-run): 6-c builds BEFORE 6-b** —
+the demo portfolio must showcase the new entry-list block, so the demo
+seed is authored after the block exists:
+
+- **6-a — Rendering bug sweep — DONE ✅ (2026-08-30):** root cause was
+  RisoHero's centered branch dropping the media element entirely on
+  `mediaPosition: 'bottom'` (the default) — fixed by mirroring the top
+  branch; the sweep's code-read matrix (4 designs x 3 layouts x media
+  side/position/thumb) found no other broken cell and now lives in
+  docs/specs/6-a-rendering-sweep.md as the regression checklist. The
+  empty-thumbnail placeholder became **edit-mode-only** (orchestrator
+  decision within the sweep's mandate): `showMediaPlaceholders` threads
+  `canEdit` from PortfolioView through BlockRenderer -> FeaturedHeroBlock
+  -> all 4 hero designs; absent prop (HostedPortfolioView/visitors) =
+  hidden, so public centered/split heroes render copy-only (ManagedImage's
+  broken-image fallback stays public). Marquee few-items loop fixed by
+  repetition + count-scaled duration: shared `MarqueeTrack` owns
+  `.marquee-track` + grow-only `count = max(4, ceil(container/run))`
+  (ResizeObserver, no setState in effect bodies) and
+  `--marquee-duration = SPEED_SECONDS[speed] x count`, so `-50%` always
+  travels a filled half and per-item speed stays content-constant —
+  zero globals.css changes, designs stay thin skins (marquee pattern).
+  Verify: tsc/eslint clean, `npx tsx scripts/6-a-verify.ts` ALL PASS
+  (53 checks incl. 108k-combo seamlessness sweep), dev-server SSR +
+  browser matrix gates PASS (one React key bug on the new run elements
+  found and fixed in-gate); **prod build skipped at user request**
+  (lightweight path: tsc + SSR curls + editor/public renders; run a
+  build before hosted deploys). Test artifacts: `6a-gate@test.local` +
+  slug `sweep-gate` (public matrix render at /u/sweep-gate) — prune.
+  Details: docs/specs/6-a-rendering-sweep.md.
 
 - **6-a — Rendering bug sweep:** known bugs — (1) riso hero
   bottom-position image doesn't show; sweep that bug CLASS across designs
@@ -483,6 +513,42 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
   the track guaranteed wider than the viewport (repeat items until wide
   enough, or animate by track width instead of a fixed -50%) — verify
   with 1..6 items at narrow and wide viewports.
+- **6-b — Repo hygiene + demo seed — DONE ✅ (2026-08-30):** built as
+  planned below + user creative-freedom direction (use the site to its
+  full potential: marketing + showcase + guide + platform power plays
+  incl. the rickroll embed). **Shipped:** `content/portfolio.json` is
+  now a 4-tab demo doc (Home marketing / Showcase: 4 marquee skins +
+  riso split hero + cutie grid reusing 3 Home card ids + editorial
+  entry_list columns:2 / Guide: 3 teaching rich_text blocks + education
+  entry list / Playground: styled custom_html + youtube-nocookie
+  rickroll iframe + riso certifications columns:3); all 7 block types,
+  remote picsum images only, no "raymar", byte-stable through
+  prepareDocument AND DOMPurify (two drifts caught + fixed in-gate:
+  post key order, bare `allowfullscreen`). `RESERVED_SLUGS` += 'demo';
+  `normalizeSlug(value, allowReserved?)` + `prepareDocument` opts
+  threading; PUT `/api/portfolio` demo-uid exemption (module-cached
+  `getDemoUid` via DEMO_EMAIL, failures NOT cached — retry per request;
+  non-demo callers still 400; availability route still reports
+  reserved). `scripts/seed-demo.ts` (env-or-raw-.env.local creds, never
+  printed; provisioning falls through on BOTH auth/user-not-found AND
+  auth/invalid-credential — enumeration protection (kept ON, 5c) makes
+  the latter the real-world code, caught live in E2E; email-already-
+  in-use → wrong-password hint) → session mint → PUT slug demo/public/
+  showcased → asserts /u/demo 200 + showcase listing → writes gitignored
+  `demo-credentials.local.txt` (+ .gitignore entry) on success. README
+  rewritten as the operations manual (stack table, quickstart,
+  architecture, demo seed + bridge content-not-bytes limitation,
+  quirks, limitations, Vercel checklist). Verify: tsc/eslint clean,
+  `6-b-verify` ALL PASS (44 checks incl. full-pipeline round-trip),
+  fix-a (new seed byte-stability) + 5d-a/b + 5e-a + 5f-a ALL PASS,
+  review-only pass 0 blockers (2 actionable risks fixed: negative-cache
+  + pipeline round-trip assertion), auth-half E2E live (provision →
+  sign-in → session → PUT 400 invalid-slug + hint; nothing persisted).
+  **PENDING (user-side): one dev-server restart with DEMO_EMAIL set +
+  `npx tsx scripts/seed-demo.ts` to claim /u/demo** (orchestrator may
+  not restart the user's server; route reads .env values at boot).
+  Test artifact: Firebase user `6b-demo@test.local` — prune. Details:
+  docs/specs/6-b-demo-seed.md.
 - **6-b — Repo hygiene + demo seed:** `content/portfolio.json` becomes a
   committed DEMO portfolio (fresh clones + buggy dev runs show it, not
   the owner's name — the owner's real doc lives in their hosted account,
@@ -493,12 +559,21 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
   from env). README rewrite: architecture (one core, two shells, storage
   seam), quirks ($-in-.env, one-dev-server, WSL2 seriality, ephemeral
   Vercel uploads, draft model + last-save-wins), limitations, Vercel
-  deploy checklist. DEMO CREDENTIALS (user requirement): the seed script
+  deploy checklist. LIMITATION THAT MUST BE DOCUMENTED (user, 2026-08-30):
+  the 5f export/import bridge migrates CONTENT, not image bytes — an
+  A↔B import carries image URL references that break across products (A's
+  `/api/r2/...` proxy needs A's R2 env and dies on the fork; B's
+  `/uploads/...` files never travel to the host). Image-heavy portfolios
+  are therefore not recommended to migrate unless the doc uses absolute,
+  externally-hosted image URLs (the user's own links) — otherwise
+  re-upload via the media vault after importing. Candidate fixes
+  (import-time asset ingest with a sourceBaseUrl; absolute-izing exports)
+  are parked, not planned. DEMO CREDENTIALS (user requirement): the seed script
   must hand the user the demo account's email + password — write them to
   a gitignored local txt (e.g. `demo-credentials.local.txt`, add the
   .gitignore entry) and print the path; NEVER commit the credentials or
   put them in a public file (anyone with them can deface /u/demo).
-- **6-c — Entry-list card (work experience et al):** ONE new block
+- **6-c — Entry-list card — DONE ✅ (2026-08-30):** ONE new block
   variant — entries `{id, title, subtitle?, meta? (period), description?,
   link?}` (optional fields, render-only-what-exists) — sharing ONE
   skeleton skinned by the existing default/cutie/editorial/riso layers.
@@ -506,6 +581,28 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
   swaps LABELS only, never schema — no mega-generic block, no duplicate
   block types. Per-block `design` picker rides the existing BLOCK_DESIGNS
   machinery. A11y keyboard-focus audit lands in this chunk.
+  **Shipped:** full variant wiring (schema `EntryListBlock` +
+  `ENTRY_LIST_PRESETS`, `sanitizeEntryList` in prepareDocument with
+  trim/drop/caps/dup-id-drop [dnd-key safety] + absent-never-null,
+  entry-link neutralization in sanitizePortfolioDocument [unsafe scheme
+  loses the field], exhaustive dispatcher + shared `EntryListSkeleton`
+  with 4 thin skins — riso numbers entries 01/02 via a `number` slot,
+  zero new decoration CSS) + `EntryListForm` (preset pills swap
+  `ENTRY_LIST_FIELD_LABELS` only, dnd reorder keyed on entry ids,
+  echo-guard on all five fields) + one token-driven keyboard-focus
+  audit rule (`@layer base` `:focus-visible` ring on interactive
+  elements; ProseMirror exception intact). Form deviates from the spec's
+  "dropdown" wording as segmented pills (house pattern, same
+  labels-only contract). Verify: tsc/eslint clean, `npx tsx
+  scripts/6-c-verify.ts` ALL PASS (50 checks incl. renderToString for
+  all 4 skins + URL neutralization), regressions 6-a/fix-a/5e-a/5d-a
+  ALL PASS, dev-server SSR `/?edit=true` 200; review-only pass 0
+  blockers / 3 risks (protocol-relative `//host` passes the PRE-EXISTING
+  isSafeUrl — shared with hero CTA/card hrefs, fix centrally if ever;
+  entry-link XSS closed for hosted docs only, B-localStorage path is
+  prepareDocument-only per house position; a never-titled new entry is
+  dropped at persist time = silent-but-editor-visible). Details:
+  docs/specs/6-c-entry-list.md.
 - **Deferred (repetitions once 6-c proves out):** Skills (grouped chips —
   different shape), Testimonials (quote shape), more presets.
 
@@ -521,19 +618,29 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
   title = "overengineered-portfolio — build yours" signed-out ("Dashboard"
   signed-in); caret blink (`caret-blink`, steps(1)) defined inside the
   prefers-reduced-motion: no-preference block (static for reduced motion).
-- **6-d — "How to build" link (planning, user idea):** a `How to build ↗`
-  quiet mono link on the dashboard in BOTH states — signed-out next to
-  the GitHub link in the welcome card; signed-in in the header's right
-  link row (where "fork it on GitHub ↗" already lives since the 6-0
-  trinkets). PLAN: the target is simply `/u/demo`, where the how-to post
-  lives in the demo portfolio's blog (floating reader opens it) — the
-  post itself belongs in the 6-b demo seed, so this link ships with 6-b.
-  Future nicety, not a blocker: standalone hosted post URLs (FIX-F
-  deferral) would let the link land on the post itself.
+- **6-d — "How to build" link — DONE ✅ (2026-08-30, shipped with 6-b):**
+  the quiet mono `How to build ↗` link (next/link → `/u/demo`, where the
+  demo seed's how-to post lives; floating reader opens it) sits in BOTH
+  dashboard states — signed-out next to "fork it on GitHub ↗" in the
+  welcome card, signed-in in the header's right link row. tsc/eslint
+  clean, dashboard 200.
 Build Phase 6 in a FRESH session (this run's lesson).
 
 ## Future plans (was original Phase 6 — polish & cross-product)
 
+- **Demo showcase opt-out (user, 2026-08-30, no fix for now):** the demo
+  account's entry in the showcase gallery cannot be turned off on a
+  hosted deploy — the seed script hardcodes showcase:true and the demo
+  account is a mannequin (settings saves get stomped by the next seed
+  run / 400 pre-DEMO_EMAIL). Options parked: a `DEMO_SHOWCASE=false`
+  env knob in the seed script + route exemption; or seed simply skipping
+  the showcase flag. Also blocks nothing today (the showcase never
+  looks empty is the point).
+- **Globally uniform card heights (row-based stretching):** all card
+  grids (app grid, blog, entry-list columns) currently equalize heights
+  PER ROW only; the user wants a globally fixed/equal card height
+  option across all rows for a cleaner look. Applies to single-column
+  entry lists too.
 - **Accessibility:** editor UI audit (screen reader labels; the motion
   system is already a11y-aware), broader keyboard navigation.
 - **UI/UX polish:** popover enter/exit animations (IconPicker),

@@ -85,7 +85,7 @@ function RisoMedia({
  * but the media plate moves: centered under the copy, split pinned
  * to a side, banner as a veil behind the ink.
  */
-export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps) {
+export default function RisoHero({ block, socials, onNavigate, showMediaPlaceholder }: HeroDesignProps) {
   const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
   const splitLeft = layout === 'split' && block.mediaSide === 'left';
   const badge = block.statusBadge?.enabled ? block.statusBadge : null;
@@ -119,7 +119,7 @@ export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps
               : 'order-first justify-self-end md:order-none'
         }
       />
-    ) : (
+    ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'landscape'}
@@ -131,7 +131,7 @@ export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps
               : 'order-first justify-self-end md:order-none'
         }
       />
-    );
+    ) : null;
 
   const copy = (
     <div className={isBanner ? 'relative z-10' : undefined}>
@@ -254,7 +254,10 @@ export default function RisoHero({ block, socials, onNavigate }: HeroDesignProps
             <div className="mt-8">{copy}</div>
           </>
         ) : (
-          copy
+          <>
+            {copy}
+            {media && <div className="mt-8">{media}</div>}
+          </>
         )}
       </div>
     </section>

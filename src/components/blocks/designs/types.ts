@@ -2,6 +2,7 @@ import type {
   AppCardItem,
   BlogBlock,
   AppGridBlock,
+  EntryListBlock,
   FeaturedHeroBlock,
   MarqueeBlock,
   Post,
@@ -19,6 +20,11 @@ export interface HeroDesignProps {
   socials?: SocialLink[];
   /** Resolves an href to in-page tab navigation; true = handled. */
   onNavigate?: (href: string) => boolean;
+  /**
+   * Edit-mode-only: when `thumbnail` is absent, render the media slot
+   * instead of nothing. Absent prop (public view) = hidden.
+   */
+  showMediaPlaceholder?: boolean;
 }
 
 export interface GridDesignProps {
@@ -34,6 +40,10 @@ export interface RichDesignProps {
 
 export interface MarqueeDesignProps {
   block: MarqueeBlock;
+}
+
+export interface EntryListDesignProps {
+  block: EntryListBlock;
 }
 
 export interface BlogDesignProps {

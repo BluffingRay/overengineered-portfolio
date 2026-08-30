@@ -1,6 +1,5 @@
-import type { CSSProperties } from 'react';
 import type { MarqueeDesignProps } from '../types';
-import { MarqueeHalves, SPEED_DURATION } from './shared';
+import { MarqueeTrack } from './shared';
 
 /**
  * Cutie marquee — a gentle heart-ticker. Sentence-case semibold items
@@ -16,20 +15,14 @@ export default function CutieMarquee({ block }: MarqueeDesignProps) {
       className={`marquee relative w-full overflow-hidden py-2 ${
         block.reverse ? 'marquee-reverse' : ''
       }`}
-      style={
-        {
-          '--marquee-duration': SPEED_DURATION[block.speed ?? 'normal'],
-        } as CSSProperties
-      }
     >
-      <div className="marquee-track flex w-max">
-        <MarqueeHalves
-          items={block.items}
-          separator={block.separator ?? '♡'}
-          itemClassName="whitespace-nowrap text-base font-semibold normal-case"
-          separatorClassName="cutie-float mx-6 select-none text-accent opacity-70"
-        />
-      </div>
+      <MarqueeTrack
+        speed={block.speed ?? 'normal'}
+        items={block.items}
+        separator={block.separator ?? '♡'}
+        itemClassName="whitespace-nowrap text-base font-semibold normal-case"
+        separatorClassName="cutie-float mx-6 select-none text-accent opacity-70"
+      />
     </div>
   );
 }

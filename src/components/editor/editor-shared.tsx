@@ -7,6 +7,7 @@ import type {
   BlockSpacing,
   BlockWidth,
   BlockDesign,
+  EntryListPreset,
   MarqueeSpeed,
   HeroLayout,
   ImageAlignment,
@@ -16,7 +17,7 @@ import type {
   StatusColor,
 } from '@/types/schema';
 import type { LucideIcon } from 'lucide-react';
-import { KanbanSquare, CodeXml, Star, Type, MoveHorizontal, Newspaper } from 'lucide-react';
+import { Briefcase, KanbanSquare, CodeXml, Star, Type, MoveHorizontal, Newspaper } from 'lucide-react';
 
 export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   featured_hero: Star,
@@ -25,6 +26,7 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   custom_html: CodeXml,
   marquee: MoveHorizontal,
   blog: Newspaper,
+  entry_list: Briefcase,
 };
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
@@ -34,6 +36,45 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   custom_html: 'Custom HTML',
   marquee: 'Marquee',
   blog: 'Blog',
+  entry_list: 'Entry List',
+};
+
+export const ENTRY_LIST_PRESET_LABELS: Record<EntryListPreset, string> = {
+  experience: 'Experience',
+  education: 'Education',
+  certifications: 'Certifications',
+};
+
+export interface EntryListFieldLabels {
+  title: string;
+  subtitle: string;
+  meta: string;
+  description: string;
+}
+
+/**
+ * Per-preset field labels for the entry-list form — cosmetic only; the
+ * schema (and the renderer) never reads the preset.
+ */
+export const ENTRY_LIST_FIELD_LABELS: Record<EntryListPreset, EntryListFieldLabels> = {
+  experience: {
+    title: 'Job title',
+    subtitle: 'Company',
+    meta: 'Period',
+    description: 'What you did',
+  },
+  education: {
+    title: 'Degree',
+    subtitle: 'School',
+    meta: 'Years',
+    description: 'Highlights',
+  },
+  certifications: {
+    title: 'Certificate',
+    subtitle: 'Issuer',
+    meta: 'Issued',
+    description: 'Details',
+  },
 };
 
 export const SPEED_LABELS: Record<MarqueeSpeed, string> = {
@@ -293,6 +334,22 @@ export function createDefaultBlock(type: BlockType): Block {
       };
     case 'blog':
       return { id, type, title: 'From the blog' };
+    case 'entry_list':
+      return {
+        id,
+        type,
+        title: 'Experience',
+        preset: 'experience',
+        entries: [
+          {
+            id: crypto.randomUUID(),
+            title: 'Role or degree',
+            subtitle: 'Company or school',
+            meta: '2024 — Now',
+            description: 'What you did there.',
+          },
+        ],
+      };
   }
 }
 

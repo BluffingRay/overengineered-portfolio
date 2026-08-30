@@ -285,6 +285,12 @@ export function sanitizePortfolioDocument(doc: PortfolioData): PortfolioData {
         if (block.secondaryAction && !isSafeUrl(block.secondaryAction.url)) {
           block.secondaryAction = undefined;
         }
+      } else if (block.type === 'entry_list') {
+        // Entry links render as anchors on the title — an unsafe scheme
+        // loses the field entirely (absent, never null).
+        for (const entry of block.entries) {
+          if (entry.link && !isSafeUrl(entry.link)) delete entry.link;
+        }
       }
     }
   }

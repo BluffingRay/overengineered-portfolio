@@ -1,94 +1,155 @@
 # overengineered-portfolio
 
-A block-based, **local-first portfolio CMS** built with Next.js (App Router), TypeScript, and Tailwind CSS v4. Your entire portfolio is one JSON document in your browser's `localStorage` — no database, no account, no backend for your content. Edit it live, export/import it, and it's yours.
+A block-based portfolio CMS where **the entire portfolio is one JSON document** — tabs, blocks, cards, blog posts, theme settings, all of it. One codebase, two products, one data format:
 
-One codebase, two products:
-- **Product B — self-hosted / fork** (works now): run it locally, everything in `localStorage`.
-- **Product A — hosted SaaS** (planned): sign-up, hosted portfolios, real accounts.
+| | Product B — self-hosted / fork | Product A — hosted |
+| --- | --- | --- |
+| Who it's for | Developers, tinkerers | Anyone who wants a portfolio without touching code |
+| Setup | `npm install && npm run dev` — nothing else | Firebase + Cloudflare env vars (guide below) |
+| Where content lives | Your browser's `localStorage` | Cloudflare KV, server-side |
+| How you publish | Commit a JSON file, `git push` | Press **Save** |
+| Editing | `/?edit=true` or `Ctrl/Cmd + Shift + E` | Same editor, gated by sign-in |
 
-## Getting started
+The **JSON document is the bridge**: export from either side, import into the other, same schema (`src/types/schema.ts`, validated by `prepareDocument`).
+
+> The committed `content/portfolio.json` is a **demo portfolio** (also hosted at `/u/demo` on hosted deploys) that showcases every block type and doubles as the user guide — see [Demo seed](#demo-seed).
+
+**Contents:** [Setup: Product B](#setup-product-b--self-hosted-fork) · [Setup: Product A](#setup-product-a--hosted) · [Tech stack](#tech-stack) · [Architecture](#architecture) · [Demo seed](#demo-seed) · [Quirks & gotchas](#quirks--gotchas) · [Limitations](#limitations) · [Vercel deploy checklist](#vercel-deploy-checklist)
+
+## Setup: Product B — self-hosted / fork
+
+Zero config. Two commands and you're in:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Then:
 
-## Editing your portfolio
+1. **Edit** — open http://localhost:3000 and enter edit mode with `/?edit=true` or `Ctrl/Cmd + Shift + E`. Add blocks (hero, app grid, rich text, entry list, marquee, blog, custom HTML), pick a per-block **art direction** (default / cutie / editorial / riso), drag to reorder, undo with `Ctrl/Cmd + Z`. Hidden **Posts** and **Site** tabs appear in edit mode — the blog composer lives at `/write`, skins / accent / font / view scale in Site settings.
+2. **Publish** — Site settings → **Export JSON**, replace `content/portfolio.json` in your repo, `git push`. The rebuild publishes it (the default content is baked at build time). Commit images under `public/images/`.
+3. **Optional gate** — set `ADMIN_PASSWORD` in `.env.local` to password-gate edit mode, or `ALLOW_EDIT=false` for a fully read-only public site. Setup (incl. the bcrypt `$`-in-`.env` trap) is documented in `.env.example`. It's a guardrail, not real security.
 
-Enter **edit mode** with **⌘/Ctrl + Shift + E**, or open `/?edit=true`. This reveals the admin toolbar (undo/redo, import/export, tabs, blocks, hidden **Posts** and **Site** tabs). The shortcut is remappable in **Site → Edit-mode shortcut**.
+That's the whole product. Everything below only matters if you want the hosted version.
 
-Content lives in `localStorage` (`portfolio-data`). Preferences live in their own keys (skin override, shortcut, session) and are **never** part of the exported document.
+## Setup: Product A — hosted
 
-## Publishing your site (self-hosted Product B)
+Hosted mode **activates only when its config exists** — absent env vars, the app is pure Product B. Four moving parts: Firebase (accounts), Cloudflare KV (documents), Cloudflare R2 (images), and Vercel (hosting). Rough order:
 
-Product B is **local-first**: editing the *deployed* site only writes to that browser's own `localStorage` — it is not shared. So to **publish** content for everyone, you edit locally and commit.
+### 1. Firebase (accounts + sessions)
 
-**The workflow is one file + your assets:**
-1. **Edit `content/portfolio.json`** — the seed document that new visitors see (what the app falls back to when a browser has empty/corrupt `localStorage`). You can build your portfolio in the editor, **Export JSON**, and put that file here.
-2. **Put your images in `public/`** (committed) — e.g. `public/images/…`. These are tracked and ship with the repo. (Images uploaded through the editor go to gitignored `public/uploads/` — see the note below.)
-3. **`git push` → your host rebuilds → deployed.** The build imports `content/portfolio.json` and serves your committed `public/` assets.
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com); add a **Web app** to get the client config.
+2. Enable **Authentication → Email/Password** (and Google if wanted).
+3. Copy the client trio (`NEXT_PUBLIC_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_PROJECT_ID`) and the admin service-account trio (`FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` — the private key stays on ONE line with literal `\n`). The `$`-in-`.env` trap applies to all of these — see [Quirks](#quirks--gotchas).
+
+### 2. Cloudflare KV + R2 (documents + images)
+
+1. Create a **Workers KV namespace** (Workers & Pages → KV). Copy `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`, `CLOUDFLARE_API_TOKEN`.
+2. Create an **R2 bucket** (same account). Copy the S3 credentials into `R2_ENDPOINT` / `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (+ `R2_PUBLIC_URL` only if you want a custom public domain; the built-in `/api/r2` proxy needs nothing extra).
+
+### 3. Deploy + first run
+
+Full env table + first-deploy steps are in the [Vercel deploy checklist](#vercel-deploy-checklist). Short version: set the env vars in Vercel, deploy, sign up from the hub (`/dashboard` → Sign in), onboarding builds your first portfolio, **Save** publishes it to `/u/<your-slug>`.
+
+Migrating existing content (from a B fork or another account): the dashboard's **Export JSON / Import from file** panel. One known limit — the bridge moves **content, not image bytes** (see [Limitations](#limitations)).
+
+## Tech stack
+
+| Piece | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router, route handlers, Node runtime) |
+| Language | TypeScript, strict mode |
+| Styling | Tailwind CSS v4 (token-driven skins via CSS variables) |
+| Rich text | TipTap v3 (`@tiptap/react` + starter-kit + extensions) |
+| Drag and drop | `@dnd-kit/core` / `sortable` / `utilities` |
+| Auth | Firebase Auth (client SDK + `firebase-admin` session cookies) |
+| Hosted documents | Cloudflare Workers KV (blob store behind `src/lib/kv.ts`) |
+| Image hosting | Cloudflare R2 (S3 API via `@aws-sdk/client-s3`) |
+| HTML sanitization | `isomorphic-dompurify` (tag allowlist + embed-host scoping) |
+| Icons | `lucide-react` (no brand icons) |
+
+## Architecture
+
+One core, two shells (full context in `AGENTS.md` — Two-Product Architecture):
 
 ```
-edit content/portfolio.json  +  add images to public/  →  git push  →  redeploy  →  published
+CORE  (zero Firebase knowledge) = editor + designs + block types + JSON schema + rendering + motion
+B SHELL = core + localStorage (4 touchpoints) + optional env-password gate   <- zero-config
+A SHELL = core + Firebase Auth + KV store + dashboard/onboarding + /u/<slug> <- opt-in via config
 ```
 
-> ⚠️ **Runtime image uploads don't persist on Vercel, and are gitignored by default.** `/api/upload` writes to `public/uploads/`, which is in `.gitignore` — so those files aren't committed and Vercel's ephemeral serverless FS loses them between requests. **To ship images reliably, commit them to `public/` (a folder like `public/images/`)** rather than relying on the in-editor upload.
->
-> **Only if you self-host on a persistent Node server and want runtime uploads tracked:** remove `/public/uploads` from `.gitignore` (and commit `public/uploads/`), or point uploads at a cloud bucket by swapping `/api/upload`'s internals.
->
-> Also note `initialData` is baked at **build** time from `content/portfolio.json`, so publishing always means a new build/deploy (not a live file swap).
+- **Storage seam**: B reads/writes `localStorage` at exactly 4 touchpoints (`src/lib/storage.ts` + the layout pre-paint script); A swaps in KV behind the same document shape. `prepareDocument` is the single validation/migration gate both paths share.
+- **Server rule**: the server is the authority. Every state change (login, save, import, upload, delete) is a route handler running `authenticate -> authorize -> validate/sanitize -> do it -> return confirmed`; the client reflects, never decides.
+- **Uploads triad**: `POST /api/upload` swaps internals per config — R2 (hosted default), local `public/uploads/` (B fallback), custom S3 endpoint (placeholder). The document stores **URLs only**, never bytes.
+- **`content/portfolio.json`** is B's publish file and the seed every fresh clone boots from (`src/data/initialData.ts` imports it).
+- **Sanitization**: hosted writes (and reads) run every HTML-bearing field through `src/lib/sanitize-html.ts` — tag/attribute allowlists, URL scheme guards, and iframes only on allowlisted https embed hosts with `/embed/`-style paths.
 
-## Optional admin gate (password)
+## Demo seed
 
-By default edit mode is open. To stop casual visitors from wandering into edit mode, set a single admin password.
+The committed `content/portfolio.json` is a **demo portfolio** — a self-documenting showcase (marketing pitch on Home, art directions on Showcase, instructions on Guide, custom HTML + embeds on Playground) instead of any real person's content. Fresh clones and fresh hosted deploys show it; replace it with your own exported document whenever you like.
 
-**For a public self-host (e.g. Vercel), the simplest way to make your site read-only is `ALLOW_EDIT=false`** — it hides the editor entirely (no shortcut toggle, `?edit=true` shows nothing). Works on its own or combined with the password gate:
-
-```
-# read-only public site (local dev stays zero-config)
-ALLOW_EDIT=false
-```
-
-**The gate turns on only when `ADMIN_PASSWORD` is set.** Put it in `.env.local` (gitignored):
-
-```
-ADMIN_PASSWORD='your-password'
-```
-
-For local dev a **plaintext** password is fine (a console warning appears). For production use a **bcrypt hash**.
-
-> ⚠️ **Never put a bcrypt hash inside a `.env` file.** Next loads `.env` via `dotenv-expand`, which treats `$name` as a variable. A bcrypt hash is full of `$` (e.g. `$2y$10$…`), so it gets silently eaten and auth never matches — quoting does **not** help. Use plaintext in `.env` for dev, or set a hash as a **real environment variable** (your host's env config, or `ADMIN_PASSWORD='$2y$…' next start`).
-
-**Generate a bcrypt hash** — the project already ships `bcryptjs`, so you can generate one without installing anything:
+A dedicated **demo account** hosts the same document publicly at `/u/demo` (also listed in the showcase gallery, so a fresh hosted deploy never looks empty). `scripts/seed-demo.ts` keeps it in sync:
 
 ```bash
-# Using the project's own bcryptjs:
-node -e "import('bcryptjs').then(m => { const b = m.default ?? m; console.log(b.hashSync(process.argv[1], 10)); })" 'your-password'
-
-# Or, if you have Apache's htpasswd:
-htpasswd -nbB -C 10 x 'your-password' | cut -d: -f2
+npx tsx scripts/seed-demo.ts
 ```
 
-### How the gate works
-- The password is checked **server-side** (`/api/auth/verify`) — the secret never ships to the browser.
-- On success a **session** is stored under a separate `portfolio-session` key with a **24h expiry**. "Remember me" keeps it in `localStorage`; unchecked, it uses `sessionStorage`.
-- **Never** prefix the var with `NEXT_PUBLIC_` (that would ship it to every visitor), and never commit `.env.local` or put the password into the exported JSON.
+What it does: signs in with the demo credentials (creating the account on first run) -> mints a session cookie -> PUTs `content/portfolio.json` to `/api/portfolio` with `slug: 'demo'`, public + showcased -> verifies `/u/demo` renders and the showcase lists it. Idempotent — rerun any time to re-sync the committed file.
 
-> This is a lightweight **guardrail** — it stops accidental edits, not a determined attacker. For real auth, see Product A.
+Setup:
 
-## Data & storage swap
+1. Set `DEMO_EMAIL` + `DEMO_PASSWORD` in `.env.local` (or shell env) — see `.env.example`. The **server** must also know `DEMO_EMAIL`: locally that means setting it and **restarting `next dev`** (route handlers read env at startup); on Vercel it means adding the var and redeploying. Without it, the claim fails with `invalid-slug` (the script prints this hint).
+2. Requires the hosted stack (Firebase + KV) configured; the script hits your running server, never spawns one.
+3. Never commit real credential values — anyone holding them can deface `/u/demo`. On success the script writes them to gitignored `demo-credentials.local.txt`.
+4. **Against a Vercel deploy**, run it from your machine pointed at the deployed URL:
+   ```bash
+   SEED_BASE_URL=https://your-app.vercel.app npx tsx scripts/seed-demo.ts
+   ```
 
-The document is a plain JSON blob read/written through a small surface (`usePortfolioData`, import/export), so the storage engine can be swapped later (localStorage now → a KV/DB later) without touching any consumers. The document stores **URLs only**, never blobs. Images live in `public/` (committed) and can be uploaded via `/api/upload` on a persistent server — swap that handler's internals for S3/R2 later, consumers unchanged.
+The demo account is a **mannequin**: it edits nothing by hand. The `demo` slug is reserved for everyone through the UI, and the seed script is the only writer — hand edits would be stomped by the next seed run.
 
-## Editing this project
+Migrating **your real content** (B -> A or between accounts): the dashboard's **Export JSON / Import from file** panel (the 5f bridge). One known limitation: the bridge migrates **content, not image bytes** — image URL references break across products (A's `/api/r2/...` proxy needs A's R2 env; B's `/uploads/...` files don't travel to the host). Externally hosted (absolute https) image URLs migrate cleanly; anything else means re-uploading via the media vault after importing.
 
-See `AGENTS.md` for the architecture, conventions, and hard-won gotchas (including the `.env` `$`-mangling trap, the lint rules, and the storage-swap principle).
+## Quirks & gotchas
 
-## Roadmap
+- **`$` in `.env` values gets eaten.** Next loads `.env*` via dotenv-expand, which interpolates `$name` — a bcrypt hash (`$2y$10$…`) is silently emptied. Quoting does NOT help. Use plaintext for dev, or set the value as a real environment variable (bypasses the file loader). Full note in `.env.example`.
+- **ONE `next dev` per project directory.** This modified Next build enforces it; a second instance exits invisibly and reads as readiness timeouts. Verify scripts preflight the lock.
+- **Verify serially (WSL2).** Never run heavy commands (tsc/build/lint/verify scripts) in parallel — false failures abound.
+- **Vercel's ephemeral filesystem doesn't persist `public/uploads/`.** Runtime uploads vanish on the next deploy; use R2 on hosted deploys (or a long-lived Node host for local uploads, or commit images to `public/images/`).
+- **Draft model: last-save-wins.** `localStorage['portfolio-data']` is the draft store; hosted saves PUT the whole document — two devices editing means the last Save wins (no merge). A fresh browser with an unsaved draft gets the amber load-offer banner rather than silently clobbering the hosted doc.
 
-- **Phase 3** — done: block editor, rich text (TipTap), media vault, blog, art-direction designs (default/cutie/editorial/riso).
-- **Phase 4** — auth gate (configurable shortcut + password card + session). `4a`/`4b` shipped; `4c` docs here.
-- **Phase 5** — hosted SaaS (Product A): accounts, real DB, dashboard, SEO, hub. (DB choice is deliberate research, not a commitment.)
-- **Phase 6** — polish & cross-product: a11y, popover animations, drag previews, skeletons, focus audit, PWA.
+## Limitations
+
+- **Auth is a guardrail, not a fortress** — the B session token is opaque/unsigned and client-writable; for real auth use the hosted Firebase shell.
+- **Last-save-wins** document persistence (see above); no conflict detection.
+- **KV index race window**: the `portfolios:index` registry is read-modify-write, so concurrent first-saves can race (the next save heals it).
+- **Single-tenant `dev` uploads are uncapped** (no per-user quota without a session).
+- **The bridge migrates URLs, not bytes** (see Demo seed above).
+- **The demo showcase seat has no off switch** — the seed always lists `/u/demo` in the gallery (a fresh deploy never looks empty is the point); see `AGENTS.md` Future plans for the parked opt-out knob.
+
+## Vercel deploy checklist
+
+Env var names and purposes only — values live in your Vercel project settings (and each is documented in place in `.env.example`):
+
+| Var(s) | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_PROJECT_ID` | Firebase client (public-safe; gates the hosted login bundle) |
+| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Firebase Admin (session minting/verification). Private key on ONE line with literal `\n` |
+| `CLOUDFLARE_ACCOUNT_ID` / `KV_NAMESPACE_ID` / `CLOUDFLARE_API_TOKEN` | Workers KV — hosted document store |
+| `R2_ENDPOINT` (or `R2_ACCOUNT_ID`) / `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_PUBLIC_URL` / `R2_USER_PREFIX` | R2 image storage |
+| `NEXT_PUBLIC_SITE_URL` | Canonical URL for metadata/OG (unset = localhost) |
+| `ADMIN_PASSWORD` / `ALLOW_EDIT` | B-shell edit gate / read-only switch (see `.env.example` for the `$` trap) |
+| `LOCAL` | Upload storage switch (auto / local / R2 — semantics in `.env.example`) |
+| `DEMO_EMAIL` / `DEMO_PASSWORD` | Demo seed account (server needs `DEMO_EMAIL` + redeploy; see Demo seed) |
+
+First deploy:
+
+1. Create the Firebase app; enable the Email/Password (+ Google if wanted) providers.
+2. Create the Workers KV namespace and the R2 bucket (same Cloudflare account).
+3. Set the env vars above, deploy.
+4. Run `SEED_BASE_URL=https://your-app.vercel.app npx tsx scripts/seed-demo.ts` from your machine to provision `/u/demo`.
+5. Sign up from the hub, onboard (or Import from file to migrate), flip visibility to Public in the dashboard when ready — private is the default and `/u/<slug>` 404s for strangers until then.
+6. Custom domain: add it in Vercel, set `NEXT_PUBLIC_SITE_URL`, redeploy.
+
+Roadmap, accepted trade-offs, and hard-won gotchas live in `AGENTS.md` (Future plans + Hard-Won Gotchas sections).

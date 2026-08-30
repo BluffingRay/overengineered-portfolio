@@ -1,153 +1,99 @@
 {
   "version": 3,
-  "skin": "hud",
+  "skin": "clean",
   "theme": {
     "accentColor": "#22d3ee"
   },
   "cards": [
     {
-      "id": "app-portfolio-cms",
-      "name": "Portfolio CMS",
-      "description": "This site: a block-driven portfolio with theme skins and local-first editing.",
-      "href": "/projects/mama",
-      "coverImage": "/images/covers/cms.jpg",
-      "icon": "/images/icons/react.svg",
+      "id": "card-art-directions",
+      "name": "4 art directions",
+      "description": "Every block wears default, cutie, editorial, or riso — pick per block, mix freely.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "palette",
       "tags": [
-        "next.js",
-        "local-first",
-        "dnd-kit"
+        "design",
+        "per-block"
       ],
-      "category": "Web App",
-      "demoUrl": "https://example.com/demo",
-      "githubUrl": "https://github.com/raymar/portfolio-cms",
-      "customLabel": "Build log",
-      "customPostId": "post-cms-build-log",
-      "primaryAction": "demo"
+      "category": "Design"
     },
     {
-      "id": "app-taskflow",
-      "name": "TaskFlow",
-      "description": "Kanban board with optimistic sync and offline-first storage.",
-      "href": "/projects/taskflow",
-      "icon": "/images/icons/trello.svg",
-      "category": "Productivity",
-      "githubUrl": "https://github.com/raymar/taskflow",
-      "primaryAction": "github"
-    },
-    {
-      "id": "app-pixel-forge",
-      "name": "Pixel Forge",
-      "description": "Browser-based sprite editor with palette constraints and GIF export.",
-      "href": "/projects/pixel-forge",
-      "icon": "brush",
+      "id": "card-skins",
+      "name": "3 skins",
+      "description": "HUD, Notebook, and Clean share one CSS-variable contract — visitors switch, you set the default.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "layers",
       "tags": [
-        "canvas",
-        "retro"
+        "theming"
       ],
-      "category": "Creative Tool",
-      "customLabel": "Paper",
-      "customUrl": "https://example.com/papers/pixel-forge.pdf",
-      "primaryAction": "href"
+      "category": "Design"
     },
     {
-      "id": "app-synthwave",
-      "name": "Synthwave Sequencer",
-      "description": "Web Audio step sequencer with a CRT glow and tape-deck drag.",
-      "href": "/projects/synthwave",
-      "icon": "music",
+      "id": "card-rich-text",
+      "name": "Rich text editor",
+      "description": "A Word-style TipTap editor with images, tables, task lists, alignment, and font styling.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "pen-tool",
       "tags": [
-        "web-audio",
-        "fun"
+        "tiptap",
+        "writing"
       ],
-      "category": "Audio Toy",
-      "primaryAction": "href"
+      "category": "Editor"
     },
     {
-      "id": "app-nomad-log",
-      "name": "Nomad Log",
-      "description": "No cover image set — watch the monogram watermark fill the slot.",
-      "href": "/projects/nomad-log",
-      "category": "Experiment",
-      "primaryAction": "href"
+      "id": "card-blog",
+      "name": "Blog engine",
+      "description": "Draft, publish, and date posts in a full-screen composer; render them anywhere with blog blocks.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "star",
+      "tags": [
+        "blog",
+        "posts"
+      ],
+      "category": "Content"
     },
     {
-      "id": "app-tiny-db",
-      "name": "TinyDB Benchmarks",
-      "description": "Embedded storage engines racing headless Chrome.",
-      "href": "/projects/tinydb",
-      "icon": "database",
-      "category": "Benchmark"
+      "id": "card-media-vault",
+      "name": "Media vault",
+      "description": "Upload, pick, and reference images — the document stores clean URLs, never bytes.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "image",
+      "tags": [
+        "uploads"
+      ],
+      "category": "Content"
     },
     {
-      "id": "app-terminal-golf",
-      "name": "Terminal Golf",
-      "description": "Shortest-pipe challenges, scored in keystrokes.",
-      "href": "/projects/terminal-golf",
-      "icon": "terminal",
-      "category": "Game"
-    }
-  ],
-  "socials": [
-    {
-      "id": "social-github",
-      "platform": "github",
-      "url": "https://github.com/raymar"
-    },
-    {
-      "id": "social-linkedin",
-      "platform": "linkedin",
-      "url": "https://linkedin.com/in/raymar"
-    },
-    {
-      "id": "social-twitter",
-      "platform": "twitter",
-      "url": "https://x.com/raymar"
-    },
-    {
-      "id": "social-discord",
-      "platform": "discord",
-      "url": "https://discord.com/users/raymar"
-    },
-    {
-      "id": "social-email",
-      "platform": "email",
-      "url": "mailto:hey@raymar.dev",
-      "label": "Email me"
-    },
-    {
-      "id": "social-custom",
-      "platform": "custom",
-      "url": "https://read.cv/raymar",
-      "label": "CV",
-      "customIcon": "/images/icons/react.svg"
+      "id": "card-drag-drop",
+      "name": "Drag and drop everything",
+      "description": "Blocks, cards, tabs, socials, entry-list rows — every list reorders with dnd-kit, keyboard included.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "kanban",
+      "tags": [
+        "dnd-kit",
+        "ux"
+      ],
+      "category": "Editor"
     }
   ],
   "footer": {
     "enabled": true,
-    "copyrightText": "© {year} Raymar — hand-built with the Portfolio CMS.",
-    "showSocials": true
+    "copyrightText": "Demo portfolio — replace everything with your own. © {year}"
   },
   "posts": [
     {
-      "id": "post-cms-build-log",
-      "title": "Designing a local-first CMS in one JSON document",
+      "id": "post-welcome-demo",
+      "title": "Welcome to your portfolio",
+      "content": "<p>This whole site — tabs, blocks, cards, hero, blog — is <strong>one JSON document</strong>. What you are reading is the demo seed that ships with the repository, written to show off what the platform can do before you replace all of it with your own work.</p><h2>Make it yours</h2><p>Open the editor, drag things around, change the words, and export the result. Nothing here is precious: the demo exists to be deleted.</p><ul><li>Press <strong>Ctrl/Cmd + Shift + E</strong> (or visit with ?edit=true) to edit</li><li>Read the Guide tab for the full walkthrough</li><li>Check the Playground tab for custom HTML and embeds</li></ul><p>When you are ready to publish for real, the Guide tab explains both loops: the zero-config fork and the hosted account.</p>",
       "status": "published",
-      "publishedAt": "2026-08-20",
-      "coverImage": "/images/covers/cms.jpg",
-      "content": "<h2>One document to rule them all</h2><p>This entire site — tabs, blocks, cards, hero dials, socials — serializes into a single JSON document living in your browser’s localStorage. Export it, import it, wipe it: the portfolio <em>is</em> the file.</p><p>React never mirrors that data in component state. <code>useSyncExternalStore</code> hands out immutable snapshots, mutations apply tiny recipes over the latest one, and the undo stack simply remembers whole previous documents instead of patches.</p><ul><li>The schema polices shape — discriminated unions over optional-field soup</li><li>Undo is free when every edit is a document transaction</li><li>Media stores URLs only, so documents stay small and portable</li></ul><blockquote><p>If the schema can’t represent it, the editor shouldn’t either.</p></blockquote><h3>Coming up</h3><p>Images inside rich text wrap left/right via inline float styles, and a clear-float break drops following text back to full width — the next post tells that saga.</p>"
+      "publishedAt": "2026-08-30"
     },
     {
-      "id": "post-wrapping-images",
-      "title": "The image-wrap bug that taught me to love <br clear=\"all\">",
+      "id": "post-how-to-build",
+      "title": "How to build a portfolio here",
+      "content": "<p>A practical five-step recipe, from empty fork to published site.</p><h2>1. Get the code running</h2><p>Fork the repository, run npm install and npm run dev, and open localhost:3000. That is the whole setup — the editor works with zero configuration.</p><h2>2. Enter edit mode</h2><p>Visit with ?edit=true or press Ctrl/Cmd + Shift + E. You get the block editor, the hidden Posts and Site tabs, and undo/redo history.</p><h2>3. Fill in your content</h2><p>Add a hero, an app grid, an entry list, a marquee. Give each block its own art direction — the four designs are siblings, so the same data renders four entirely different ways.</p><h2>4. Add images</h2><p>Upload through the media vault, or paste any https image URL — this demo links its pictures instead of committing them, and that works too.</p><h2>5. Publish</h2><p>Self-hosting: export the JSON and replace content/portfolio.json, then git push. Hosted: sign in and press Save. The full details live in the README on <a href=\"https://github.com/BluffingRay/overengineered-portfolio\" target=\"_blank\" rel=\"noopener noreferrer nofollow\">GitHub</a>.</p>",
       "status": "published",
-      "publishedAt": "2026-08-12",
-      "content": "<p>Float an image left in the rich-text editor and watch a short paragraph hug it like a barnacle — text snaking up through the leftover column because nothing ever told it to stop. Every floated image ships with this confession attached.</p><p>The fix is gloriously ancient: <code>&lt;br clear=\"all\"&gt;</code>. The toolbar’s ⤵ button inserts a clear-float break node, and suddenly the next paragraph drops politely <em>below</em> the picture instead of threading past it like it pays rent there.</p><p>The best part shipped as plain portable HTML — the same markup that WYSIWYG-edits on Tuesday renders untouched in production on Friday. A moment of silence for a tag that has been solving this exact problem since the nineties.</p>"
-    },
-    {
-      "id": "post-draft-skins",
-      "title": "Why your portfolio needs three skins",
-      "status": "draft",
-      "content": "<p>Skin switching sounds like vanity until a recruiter opens your neon HUD terminal at 9am. Three skins share one CSS-variable contract here, so the whole personality swap is a single data attribute away.</p><p>Draft notes: per-skin motion tokens, why visitors get the switcher but never the accent color, and what happens when easing curves disagree with the brand. To be continued…</p>"
+      "publishedAt": "2026-08-29"
     }
   ],
   "tabs": [
@@ -158,212 +104,299 @@
         {
           "id": "block-hero-home",
           "type": "featured_hero",
-          "eyebrow": "~/raymar — portfolio",
-          "name": "Raymar",
+          "design": "default",
+          "eyebrow": "~/demo — overengineered portfolio",
+          "name": "Demo",
+          "heading": "One JSON document. A whole portfolio.",
+          "subheading": "This site is the demo seed: fork it and own the file, or sign in hosted and edit in the browser.",
+          "ctaLabel": "See what's inside",
+          "ctaHref": "#tab-showcase",
+          "thumbnail": "https://picsum.photos/seed/demo-hero/1200/800",
+          "layout": "centered",
           "roles": [
-            "Full-Stack Developer",
-            "Machine Learning Trainer",
-            "Backend Developer"
+            "Product B — fork it and self-host",
+            "Product A — hosted at /u/demo",
+            "Same JSON document underneath"
           ],
-          "heading": "I build modular web systems that outlive their requirements.",
-          "subheading": "Local-first advocate. Serial over-engineer.",
-          "ctaLabel": "View Projects",
-          "ctaHref": "#tab-projects",
-          "thumbnail": "/images/hero-portrait.jpg",
-          "layout": "split",
           "statusBadge": {
             "enabled": true,
-            "text": "Available for work",
-            "color": "green"
+            "text": "Demo",
+            "color": "blue"
           },
           "secondaryAction": {
-            "label": "Hero Lab →",
-            "url": "#tab-hero-lab",
-            "target": "_self"
+            "label": "Fork it on GitHub",
+            "url": "https://github.com/BluffingRay/overengineered-portfolio",
+            "target": "_blank"
           },
-          "showSocials": true,
           "mediaRatio": "landscape",
           "mediaRadius": "theme",
-          "mediaSize": "lg",
-          "mediaFrame": "accent-glow"
+          "mediaSize": "md",
+          "mediaFrame": "subtle"
         },
         {
-          "id": "block-marquee-skills",
+          "id": "block-marquee-home",
           "type": "marquee",
+          "design": "default",
           "spacing": "none",
           "items": [
-            "TypeScript",
-            "Next.js",
-            "React",
-            "Node.js",
-            "Tailwind CSS",
-            "PostgreSQL",
-            "TipTap",
-            "dnd-kit",
-            "Web Audio",
-            "Docker"
+            "4 art directions",
+            "3 skins",
+            "one JSON document",
+            "local-first",
+            "rich text",
+            "drag and drop",
+            "a blog engine"
           ],
           "separator": "//",
           "speed": "normal"
         },
         {
-          "id": "block-grid-featured",
+          "id": "block-grid-home",
           "type": "app_grid",
-          "spacing": "compact",
-          "title": "Featured",
+          "design": "default",
+          "title": "What's inside",
           "apps": [
-            "app-portfolio-cms",
-            "app-synthwave"
+            "card-art-directions",
+            "card-skins",
+            "card-rich-text",
+            "card-blog",
+            "card-media-vault",
+            "card-drag-drop"
           ]
         },
         {
           "id": "block-blog-home",
           "type": "blog",
-          "title": "Latest writing"
-        },
-        {
-          "id": "block-home-intro",
-          "type": "rich_text",
-          "width": "wide",
-          "content": "<h2>Local-first by design</h2><p>This entire site is <strong>one JSON document</strong> living in your browser — edit it live, drag blocks around, export it, wipe it. Nothing leaves your machine.</p><ul><li><strong>Skins:</strong> flip HUD / Notebook / Clean in the toolbar</li><li><strong>Editing:</strong> press <code>Ctrl/Cmd + Shift + E</code> or visit with <code>?edit=true</code></li><li><strong>History:</strong> <em>Ctrl/Cmd + Z</em> peels back every change</li></ul><blockquote><p>The schema does the policing — discriminated unions over optional-field soup.</p></blockquote>"
-        },
-        {
-          "id": "block-home-html",
-          "type": "custom_html",
-          "spacing": "compact",
-          "width": "full",
-          "html": "<p style=\"margin:0 0 10px;font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;opacity:0.55;\">~/stack</p><div style=\"display:flex;gap:10px;flex-wrap:wrap;\"><span style=\"border:1px solid currentColor;border-radius:var(--radius);padding:3px 10px;font-size:0.75rem;\">Next.js App Router</span><span style=\"border:1px solid currentColor;border-radius:var(--radius);padding:3px 10px;font-size:0.75rem;\">TypeScript strict</span><span style=\"border:1px solid currentColor;border-radius:var(--radius);padding:3px 10px;font-size:0.75rem;\">Tailwind v4</span><span style=\"border:1px solid currentColor;border-radius:var(--radius);padding:3px 10px;font-size:0.75rem;\">TipTap v3</span><span style=\"border:1px solid currentColor;border-radius:var(--radius);padding:3px 10px;font-size:0.75rem;\">dnd-kit</span></div>"
+          "design": "default",
+          "title": "From the demo blog",
+          "variant": "latest"
         }
       ]
     },
     {
-      "id": "tab-projects",
-      "label": "Projects",
+      "id": "tab-showcase",
+      "label": "Showcase",
       "blocks": [
         {
-          "id": "block-grid-main",
-          "type": "app_grid",
-          "title": "Selected Work",
-          "apps": [
-            "app-portfolio-cms",
-            "app-taskflow",
-            "app-pixel-forge",
-            "app-synthwave",
-            "app-nomad-log"
-          ]
-        },
-        {
-          "id": "block-grid-experiments",
-          "type": "app_grid",
-          "spacing": "compact",
-          "title": "Weekend Experiments",
-          "apps": [
-            "app-tiny-db",
-            "app-terminal-golf"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab-hero-lab",
-      "label": "Hero Lab",
-      "blocks": [
-        {
-          "id": "block-hero-lab-intro",
+          "id": "block-showcase-intro",
           "type": "rich_text",
-          "spacing": "compact",
-          "content": "<p>Same block type, different dials: <strong>layout</strong>, <strong>image side / position</strong>, <strong>media ratio / radius / size / frame</strong>, badge colors. Edit any of it under the Hero form.</p>"
+          "design": "default",
+          "content": "<p>Every block picks its own <strong>art direction</strong>. This tab shows the same building blocks wearing all four — <em>default, cutie, editorial, riso</em> — because design is a per-block choice, not a site-wide one.</p>"
         },
         {
-          "id": "block-hero-centered",
-          "type": "featured_hero",
-          "heading": "Centered · Circle · Window frame",
-          "subheading": "Centered layout stacks copy above media. The window chrome wraps the shot.",
-          "ctaLabel": "Ship it",
-          "ctaHref": "#",
-          "thumbnail": "/images/covers/cms.jpg",
-          "layout": "centered",
-          "statusBadge": {
-            "enabled": true,
-            "text": "v2 shipped",
-            "color": "purple"
-          },
-          "secondaryAction": {
-            "label": "Changelog",
-            "url": "#",
-            "target": "_blank"
-          },
-          "showSocials": true,
-          "mediaRatio": "circle",
-          "mediaSize": "sm",
-          "mediaFrame": "window"
+          "id": "block-marquee-default",
+          "type": "marquee",
+          "design": "default",
+          "spacing": "none",
+          "items": [
+            "default — quiet and structural",
+            "the original voice",
+            "content first"
+          ],
+          "speed": "normal"
         },
         {
-          "id": "block-hero-banner",
+          "id": "block-marquee-cutie",
+          "type": "marquee",
+          "design": "cutie",
+          "spacing": "none",
+          "items": [
+            "cutie — soft, rounded, alive",
+            "blobs and stickers",
+            "playful by default"
+          ],
+          "speed": "slow"
+        },
+        {
+          "id": "block-marquee-editorial",
+          "type": "marquee",
+          "design": "editorial",
+          "spacing": "none",
+          "items": [
+            "editorial — serif and certain",
+            "drop caps and rules",
+            "print energy"
+          ],
+          "speed": "fast",
+          "reverse": true
+        },
+        {
+          "id": "block-marquee-riso",
+          "type": "marquee",
+          "design": "riso",
+          "spacing": "none",
+          "items": [
+            "riso — misprint poster",
+            "hard offsets, mono caps",
+            "ink everywhere"
+          ],
+          "speed": "normal"
+        },
+        {
+          "id": "block-hero-riso",
           "type": "featured_hero",
-          "spacing": "compact",
-          "heading": "Banner · full-bleed backdrop",
-          "subheading": "The image sits behind frosted glass; legacy imageAlign mapped here too.",
-          "ctaLabel": "Enter",
-          "ctaHref": "#",
-          "thumbnail": "/images/hero-portrait.jpg",
-          "layout": "banner",
-          "statusBadge": {
-            "enabled": true,
-            "text": "Under construction",
-            "color": "amber"
-          },
+          "design": "riso",
+          "heading": "Same hero, riso direction",
+          "subheading": "Split layout, media pinned right — every hero design supports the full layout API.",
+          "ctaLabel": "Read the guide",
+          "ctaHref": "#tab-guide",
+          "thumbnail": "https://picsum.photos/seed/demo-riso/1200/800",
+          "layout": "split",
+          "mediaSide": "right",
           "mediaRatio": "landscape",
           "mediaFrame": "none"
         },
         {
-          "id": "block-hero-split-portrait",
-          "type": "featured_hero",
-          "heading": "Split · Portrait · Squircle",
-          "subheading": "Small size pinned to the far edge; quiet glow frame.",
-          "ctaLabel": "Primary CTA",
-          "ctaHref": "#",
-          "thumbnail": "/images/covers/cms.jpg",
-          "layout": "split",
-          "mediaSide": "left",
-          "statusBadge": {
-            "enabled": true,
-            "text": "Blue state",
-            "color": "blue"
-          },
-          "secondaryAction": {
-            "label": "Docs",
-            "url": "#",
-            "target": "_blank"
-          },
-          "mediaRatio": "portrait",
-          "mediaRadius": "squircle",
-          "mediaSize": "sm",
-          "mediaFrame": "subtle"
+          "id": "block-grid-cutie",
+          "type": "app_grid",
+          "design": "cutie",
+          "title": "Same cards, cutie skin",
+          "apps": [
+            "card-art-directions",
+            "card-skins",
+            "card-drag-drop"
+          ]
+        },
+        {
+          "id": "block-entries-experience",
+          "type": "entry_list",
+          "design": "editorial",
+          "preset": "experience",
+          "title": "Experience — the entry list block",
+          "columns": 2,
+          "entries": [
+            {
+              "id": "entry-exp-1",
+              "title": "Blocks, all of them",
+              "subtitle": "The demo portfolio",
+              "meta": "Phase 6 — Now",
+              "description": "Heroes, grids, marquees, rich text, custom HTML, blog sections, and this entry list — seven block types, four designs each.",
+              "link": "https://github.com/BluffingRay/overengineered-portfolio"
+            },
+            {
+              "id": "entry-exp-2",
+              "title": "One card library",
+              "subtitle": "v3 card library",
+              "meta": "Referenced, not copied",
+              "description": "These grid cards live in a shared library; the Home grid and the cutie grid above reference the same ids. Edit once, propagate everywhere."
+            },
+            {
+              "id": "entry-exp-3",
+              "title": "Presets are labels",
+              "subtitle": "Experience / Education / Certifications",
+              "meta": "Form only",
+              "description": "The preset swaps the form's field labels — the schema never changes. This one uses the Experience labels."
+            }
+          ]
         }
       ]
     },
     {
-      "id": "tab-about",
-      "label": "About",
+      "id": "tab-guide",
+      "label": "Guide",
       "blocks": [
         {
-          "id": "block-about-intro",
+          "id": "block-guide-yours",
           "type": "rich_text",
-          "content": "<p>I care about architectures where the schema does the policing: discriminated unions over optional-field soup, exhaustiveness checks over runtime surprises, and data models you can serialize without fear.</p><h3>Currently</h3><ul><li>Deep in Next.js App Router internals</li><li>Design-system tooling &amp; token pipelines</li><li>Teaching every pattern back until it sticks</li></ul>"
+          "design": "default",
+          "content": "<h2>Make it yours</h2><p>Everything below happens in the browser — no code, no restart.</p><ul><li><strong>Edit mode:</strong> visit with ?edit=true or press Ctrl/Cmd + Shift + E</li><li><strong>Per-block design:</strong> every block has a design picker — default, cutie, editorial, riso</li><li><strong>Entry lists:</strong> pick a preset for the form labels and 1–3 columns for the layout</li><li><strong>Site settings:</strong> skins, accent color, global font, and view scale live in the hidden Site tab</li><li><strong>Ordering:</strong> drag and drop blocks, cards, tabs, and entry rows — keyboard reordering works too</li><li><strong>History:</strong> Ctrl/Cmd + Z and Ctrl/Cmd + Shift + Z undo and redo everything</li><li><strong>Media vault:</strong> upload images or paste https URLs, then reference them anywhere</li></ul>"
         },
         {
-          "id": "block-about-html",
+          "id": "block-guide-publish",
+          "type": "rich_text",
+          "design": "default",
+          "content": "<h2>Publish it</h2><p>Two products share this codebase, and the JSON document is the bridge between them.</p><ul><li><strong>Product B (fork, zero-config):</strong> export the JSON and replace content/portfolio.json, then git push — a rebuild publishes it</li><li><strong>Product A (hosted):</strong> sign in, edit, and press Save in the toolbar — the server sanitizes and persists the document</li><li><strong>Bridge:</strong> the export/import endpoints move a portfolio between the two; only image URLs travel, so externally hosted pictures migrate cleanly</li></ul>"
+        },
+        {
+          "id": "block-guide-replace",
+          "type": "rich_text",
+          "design": "default",
+          "content": "<h2>Replace the demo</h2><p>This entire portfolio is one JSON document — edit it, export it, wipe it. The README documents the demo seed, the hosted setup, and the deploy checklist on <a href=\"https://github.com/BluffingRay/overengineered-portfolio\" target=\"_blank\" rel=\"noopener noreferrer nofollow\">GitHub</a>.</p>"
+        },
+        {
+          "id": "block-entries-curriculum",
+          "type": "entry_list",
+          "design": "default",
+          "preset": "education",
+          "title": "The curriculum",
+          "entries": [
+            {
+              "id": "entry-edu-1",
+              "title": "Editing basics",
+              "meta": "Lesson 1",
+              "description": "Edit mode (?edit=true or Ctrl/Cmd + Shift + E), the block forms, undo and redo, drag-and-drop ordering."
+            },
+            {
+              "id": "entry-edu-2",
+              "title": "Design layer",
+              "meta": "Lesson 2",
+              "description": "The four art directions, skins and the accent color, global font, view scale — and mixing them per block."
+            },
+            {
+              "id": "entry-edu-3",
+              "title": "Content systems",
+              "meta": "Lesson 3",
+              "description": "The blog composer at /write, the media vault, and the card library that app grids reference."
+            },
+            {
+              "id": "entry-edu-4",
+              "title": "Shipping",
+              "meta": "Lesson 4",
+              "description": "The publish loop for forks and hosted accounts, plus the export/import bridge for moving between them."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab-playground",
+      "label": "Playground",
+      "blocks": [
+        {
+          "id": "block-playground-css",
           "type": "custom_html",
-          "spacing": "none",
-          "html": "<div class=\"rounded-lg border border-current/20 p-4\"><strong>Status:</strong> this block is raw HTML — scripts stay out, styles stay in.</div>"
+          "html": "<section style=\"border:2px dashed currentColor;padding:24px;border-radius:12px;\"><h2 style=\"margin:0 0 8px;font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;\">Custom HTML block</h2><p style=\"margin:0 0 16px;opacity:0.75;\">This block takes raw markup with real CSS — scripts stay out, styles stay in. Below: a scoped video embed, which only passes sanitization on approved https embed hosts.</p><iframe src=\"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ\" title=\"A classic, embed-host approved\" allowfullscreen=\"\" style=\"width:100%;aspect-ratio:16/9;border:0;border-radius:8px;\"></iframe></section>"
         },
         {
-          "id": "block-blog-all",
-          "type": "blog",
+          "id": "block-playground-marquee",
+          "type": "marquee",
+          "design": "cutie",
           "spacing": "compact",
-          "title": "Everything I have written",
-          "variant": "all"
+          "items": [
+            "custom CSS",
+            "video embeds",
+            "raw markup",
+            "sanitized, not neutered"
+          ],
+          "speed": "fast"
+        },
+        {
+          "id": "block-entries-certs",
+          "type": "entry_list",
+          "design": "riso",
+          "preset": "certifications",
+          "title": "Certifications — three columns, riso voice",
+          "columns": 3,
+          "entries": [
+            {
+              "id": "entry-cert-1",
+              "title": "Byte-stable by design",
+              "meta": "CERT-001",
+              "description": "Clean documents survive sanitization byte-for-byte — this file round-trips the pipeline untouched."
+            },
+            {
+              "id": "entry-cert-2",
+              "title": "Absent, never null",
+              "meta": "CERT-002",
+              "description": "Optional fields vanish from the stored JSON when unset — no null soup anywhere."
+            },
+            {
+              "id": "entry-cert-3",
+              "title": "URLs are policed",
+              "meta": "CERT-003",
+              "description": "Every link, image, and iframe src is scheme-checked; embeds only on allowlisted hosts."
+            }
+          ]
         }
       ]
     }

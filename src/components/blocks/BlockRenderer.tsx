@@ -5,6 +5,7 @@ import BlogBlock from './BlogBlock';
 import RichTextBlock from './RichTextBlock';
 import CustomHtmlBlock from './CustomHtmlBlock';
 import MarqueeBlock from './MarqueeBlock';
+import EntryListBlock from './EntryListBlock';
 import Reveal from './Reveal';
 
 const SPACING_CLASSES: Record<BlockSpacing, string> = {
@@ -21,6 +22,7 @@ function renderBlock(
   posts?: Post[],
   onNavigate?: (href: string) => boolean,
   onOpenPost?: (id: string) => void,
+  showMediaPlaceholders?: boolean,
 ) {
   switch (block.type) {
     case 'featured_hero':
@@ -29,6 +31,7 @@ function renderBlock(
           block={block}
           socials={socials}
           onNavigate={onNavigate}
+          showMediaPlaceholder={showMediaPlaceholders}
         />
       );
     case 'app_grid':
@@ -50,6 +53,8 @@ function renderBlock(
       return <CustomHtmlBlock block={block} />;
     case 'marquee':
       return <MarqueeBlock block={block} />;
+    case 'entry_list':
+      return <EntryListBlock block={block} />;
     default: {
       const unhandled: never = block;
       return unhandled;
@@ -67,6 +72,8 @@ interface Props {
   onNavigate?: (href: string) => boolean;
   /** Opens a post as a floating reader instead of navigating. */
   onOpenPost?: (id: string) => void;
+  /** Edit-mode-only: heroes show the empty-media slot (absent = hidden). */
+  showMediaPlaceholders?: boolean;
 }
 
 export default function BlockRenderer({
@@ -76,11 +83,12 @@ export default function BlockRenderer({
   posts,
   onNavigate,
   onOpenPost,
+  showMediaPlaceholders,
 }: Props) {
   return (
     <div className={SPACING_CLASSES[block.spacing ?? 'normal']}>
       <Reveal>
-        {renderBlock(block, socials, cards, posts, onNavigate, onOpenPost)}
+        {renderBlock(block, socials, cards, posts, onNavigate, onOpenPost, showMediaPlaceholders)}
       </Reveal>
     </div>
   );

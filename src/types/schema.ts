@@ -206,13 +206,52 @@ export interface BlogBlock extends BlockBase {
   variant?: BlogVariant;
 }
 
+export const ENTRY_LIST_PRESETS = ['experience', 'education', 'certifications'] as const;
+
+export type EntryListPreset = (typeof ENTRY_LIST_PRESETS)[number];
+
+export const ENTRY_LIST_COLUMNS = [1, 2, 3] as const;
+
+export type EntryListColumns = (typeof ENTRY_LIST_COLUMNS)[number];
+
+export interface EntryListItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  /** Period line, e.g. "2024 — Now". */
+  meta?: string;
+  description?: string;
+  /** Rendered on the title as an external anchor; https or root-relative. */
+  link?: string;
+}
+
+/**
+ * Experience / Education / Certifications — one block, three label sets.
+ * The preset restores the FORM's field labels only; the renderer never
+ * reads it. `title` (section heading) is the one addition beyond the
+ * locked entry shape: sibling blocks all carry a title and a headingless
+ * entry list floats.
+ */
+export interface EntryListBlock extends BlockBase {
+  type: 'entry_list';
+  /** Art direction — see BLOCK_DESIGNS. */
+  design?: BlockDesign;
+  preset?: EntryListPreset;
+  /** Optional section heading — absent = no heading. */
+  title?: string;
+  /** 1 (default), 2, or 3 — multi-column modes render the cards in a responsive grid. */
+  columns?: EntryListColumns;
+  entries: EntryListItem[];
+}
+
 export type Block =
   | FeaturedHeroBlock
   | AppGridBlock
   | RichTextBlock
   | CustomHtmlBlock
   | MarqueeBlock
-  | BlogBlock;
+  | BlogBlock
+  | EntryListBlock;
 
 export type BlockType = Block['type'];
 
@@ -266,20 +305,30 @@ export const SLUG_PATTERN = /^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])?$/;
 export const RESERVED_SLUGS = [
   'u', 'api', 'dashboard', 'write', 'blog', 'admin', 'login', 'signup',
   'edit', 'assets', 'uploads', 'images', 'public', 'static', '_next',
-  'favicon.ico',
+  'favicon.ico', 'demo',
 ] as const;
 
 /**
  * Normalize a user-supplied slug candidate: trim → lowercase → validate
  * against the pattern + reserved list. Returns the canonical slug or null
  * (invalid/reserved) — the single source used by the doc sanitizer and the
- * API's availability/conflict checks.
+ * API's availability/conflict checks. `allowReserved` (6-b demo seed)
+ * bypasses ONLY the reserved-list check — pattern/length still enforced;
+ * omitted (default), behavior is unchanged for every existing caller.
  */
-export function normalizeSlug(value: unknown): string | null {
+export function normalizeSlug(
+  value: unknown,
+  allowReserved?: readonly string[],
+): string | null {
   if (typeof value !== 'string') return null;
   const slug = value.trim().toLowerCase();
   if (!SLUG_PATTERN.test(slug)) return null;
-  if ((RESERVED_SLUGS as readonly string[]).includes(slug)) return null;
+  if (
+    !(allowReserved ?? []).includes(slug) &&
+    (RESERVED_SLUGS as readonly string[]).includes(slug)
+  ) {
+    return null;
+  }
   return slug;
 }
 

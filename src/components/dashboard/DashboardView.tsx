@@ -902,6 +902,9 @@ export default function DashboardView() {
                 >
                   fork it on GitHub ↗
                 </a>
+                <Link href="/u/demo" className="font-mono text-xs opacity-40 hover:opacity-70">
+                  How to build ↗
+                </Link>
               </div>
             </div>
             {signInOpen && (
@@ -945,8 +948,8 @@ export default function DashboardView() {
             <span className="caret-blink text-accent">▌</span>
           </h1>
           {/* 5g-b (followup) — signed-in users get the same quiet exit as
-              the hub's welcome card; the how-to link joins when the 6-b
-              demo seed gives it a real target (/u/demo). */}
+              the hub's welcome card. 6-d: the how-to link targets /u/demo,
+              where the demo seed's how-to post lives (floating reader). */}
           <a
             href="https://github.com/BluffingRay/overengineered-portfolio"
             target="_blank"
@@ -955,6 +958,9 @@ export default function DashboardView() {
           >
             fork it on GitHub ↗
           </a>
+          <Link href="/u/demo" className="font-mono text-xs opacity-40 hover:opacity-70">
+            How to build ↗
+          </Link>
         </header>
 
         {/* Your portfolio — the hero of the page. */}

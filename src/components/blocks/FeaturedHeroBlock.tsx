@@ -19,7 +19,19 @@ const HERO_DESIGNS: Record<BlockDesign, ComponentType<HeroDesignProps>> = {
   riso: RisoHero,
 };
 
-export default function FeaturedHeroBlock(props: HeroDesignProps) {
-  const Design = HERO_DESIGNS[props.block.design ?? 'default'];
-  return <Design {...props} />;
+export default function FeaturedHeroBlock({
+  block,
+  socials,
+  onNavigate,
+  showMediaPlaceholder,
+}: HeroDesignProps) {
+  const Design = HERO_DESIGNS[block.design ?? 'default'];
+  return (
+    <Design
+      block={block}
+      socials={socials}
+      onNavigate={onNavigate}
+      showMediaPlaceholder={showMediaPlaceholder}
+    />
+  );
 }

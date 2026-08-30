@@ -113,6 +113,19 @@
   }
 }
 
+/* Keyboard-focus audit (6-c) — one token-driven ring, keyboard-only:
+   :focus-visible never matches pointer input, so mouse users see no
+   rings while keyboard users get them everywhere in every skin (the
+   admin token set also declares --accent, so dashboard chrome inherits
+   it). .rich-editor .ProseMirror keeps its outline:none — contenteditable
+   owns its caret, and the unlayered rule wins over this base layer. */
+@layer base {
+  :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

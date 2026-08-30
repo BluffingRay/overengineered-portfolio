@@ -4,6 +4,7 @@ import {
   BLOCK_WIDTHS,
   BLOG_VARIANTS,
   clampViewScale,
+  ENTRY_LIST_PRESETS,
   HERO_MEDIA_FRAMES,
   MARQUEE_SPEEDS,
   MEDIA_POSITIONS,
@@ -20,6 +21,7 @@ import {
 import type {
   AppCardItem,
   AssetItem,
+  EntryListItem,
   FooterConfig,
   PortfolioData,
   Post,
@@ -282,6 +284,86 @@ function sanitizeMarquee(block: Record<string, unknown>): Record<string, unknown
   );
 }
 
+const MAX_ENTRY_LIST_ENTRIES = 50;
+const MAX_ENTRY_DESCRIPTION = 500;
+
+/**
+ * One entry survives with an id; `title` is kept VERBATIM (may be empty —
+ * the form creates untitled entries and the title is edited
+ * per-keystroke, so dropping/trimming here eats live drafts: the posts
+ * echo-fight rule). Optional strings ride along only when they are still
+ * non-empty after trim (absent, never null). Unknown keys never survive
+ * the rebuild.
+ */
+function sanitizeEntryListItem(raw: unknown): EntryListItem | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const item = raw as Record<string, unknown>;
+  if (typeof item.id !== 'string' || item.id.trim() === '') return null;
+  if (typeof item.title !== 'string') return null;
+
+  const text = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  };
+
+  const subtitle = text(item.subtitle);
+  const meta = text(item.meta);
+  const description = text(item.description);
+  const link = text(item.link);
+
+  return {
+    id: item.id.slice(0, 64),
+    title: item.title,
+    ...(subtitle !== undefined ? { subtitle } : {}),
+    ...(meta !== undefined ? { meta } : {}),
+    ...(description !== undefined
+      ? { description: description.slice(0, MAX_ENTRY_DESCRIPTION) }
+      : {}),
+    ...(link !== undefined ? { link } : {}),
+  };
+}
+
+function sanitizeEntryList(block: Record<string, unknown>): Record<string, unknown> {
+  if (block.type !== 'entry_list') return block;
+
+  const clean: Record<string, unknown> = { ...block };
+
+  if (Array.isArray(clean.entries)) {
+    // The form's dnd keys on entry ids — a repeated id breaks dragging,
+    // so the later copy of a duplicate is dropped.
+    const seenIds = new Set<string>();
+    clean.entries = (clean.entries as unknown[])
+      .map(sanitizeEntryListItem)
+      .filter((entry): entry is EntryListItem => {
+        if (entry === null || seenIds.has(entry.id)) return false;
+        seenIds.add(entry.id);
+        return true;
+      })
+      .slice(0, MAX_ENTRY_LIST_ENTRIES);
+  } else {
+    clean.entries = [];
+  }
+
+  clean.preset = pickEnum(ENTRY_LIST_PRESETS, clean.preset);
+  // Numeric enum — pickEnum is string-only, so pick inline (invalid → absent = 1).
+  clean.columns =
+    clean.columns === 1 || clean.columns === 2 || clean.columns === 3
+      ? clean.columns
+      : undefined;
+
+  // Optional section heading: trimmed or absent, never empty.
+  if (typeof clean.title === 'string' && clean.title.trim() !== '') {
+    clean.title = clean.title.trim();
+  } else {
+    delete clean.title;
+  }
+
+  return Object.fromEntries(
+    Object.entries(clean).filter(([, value]) => value !== undefined),
+  );
+}
+
 function sanitizeBlogBlock(block: Record<string, unknown>): Record<string, unknown> {
   if (block.type !== 'blog') return block;
 
@@ -313,7 +395,8 @@ function sanitizeBlockDesign(block: Record<string, unknown>): Record<string, unk
     block.type !== 'app_grid' &&
     block.type !== 'rich_text' &&
     block.type !== 'marquee' &&
-    block.type !== 'blog'
+    block.type !== 'blog' &&
+    block.type !== 'entry_list'
   ) {
     return block;
   }
@@ -331,9 +414,11 @@ function sanitizeBlockDesign(block: Record<string, unknown>): Record<string, unk
 function sanitizeBlock(block: Record<string, unknown>): Record<string, unknown> {
   return sanitizeBlockDesign(
     sanitizeBlogBlock(
-      sanitizeMarquee(
-        sanitizeHeroIdentity(
-          sanitizeHeroEyebrow(sanitizeBlockWidth(sanitizeHeroMedia(block))),
+      sanitizeEntryList(
+        sanitizeMarquee(
+          sanitizeHeroIdentity(
+            sanitizeHeroEyebrow(sanitizeBlockWidth(sanitizeHeroMedia(block))),
+          ),
         ),
       ),
     ),
@@ -517,7 +602,10 @@ function sanitizePosts(candidate: unknown): Post[] | undefined {
   return posts.length > 0 ? posts : undefined;
 }
 
-export function prepareDocument(parsed: unknown): PortfolioData | null {
+export function prepareDocument(
+  parsed: unknown,
+  opts?: { allowReservedSlugs?: readonly string[] },
+): PortfolioData | null {
   if (typeof parsed !== 'object' || parsed === null) return null;
 
   let candidate = parsed as Record<string, unknown>;
@@ -585,7 +673,8 @@ export function prepareDocument(parsed: unknown): PortfolioData | null {
     posts,
     // 5e-a hosted metadata: explicitly override the raw spread so invalid
     // values never ride through — invalid/dropped = absent = default.
-    slug: normalizeSlug(candidate.slug) ?? undefined,
+    // 6-b: the demo seed opts the reserved 'demo' slug back in.
+    slug: normalizeSlug(candidate.slug, opts?.allowReservedSlugs) ?? undefined,
     visibility: candidate.visibility === 'public' ? 'public' : undefined,
     showcase: candidate.showcase === true ? true : undefined,
   };

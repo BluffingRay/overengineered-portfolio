@@ -97,6 +97,7 @@ export default function CutieHero({
   block,
   socials,
   onNavigate,
+  showMediaPlaceholder,
 }: HeroDesignProps) {
   const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
   const splitLeft = layout === 'split' && block.mediaSide === 'left';
@@ -128,7 +129,7 @@ export default function CutieHero({
               : 'order-first justify-self-end md:order-none'
         }
       />
-    ) : (
+    ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'square'}
@@ -142,7 +143,7 @@ export default function CutieHero({
               : 'order-first justify-self-end md:order-none'
         }
       />
-    );
+    ) : null;
 
   const isCentered = layout === 'centered';
   const isSplit = layout === 'split';

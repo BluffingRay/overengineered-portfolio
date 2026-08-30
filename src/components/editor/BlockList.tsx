@@ -34,6 +34,7 @@ import SortableBlockRow from './SortableBlockRow';
 import HeroForm from './blocks/HeroForm';
 import AppGridForm from './blocks/AppGridForm';
 import MarqueeForm from './blocks/MarqueeForm';
+import EntryListForm from './blocks/EntryListForm';
 import BlogForm from './blocks/BlogForm';
 import RichTextForm from './RichTextForm';
 
@@ -125,6 +126,10 @@ export default function BlockList({ activeTabId }: Props) {
       case 'marquee':
         return (
           <MarqueeForm block={block} patch={(p) => updateBlock(block.id, p)} />
+        );
+      case 'entry_list':
+        return (
+          <EntryListForm block={block} patch={(p) => updateBlock(block.id, p)} />
         );
       case 'blog':
         return <BlogForm block={block} patch={(p) => updateBlock(block.id, p)} />;
