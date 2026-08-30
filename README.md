@@ -126,6 +126,11 @@ Migrating **your real content** (B -> A or between accounts): the dashboard's **
 
 ## Limitations
 
+- **Mobile view is not properly tested yet** — the product is
+  desktop-first; phones render everything but expect rough edges
+  (editor density, drag-and-drop touch targets, dashboard layout).
+  By all means browse portfolios on a phone, but do serious editing on
+  a desktop until this gets its dedicated pass.
 - **Auth is a guardrail, not a fortress** — the B session token is opaque/unsigned and client-writable; for real auth use the hosted Firebase shell.
 - **Last-save-wins** document persistence (see above); no conflict detection.
 - **KV index race window**: the `portfolios:index` registry is read-modify-write, so concurrent first-saves can race (the next save heals it).
