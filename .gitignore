@@ -47,5 +47,3 @@ next-env.d.ts
 # internal task specs — detailed local working docs (AGENTS.md is the repo-facing summary)
 /docs/
 
-# demo account credentials (written by scripts/seed-demo.ts) — never commit
-/demo-credentials.local.txt

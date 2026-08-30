@@ -1,14 +1,13 @@
 // 6-b verify — PURE checks only: no servers, no DOM, no .env reads (safe
-// next to the dev server). Covers: RESERVED_SLUGS += 'demo' +
-// normalizeSlug's allowReserved bypass, prepareDocument's slug option, demo
-// doc sanity (valid v3, byte-stable round-trip, no "raymar", https image
-// URLs, embed-rule iframes, block-type coverage, entry-list presets, no
-// hosted-metadata keys in the raw file, card-library reuse, posts,
-// icon keys, unique tab ids, #-tab refs), and static greps of the PUT
-// route exemption + the seed script's env hygiene.
+// next to the dev server). Covers demo doc sanity (valid v3, byte-stable
+// round-trip through prepareDocument AND the DOMPurify pipeline, no
+// "raymar", https image URLs, embed-rule iframes, block-type coverage,
+// entry-list presets, no hosted-metadata keys in the raw file,
+// card-library reuse, posts, icon keys, unique tab ids, #-tab refs).
+// (The /u/demo seed machinery was removed in the 6-e pivot — the demo now
+// lives in the self-contained /playground.)
 // Run: npx tsx scripts/6-b-verify.ts
 import { readFileSync } from "node:fs";
-import { RESERVED_SLUGS, normalizeSlug } from "../src/types/schema";
 import type { BlockType, PortfolioData } from "../src/types/schema";
 import { prepareDocument } from "../src/lib/storage";
 import { sanitizePortfolioDocument } from "../src/lib/sanitize-html";
@@ -27,44 +26,6 @@ function check(name: string, cond: boolean, detail?: string) {
 const RAW = readFileSync("content/portfolio.json", "utf8");
 const parsed = JSON.parse(RAW) as Record<string, unknown>;
 const doc = parsed as unknown as PortfolioData;
-
-// ---------------- normalizeSlug + RESERVED_SLUGS ----------------
-console.log("— RESERVED_SLUGS + normalizeSlug —");
-check("RESERVED_SLUGS contains 'demo'", (RESERVED_SLUGS as readonly string[]).includes("demo"));
-check("normalizeSlug('demo') is null by default", normalizeSlug("demo") === null);
-check(
-  "normalizeSlug('demo') is 'demo' with ['demo']",
-  normalizeSlug("demo", ["demo"]) === "demo",
-);
-check(
-  "bad pattern still null WITH allowReserved (underscore)",
-  normalizeSlug("bad_slug", ["bad_slug"]) === null,
-);
-check(
-  "bad pattern still null WITH allowReserved (edge hyphens)",
-  normalizeSlug("-demo-", ["-demo-"]) === null,
-);
-check(
-  "non-reserved slugs unaffected by allowReserved",
-  normalizeSlug("my-site", ["demo"]) === "my-site",
-);
-
-// ---------------- prepareDocument opts ----------------
-const withSlug = prepareDocument({ ...structuredClone(doc), slug: "demo" });
-check(
-  "prepareDocument strips slug 'demo' WITHOUT the option",
-  withSlug !== null && withSlug.slug === undefined,
-  String(withSlug?.slug),
-);
-const withSlugOpt = prepareDocument(
-  { ...structuredClone(doc), slug: "demo" },
-  { allowReservedSlugs: ["demo"] },
-);
-check(
-  "prepareDocument keeps slug 'demo' WITH the option",
-  withSlugOpt !== null && withSlugOpt.slug === "demo",
-  String(withSlugOpt?.slug),
-);
 
 // ---------------- demo doc sanity ----------------
 console.log("— demo doc sanity —");
@@ -268,31 +229,6 @@ check(
   (doc.posts ?? [])
     .filter((post) => post.status === "published")
     .every((post) => typeof post.publishedAt === "string" && post.publishedAt !== ""),
-);
-
-// ---------------- static greps ----------------
-console.log("— static greps —");
-const routeSrc = readFileSync("src/app/api/portfolio/route.ts", "utf8");
-check("PUT route exemption keyed on DEMO_EMAIL", routeSrc.includes("DEMO_EMAIL"));
-check(
-  "exemption threads allowReservedSlugs into prepareDocument",
-  routeSrc.includes("allowReservedSlugs") && routeSrc.includes("getDemoUid"),
-);
-const seedSrc = readFileSync("scripts/seed-demo.ts", "utf8");
-check("seed script reads DEMO_EMAIL + DEMO_PASSWORD", seedSrc.includes("DEMO_EMAIL") && seedSrc.includes("DEMO_PASSWORD"));
-check(
-  "seed script uses the firebase client SDK (signIn + createUser fallback)",
-  seedSrc.includes("signInWithEmailAndPassword") && seedSrc.includes("createUserWithEmailAndPassword"),
-);
-check(
-  "seed script never console-logs credential values",
-  !seedSrc
-    .split("\n")
-    .some(
-      (line) =>
-        /console\.(log|info|warn|error)/.test(line) &&
-        /(DEMO_PASSWORD|DEMO_EMAIL|apiKey|authDomain|idToken|password)/.test(line),
-    ),
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURES`);

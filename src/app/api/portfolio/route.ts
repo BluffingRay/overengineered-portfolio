@@ -4,29 +4,11 @@ import { prepareDocument } from "@/lib/storage";
 import { kvDelete, kvGet, kvPut, HOSTED_PORTFOLIO_KEY, hasKv, portfolioKeyFor } from "@/lib/kv";
 import { readIndex, removeFromIndex, updateIndexForDoc } from "@/lib/portfolioIndex";
 import { assetPrefixForUid, purgeAssetPrefix } from "@/lib/r2Assets";
-import { getUserIdFromSessionCookie, isAdminConfigured, getAdminAuth } from "@/lib/firebase/admin";
+import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
 import { sanitizePortfolioDocument } from "@/lib/sanitize-html";
 import { stripDrafts } from "@/lib/loadHostedDoc";
 import { normalizeSlug } from "@/types/schema";
 export const runtime = "nodejs";
-
-// 6-b demo seed exemption: the reserved 'demo' slug is claimable only by
-// the dedicated demo account. A resolved uid is cached for the process;
-// lookup failure = null = no exemption, NOT cached (the next request
-// retries — a transient blip or first-run-before-provisioning must not
-// lock the exemption out until a restart). Never fails the request.
-let demoUidCache: string | null | undefined;
-async function getDemoUid(): Promise<string | null> {
-  if (demoUidCache !== undefined) return demoUidCache;
-  const email = process.env.DEMO_EMAIL;
-  if (!email || !isAdminConfigured()) return null;
-  try {
-    demoUidCache = (await getAdminAuth().getUserByEmail(email)).uid;
-  } catch {
-    return null;
-  }
-  return demoUidCache;
-}
 
 // GET /api/portfolio — hosted JSON (KV) with local fallback for Product B.
 // 5c: per-user when Firebase session present, else Hosted default. Query:
@@ -93,11 +75,6 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // 6-b: only the demo account's uid may claim the reserved 'demo' slug
-    // (the seed script PUTs it); any other caller gets the usual 400 below.
-    const isDemoSeed =
-      uid !== null && body?.slug === "demo" && (await getDemoUid()) === uid;
-
     // 5e-a: slug claim. "Present" = non-empty string — undefined/null/empty/
     // whitespace-only is absent (no claim, no 400: clearing the slug is never
     // rejected). Present but invalid rejects loudly (server is authority —
@@ -106,7 +83,7 @@ export async function PUT(request: NextRequest) {
     let claim: string | null = null;
     if (typeof body?.slug === "string") {
       if (body.slug.trim() !== "") {
-        claim = normalizeSlug(body.slug, isDemoSeed ? ["demo"] : undefined);
+        claim = normalizeSlug(body.slug);
         if (!claim) {
           return NextResponse.json({ error: "invalid-slug" }, { status: 400 });
         }
@@ -127,10 +104,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const doc = prepareDocument(
-      body,
-      isDemoSeed ? { allowReservedSlugs: ["demo"] } : undefined,
-    );
+    const doc = prepareDocument(body);
     if (!doc) {
       return NextResponse.json({ error: "Invalid PortfolioData" }, { status: 400 });
     }

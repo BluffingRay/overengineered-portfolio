@@ -12,9 +12,9 @@ A block-based portfolio CMS where **the entire portfolio is one JSON document** 
 
 The **JSON document is the bridge**: export from either side, import into the other, same schema (`src/types/schema.ts`, validated by `prepareDocument`).
 
-> The committed `content/portfolio.json` is a **demo portfolio** (also hosted at `/u/demo` on hosted deploys) that showcases every block type and doubles as the user guide — see [Demo seed](#demo-seed).
+> The committed `content/portfolio.json` is a **demo portfolio** that showcases every block type and doubles as the user guide — and a fully editable **playground** at `/playground` lets anyone try the editor without an account or any saving — see [Demo + playground](#demo--playground).
 
-**Contents:** [Setup: Product B](#setup-product-b--self-hosted-fork) · [Setup: Product A](#setup-product-a--hosted) · [Tech stack](#tech-stack) · [Architecture](#architecture) · [Demo seed](#demo-seed) · [Quirks & gotchas](#quirks--gotchas) · [Limitations](#limitations) · [Vercel deploy checklist](#vercel-deploy-checklist)
+**Contents:** [Setup: Product B](#setup-product-b--self-hosted-fork) · [Setup: Product A](#setup-product-a--hosted) · [Tech stack](#tech-stack) · [Architecture](#architecture) · [Demo + playground](#demo--playground) · [Quirks & gotchas](#quirks--gotchas) · [Limitations](#limitations) · [Vercel deploy checklist](#vercel-deploy-checklist)
 
 ## Setup: Product B — self-hosted / fork
 
@@ -90,31 +90,13 @@ A SHELL = core + Firebase Auth + KV store + dashboard/onboarding + /u/<slug> <- 
 - **`content/portfolio.json`** is B's publish file and the seed every fresh clone boots from (`src/data/initialData.ts` imports it).
 - **Sanitization**: hosted writes (and reads) run every HTML-bearing field through `src/lib/sanitize-html.ts` — tag/attribute allowlists, URL scheme guards, and iframes only on allowlisted https embed hosts with `/embed/`-style paths.
 
-## Demo seed
+## Demo + playground
 
-The committed `content/portfolio.json` is a **demo portfolio** — a self-documenting showcase (marketing pitch on Home, art directions on Showcase, instructions on Guide, custom HTML + embeds on Playground) instead of any real person's content. Fresh clones and fresh hosted deploys show it; replace it with your own exported document whenever you like.
+The committed `content/portfolio.json` is a **demo portfolio** — a self-documenting showcase (marketing pitch on Home, art directions on Showcase, instructions on Guide, custom HTML + embeds on Playground) instead of any real person's content. Product B fresh clones boot straight into it; replace it with your own exported document whenever you like (see Setup: Product B).
 
-A dedicated **demo account** hosts the same document publicly at `/u/demo` (also listed in the showcase gallery, so a fresh hosted deploy never looks empty). `scripts/seed-demo.ts` keeps it in sync:
+The **playground** (`/playground`) is the same demo running the real editor — no account, no setup, and **nothing is ever saved**: edits live in the tab's memory, and a refresh (or the Reset button) restores the pristine demo. It works identically in both products and needs zero configuration, which makes it the "show, don't tell" front door for anyone who learns by doing.
 
-```bash
-npx tsx scripts/seed-demo.ts
-```
-
-What it does: signs in with the demo credentials (creating the account on first run) -> mints a session cookie -> PUTs `content/portfolio.json` to `/api/portfolio` with `slug: 'demo'`, public + showcased -> verifies `/u/demo` renders and the showcase lists it. Idempotent — rerun any time to re-sync the committed file.
-
-Setup:
-
-1. Set `DEMO_EMAIL` + `DEMO_PASSWORD` in `.env.local` (or shell env) — see `.env.example`. The **server** must also know `DEMO_EMAIL`: locally that means setting it and **restarting `next dev`** (route handlers read env at startup); on Vercel it means adding the var and redeploying. Without it, the claim fails with `invalid-slug` (the script prints this hint).
-2. Requires the hosted stack (Firebase + KV) configured; the script hits your running server, never spawns one.
-3. Never commit real credential values — anyone holding them can deface `/u/demo`. On success the script writes them to gitignored `demo-credentials.local.txt`.
-4. **Against a Vercel deploy**, run it from your machine pointed at the deployed URL:
-   ```bash
-   SEED_BASE_URL=https://your-app.vercel.app npx tsx scripts/seed-demo.ts
-   ```
-
-The demo account is a **mannequin**: it edits nothing by hand. The `demo` slug is reserved for everyone through the UI, and the seed script is the only writer — hand edits would be stomped by the next seed run.
-
-Migrating **your real content** (B -> A or between accounts): the dashboard's **Export JSON / Import from file** panel (the 5f bridge). One known limitation: the bridge migrates **content, not image bytes** — image URL references break across products (A's `/api/r2/...` proxy needs A's R2 env; B's `/uploads/...` files don't travel to the host). Externally hosted (absolute https) image URLs migrate cleanly; anything else means re-uploading via the media vault after importing.
+On hosted deploys, new users who sign up get the **onboarding** flow (pick a design → name → generated starter portfolio); its first lesson links to the playground for anyone who'd rather click around than read. Migrating **your real content** (B -> A or between accounts) happens through the dashboard's **Export JSON / Import from file** panel (the 5f bridge). One known limitation: the bridge moves **content, not image bytes** — image URL references break across products (A's `/api/r2/...` proxy needs A's R2 env; B's `/uploads/...` files don't travel to the host). Externally hosted (absolute https) image URLs migrate cleanly; anything else means re-uploading via the media vault after importing.
 
 ## Quirks & gotchas
 
@@ -141,7 +123,6 @@ Migrating **your real content** (B -> A or between accounts): the dashboard's **
 - **KV index race window**: the `portfolios:index` registry is read-modify-write, so concurrent first-saves can race (the next save heals it).
 - **Single-tenant `dev` uploads are uncapped** (no per-user quota without a session).
 - **The bridge migrates URLs, not bytes** (see Demo seed above).
-- **The demo showcase seat has no off switch** — the seed always lists `/u/demo` in the gallery (a fresh deploy never looks empty is the point); see `AGENTS.md` Future plans for the parked opt-out knob.
 
 ## Vercel deploy checklist
 
@@ -156,15 +137,13 @@ Env var names and purposes only — values live in your Vercel project settings 
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for metadata/OG (unset = localhost) |
 | `ADMIN_PASSWORD` / `ALLOW_EDIT` | B-shell edit gate / read-only switch — **set `ALLOW_EDIT=false` on any public deployment**; keep it true only for editing on your own machine (see `.env.example` for the `$` trap) |
 | `LOCAL` | Upload storage switch (auto / local / R2 — semantics in `.env.example`) |
-| `DEMO_EMAIL` / `DEMO_PASSWORD` | Demo seed account (server needs `DEMO_EMAIL` + redeploy; see Demo seed) |
 
 First deploy:
 
 1. Create the Firebase app; enable the Email/Password (+ Google if wanted) providers.
 2. Create the Workers KV namespace and the R2 bucket (same Cloudflare account).
 3. Set the env vars above, deploy.
-4. Run `SEED_BASE_URL=https://your-app.vercel.app npx tsx scripts/seed-demo.ts` from your machine to provision `/u/demo`.
-5. Sign up from the hub, onboard (or Import from file to migrate), flip visibility to Public in the dashboard when ready — private is the default and `/u/<slug>` 404s for strangers until then.
-6. Custom domain: add it in Vercel, set `NEXT_PUBLIC_SITE_URL`, redeploy.
+4. Sign up from the hub, onboard (or Import from file to migrate), flip visibility to Public in the dashboard when ready — private is the default and `/u/<slug>` 404s for strangers until then.
+5. Custom domain: add it in Vercel, set `NEXT_PUBLIC_SITE_URL`, redeploy.
 
 Roadmap, accepted trade-offs, and hard-won gotchas live in `AGENTS.md` (Future plans + Hard-Won Gotchas sections).

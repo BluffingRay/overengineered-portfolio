@@ -305,30 +305,20 @@ export const SLUG_PATTERN = /^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])?$/;
 export const RESERVED_SLUGS = [
   'u', 'api', 'dashboard', 'write', 'blog', 'admin', 'login', 'signup',
   'edit', 'assets', 'uploads', 'images', 'public', 'static', '_next',
-  'favicon.ico', 'demo',
+  'favicon.ico',
 ] as const;
 
 /**
  * Normalize a user-supplied slug candidate: trim → lowercase → validate
  * against the pattern + reserved list. Returns the canonical slug or null
  * (invalid/reserved) — the single source used by the doc sanitizer and the
- * API's availability/conflict checks. `allowReserved` (6-b demo seed)
- * bypasses ONLY the reserved-list check — pattern/length still enforced;
- * omitted (default), behavior is unchanged for every existing caller.
+ * API's availability/conflict checks.
  */
-export function normalizeSlug(
-  value: unknown,
-  allowReserved?: readonly string[],
-): string | null {
+export function normalizeSlug(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const slug = value.trim().toLowerCase();
   if (!SLUG_PATTERN.test(slug)) return null;
-  if (
-    !(allowReserved ?? []).includes(slug) &&
-    (RESERVED_SLUGS as readonly string[]).includes(slug)
-  ) {
-    return null;
-  }
+  if ((RESERVED_SLUGS as readonly string[]).includes(slug)) return null;
   return slug;
 }
 

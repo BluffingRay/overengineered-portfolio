@@ -602,10 +602,7 @@ function sanitizePosts(candidate: unknown): Post[] | undefined {
   return posts.length > 0 ? posts : undefined;
 }
 
-export function prepareDocument(
-  parsed: unknown,
-  opts?: { allowReservedSlugs?: readonly string[] },
-): PortfolioData | null {
+export function prepareDocument(parsed: unknown): PortfolioData | null {
   if (typeof parsed !== 'object' || parsed === null) return null;
 
   let candidate = parsed as Record<string, unknown>;
@@ -673,8 +670,7 @@ export function prepareDocument(
     posts,
     // 5e-a hosted metadata: explicitly override the raw spread so invalid
     // values never ride through — invalid/dropped = absent = default.
-    // 6-b: the demo seed opts the reserved 'demo' slug back in.
-    slug: normalizeSlug(candidate.slug, opts?.allowReservedSlugs) ?? undefined,
+    slug: normalizeSlug(candidate.slug) ?? undefined,
     visibility: candidate.visibility === 'public' ? 'public' : undefined,
     showcase: candidate.showcase === true ? true : undefined,
   };
