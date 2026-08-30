@@ -308,6 +308,12 @@
           "content": "<h2>Publish it</h2><p>Two products share this codebase, and the JSON document is the bridge between them.</p><ul><li><strong>Product B (fork, zero-config):</strong> export the JSON and replace content/portfolio.json, then git push — a rebuild publishes it</li><li><strong>Product A (hosted):</strong> sign in, edit, and press Save in the toolbar — the server sanitizes and persists the document</li><li><strong>Bridge:</strong> the export/import endpoints move a portfolio between the two; only image URLs travel, so externally hosted pictures migrate cleanly</li></ul>"
         },
         {
+          "id": "rt-guide-hosted",
+          "type": "rich_text",
+          "design": "editorial",
+          "content": "<h2>Or skip the code entirely — go hosted</h2><p>Everything you are looking at can run as a <strong>hosted service</strong>: sign up, pick a design, and your portfolio is live at <strong>/u/your-name</strong> the moment you press Save. No repository, no rebuilds, no git — edits go straight to the cloud and visitors see them instantly.</p><ul><li><strong>Live in minutes:</strong> deploy once with the README checklist, then the dashboard is your home — create, edit, publish, and browse everyone else's public portfolios in the showcase.</li><li><strong>Onboarding builds it for you:</strong> pick an art direction, type your name, and a real starter portfolio is generated before you ever see the editor.</li><li><strong>Real accounts:</strong> email or Google sign-in, your document stored server-side, images on cloud storage — your work follows you to any device.</li><li><strong>Bring this demo with you:</strong> the export/import bridge moves portfolios between the fork and the hosted product in both directions.</li></ul><p>The fork is for tinkerers; hosted is for everyone else. Same editor, same designs, same document — pick the workflow that fits.</p>"
+        },
+        {
           "id": "block-guide-replace",
           "type": "rich_text",
           "design": "default",
