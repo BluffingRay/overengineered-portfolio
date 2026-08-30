@@ -628,6 +628,11 @@ Build Phase 6 in a FRESH session (this run's lesson).
 
 ## Future plans (was original Phase 6 — polish & cross-product)
 
+- **Mobile pass (user, 2026-08-30, warning-shipped):** mobile view is
+  NOT properly tested — README Limitations now says desktop-first,
+  browse-on-phone fine, serious editing on desktop. A dedicated mobile
+  audit (editor density, touch dnd targets, dashboard layout) is future
+  work, user-directed to ship the warning instead of the fix.
 - **Demo showcase opt-out (user, 2026-08-30, no fix for now):** the demo
   account's entry in the showcase gallery cannot be turned off on a
   hosted deploy — the seed script hardcodes showcase:true and the demo
