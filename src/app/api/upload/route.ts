@@ -82,11 +82,6 @@ export async function GET(request: Request) {
           }
         };
         await walk('uploads/', 0);
-        // Committed repo images too (public/images/**): in local mode the
-        // library should offer everything the deployed site can show.
-        // keys outside uploads/ can never be deleted via this route
-        // (ownsKey is uploads/-scoped) — they are repo files.
-        await walk('images/', 0);
       } else {
         // R2-scoped (LOCAL=false): local list stays own-prefix only.
         const dir = path.join(process.cwd(), 'public', myPrefix);
