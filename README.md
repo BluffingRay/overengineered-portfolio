@@ -28,8 +28,11 @@ npm run dev
 Then:
 
 1. **Edit** — open http://localhost:3000 and enter edit mode with `/?edit=true` or `Ctrl/Cmd + Shift + E`. Add blocks (hero, app grid, rich text, entry list, marquee, blog, custom HTML), pick a per-block **art direction** (default / cutie / editorial / riso), drag to reorder, undo with `Ctrl/Cmd + Z`. Hidden **Posts** and **Site** tabs appear in edit mode — the blog composer lives at `/write`, skins / accent / font / view scale in Site settings.
-2. **Publish** — Site settings → **Export JSON**, replace `content/portfolio.json` in your repo, `git push`. The rebuild publishes it (the default content is baked at build time). Commit images under `public/images/`.
-3. **Optional gate** — set `ADMIN_PASSWORD` in `.env.local` to password-gate edit mode, or `ALLOW_EDIT=false` for a fully read-only public site. Setup (incl. the bcrypt `$`-in-`.env` trap) is documented in `.env.example`. It's a guardrail, not real security.
+2. **Publish** — press **Export** in the editor toolbar, then open the downloaded `portfolio-data.json`, **select all and copy-paste** its contents into `content/portfolio.json` in your repo (the committed file must stay valid JSON — paste over the whole file), and `git push`. The rebuild publishes it (the default content is baked at build time).
+3. **Keep your images publishable — what NOT to gitignore.** Two rules:
+   - `content/portfolio.json` must **stay committed** (never add it to `.gitignore`) — it *is* your published portfolio.
+   - Images you reference must travel with the repo. Committed images belong in `public/images/`. Runtime uploads land in `public/uploads/`, which **is gitignored** by default — so before publishing, either move the uploads you want to keep into `public/images/` (and fix their URLs in the JSON), or delete the `/public/uploads` line from `.gitignore` to ship them as-is (fine on a persistent host you control; pointless on Vercel, where they vanish on deploy — see [Quirks](#quirks--gotchas)).
+4. **Optional gate** — set `ADMIN_PASSWORD` in `.env.local` to password-gate edit mode, or `ALLOW_EDIT=false` for a fully read-only public site. Setup (incl. the bcrypt `$`-in-`.env` trap) is documented in `.env.example`. It's a guardrail, not real security.
 
 That's the whole product. Everything below only matters if you want the hosted version.
 
