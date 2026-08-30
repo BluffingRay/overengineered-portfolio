@@ -450,33 +450,75 @@ Post-5c audit found the hosted shell unshippable as-is: two security holes (one 
 - **Fix:** Each item is one small commit. `.env.example` gains a commented Firebase block (client keys are public-safe `NEXT_PUBLIC_`; `FIREBASE_PRIVATE_KEY` gets the same `$`/newline warnings as the bcrypt gotcha — note the `\n` → newline note already handled in `admin.ts:10`). Write the 5c-shipped section in AGENTS.md (this section: mark FIX-A…H as they land). Delete dead exports + dead loop. Align logout behavior with its comment (keep Firebase state on network failure; clear only on server confirm — or flip the comment, but pick one).
 - **Verify:** `npx tsc --noEmit` + targeted lint pass; `grep -r "authChecked\|isUsingFirebase" src/` returns nothing outside `useAuth.ts` (or its legit consumers if FIX-C uses them); fresh clone + `.env.example` → `npm run dev` works B-zero-config.
 
-## Phase 6 — Polish & Cross-Product (planning)
+## Phase 6 — Design + small UX (planning — user plan 2026-08-30)
 
-Features that benefit both products or are deferred from earlier phases.
+More portfolio design with normal portfolio elements, small UX, and repo
+hygiene. Locked decisions from the planning discussion:
 
-### Accessibility
-- Keyboard navigation audit, focus rings, screen reader labels
-- Motion system is a11y-aware (`prefers-reduced-motion`) but editor UI hasn't been audited
+- **NO new design families.** A 5th family costs ~5 modules x every block
+  type; new elements ride the existing 4 designs instead.
+- **Shared-skeleton elements (the marquee pattern, NOT the hero pattern).**
+  The existing per-design modules for small elements are thin skins over a
+  shared skeleton (marquee: 4 designs, ~35 lines each, same
+  `MarqueeHalves`; the `.dsn-*` decoration layer carries the identity).
+  New cards follow that: ONE skeleton component, per-design styling via
+  the CSS layer + a few classes, dispatcher escape hatch if a design ever
+  needs real JSX differences (split that one design out; zero schema/form
+  churn). The expensive-to-change parts — entry fields + form — are
+  design-independent and locked once.
+- **Keyboard-focus audit absorbed** into this phase (cheap, high-value).
 
-### UI/UX polish
-- Popover enter/exit animations (IconPicker)
-- `DragOverlay` drag previews
-- Skeleton loading states
-- Keyboard-focus styling audit
-- Responsive editor audit (tablet/mobile: touch-friendly dnd, bigger tap targets, collapsible sidebar)
+Chunks (build in order; each: spec -> build -> verify -> tick):
 
-### PWA / offline
-- Already works offline (localStorage). Service worker + manifest makes it installable.
-- On-brand for the "overengineered" identity.
+- **6-a — Rendering bug sweep:** known bugs — (1) riso hero
+  bottom-position image doesn't show; sweep that bug CLASS across designs
+  x layouts (documented matrix in the spec: 4 designs x 3 layouts x media
+  side/position; fix + keep the matrix as the regression checklist).
+  Decide during the sweep whether centered/split empty-thumbnail heroes
+  keep showing the NO IMAGE placeholder (current 5e-d stance) or get a
+  cleaner fallback. (2) Marquee with FEW items (user report 2026-08-30:
+  ~3 skills) — the duplicated halves don't fill the viewport width, so
+  the -50% loop runs past the content into an empty gap, then flashes
+  back to the start instead of looping seamlessly. Fix direction: make
+  the track guaranteed wider than the viewport (repeat items until wide
+  enough, or animate by track width instead of a fixed -50%) — verify
+  with 1..6 items at narrow and wide viewports.
+- **6-b — Repo hygiene + demo seed:** `content/portfolio.json` becomes a
+  committed DEMO portfolio (fresh clones + buggy dev runs show it, not
+  the owner's name — the owner's real doc lives in their hosted account,
+  migrated via the 5f bridge); `RESERVED_SLUGS` += 'demo'; a dedicated
+  demo account hosts the same doc publicly at `/u/demo` (public +
+  showcased = the showcase never looks empty on a fresh deploy), kept in
+  sync by a small rerunnable seed script (authed PUT, demo credentials
+  from env). README rewrite: architecture (one core, two shells, storage
+  seam), quirks ($-in-.env, one-dev-server, WSL2 seriality, ephemeral
+  Vercel uploads, draft model + last-save-wins), limitations, Vercel
+  deploy checklist.
+- **6-c — Entry-list card (work experience et al):** ONE new block
+  variant — entries `{id, title, subtitle?, meta? (period), description?,
+  link?}` (optional fields, render-only-what-exists) — sharing ONE
+  skeleton skinned by the existing default/cutie/editorial/riso layers.
+  The form's preset dropdown (Experience / Education / Certifications)
+  swaps LABELS only, never schema — no mega-generic block, no duplicate
+  block types. Per-block `design` picker rides the existing BLOCK_DESIGNS
+  machinery. A11y keyboard-focus audit lands in this chunk.
+- **Deferred (repetitions once 6-c proves out):** Skills (grouped chips —
+  different shape), Testimonials (quote shape), more presets.
 
-### Analytics (self-hosted)
-- Plausible or Umami — privacy-friendly, no cookies
+Build Phase 6 in a FRESH session (this run's lesson).
 
-### Design theme export
-- Export just the design config (skin + font + accent) as a shareable "theme"
-- Classmates could swap themes without copying entire docs
+## Future plans (was original Phase 6 — polish & cross-product)
 
----
+- **Accessibility:** editor UI audit (screen reader labels; the motion
+  system is already a11y-aware), broader keyboard navigation.
+- **UI/UX polish:** popover enter/exit animations (IconPicker),
+  `DragOverlay` drag previews, skeleton loading states, responsive editor
+  audit (tablet/mobile: touch-friendly dnd, bigger tap targets,
+  collapsible sidebar).
+- **PWA / offline:** service worker + manifest (already works offline via
+  localStorage; on-brand for the "overengineered" identity).
+- **Analytics:** self-hosted Plausible/Umami (privacy-friendly).
+- **Design theme export:** shareable skin + font + accent bundles.
 
 ## Historical — Phase 3 Direction (original scope)
 
