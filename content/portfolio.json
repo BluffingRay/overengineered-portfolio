@@ -8,72 +8,78 @@
     {
       "id": "card-art-directions",
       "name": "4 art directions",
-      "description": "Every block wears default, cutie, editorial, or riso — pick per block, mix freely.",
+      "description": "One click per block: default, cutie, editorial, riso. Same data, four personalities.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "palette",
       "tags": [
         "design",
         "per-block"
       ],
-      "category": "Design"
+      "category": "Design",
+      "title": "Four art directions"
     },
     {
       "id": "card-skins",
       "name": "3 skins",
-      "description": "HUD, Notebook, and Clean share one CSS-variable contract — visitors switch, you set the default.",
+      "description": "HUD, notebook, clean — the whole site changes character when you switch.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "layers",
       "tags": [
         "theming"
       ],
-      "category": "Design"
+      "category": "Design",
+      "title": "Three skins"
     },
     {
       "id": "card-rich-text",
       "name": "Rich text editor",
-      "description": "A Word-style TipTap editor with images, tables, task lists, alignment, and font styling.",
+      "description": "Bold, tables, task lists, colors, image resizing — a word processor in your portfolio.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "pen-tool",
       "tags": [
         "tiptap",
         "writing"
       ],
-      "category": "Editor"
+      "category": "Editor",
+      "title": "A real editor"
     },
     {
       "id": "card-blog",
       "name": "Blog engine",
-      "description": "Draft, publish, and date posts in a full-screen composer; render them anywhere with blog blocks.",
+      "description": "Write posts at /write, publish them here. You are reading its output right now.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "star",
       "tags": [
         "blog",
         "posts"
       ],
-      "category": "Content"
+      "category": "Content",
+      "title": "A blog engine"
     },
     {
       "id": "card-media-vault",
       "name": "Media vault",
-      "description": "Upload, pick, and reference images — the document stores clean URLs, never bytes.",
+      "description": "Upload once, reuse everywhere. Drag-drop, paste URLs, done.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "image",
       "tags": [
         "uploads"
       ],
-      "category": "Content"
+      "category": "Content",
+      "title": "Media vault"
     },
     {
       "id": "card-drag-drop",
       "name": "Drag and drop everything",
-      "description": "Blocks, cards, tabs, socials, entry-list rows — every list reorders with dnd-kit, keyboard included.",
+      "description": "Blocks, cards, tabs, entries — grab the handle and move it. With undo, so go wild.",
       "href": "https://github.com/BluffingRay/overengineered-portfolio",
       "icon": "kanban",
       "tags": [
         "dnd-kit",
         "ux"
       ],
-      "category": "Editor"
+      "category": "Editor",
+      "title": "Drag everything"
     }
   ],
   "footer": {
@@ -107,16 +113,15 @@
           "design": "default",
           "eyebrow": "~/demo — overengineered portfolio",
           "name": "Demo",
-          "heading": "One JSON document. A whole portfolio.",
-          "subheading": "This site is the demo seed: fork it and own the file, or sign in hosted and edit in the browser.",
-          "ctaLabel": "See what's inside",
-          "ctaHref": "#tab-showcase",
+          "heading": "Yes, this whole site is editable.",
+          "subheading": "You are standing inside the demo portfolio. Nothing here is precious — it exists to be poked, dragged, and deleted. Press the big button and we will walk you through it.",
+          "ctaLabel": "Start the tour",
+          "ctaHref": "#tab-guide",
           "thumbnail": "https://picsum.photos/seed/demo-hero/1200/800",
           "layout": "centered",
           "roles": [
-            "Product B — fork it and self-host",
-            "Product A — hosted at /u/demo",
-            "Same JSON document underneath"
+            "Product B — the fork",
+            "Product A — hosted at /u/demo"
           ],
           "statusBadge": {
             "enabled": true,
@@ -132,6 +137,13 @@
           "mediaRadius": "theme",
           "mediaSize": "md",
           "mediaFrame": "subtle"
+        },
+        {
+          "id": "rt-home-try-this",
+          "type": "rich_text",
+          "design": "cutie",
+          "spacing": "normal",
+          "content": "<h2>Three things to try right now</h2><p><strong>1. Press Ctrl/Cmd + Shift + E.</strong> Seriously, do it. This entire page just became editable — drag things, break things, there is an undo button.</p><p><strong>2. Click the tabs up top.</strong> Showcase, Guide, Playground — same engine, four art directions, and a playground with custom CSS and a video embed.</p><p><strong>3. Scroll down a little.</strong> The blog is right there — two stories about turning this demo into <em>your</em> portfolio. Go read them, then come back and press that button up top.</p>"
         },
         {
           "id": "block-marquee-home",
@@ -151,10 +163,18 @@
           "speed": "normal"
         },
         {
+          "id": "block-blog-home",
+          "type": "blog",
+          "design": "default",
+          "title": "From the demo blog",
+          "variant": "latest"
+        },
+        {
           "id": "block-grid-home",
           "type": "app_grid",
           "design": "default",
-          "title": "What's inside",
+          "title": "Steal these ideas",
+          "spacing": "normal",
           "apps": [
             "card-art-directions",
             "card-skins",
@@ -163,13 +183,6 @@
             "card-media-vault",
             "card-drag-drop"
           ]
-        },
-        {
-          "id": "block-blog-home",
-          "type": "blog",
-          "design": "default",
-          "title": "From the demo blog",
-          "variant": "latest"
         }
       ]
     },
@@ -295,6 +308,12 @@
       "id": "tab-guide",
       "label": "Guide",
       "blocks": [
+        {
+          "id": "rt-guide-first-time",
+          "type": "rich_text",
+          "design": "cutie",
+          "content": "<h2>First time here? Start exactly here.</h2><p>This tab is the tour. Nothing you do can break the site — the demo resets from one file, and there is undo.</p><p><strong>Step 1.</strong> Press <strong>Ctrl/Cmd + Shift + E</strong> right now. Poof — edit mode. Panels appeared, the page grew little handles.</p><p><strong>Step 2.</strong> Find the <strong>+ Entry List</strong> button at the bottom of the side panel and press it. You just added a block. Change its words. Drag it by the ⠿ handle.</p><p><strong>Step 3.</strong> Feel the power? Press <strong>Ctrl/Cmd + Z</strong> a few times and watch it un-happen. That is undo. Welcome to the rest of the tour below.</p>"
+        },
         {
           "id": "block-guide-yours",
           "type": "rich_text",
