@@ -544,10 +544,10 @@ seed is authored after the block exists:
   review-only pass 0 blockers (2 actionable risks fixed: negative-cache
   + pipeline round-trip assertion), auth-half E2E live (provision →
   sign-in → session → PUT 400 invalid-slug + hint; nothing persisted).
-  **PENDING (user-side): one dev-server restart with DEMO_EMAIL set +
-  `npx tsx scripts/seed-demo.ts` to claim /u/demo** (orchestrator may
-  not restart the user's server; route reads .env values at boot).
-  Test artifact: Firebase user `6b-demo@test.local` — prune. Details:
+  SUPERSEDED by the 6-e pivot (2026-08-31): the hosted /u/demo + seed
+  account were REMOVED (all of the above scaffolding reverted) — the
+  demo now lives in the self-contained /playground. Test artifact:
+  Firebase user `6b-demo@test.local` — prune. Details:
   docs/specs/6-b-demo-seed.md.
 - **6-b — Repo hygiene + demo seed:** `content/portfolio.json` becomes a
   committed DEMO portfolio (fresh clones + buggy dev runs show it, not
@@ -658,14 +658,8 @@ Build Phase 6 in a FRESH session (this run's lesson).
   browse-on-phone fine, serious editing on desktop. A dedicated mobile
   audit (editor density, touch dnd targets, dashboard layout) is future
   work, user-directed to ship the warning instead of the fix.
-- **Demo showcase opt-out (user, 2026-08-30, no fix for now):** the demo
-  account's entry in the showcase gallery cannot be turned off on a
-  hosted deploy — the seed script hardcodes showcase:true and the demo
-  account is a mannequin (settings saves get stomped by the next seed
-  run / 400 pre-DEMO_EMAIL). Options parked: a `DEMO_SHOWCASE=false`
-  env knob in the seed script + route exemption; or seed simply skipping
-  the showcase flag. Also blocks nothing today (the showcase never
-  looks empty is the point).
+- **Demo showcase opt-out — MOOT (6-e pivot 2026-08-31):** the seeded
+  /u/demo showcase seat is gone entirely; nothing to opt out.
 - **Globally uniform card heights (row-based stretching):** all card
   grids (app grid, blog, entry-list columns) currently equalize heights
   PER ROW only; the user wants a globally fixed/equal card height

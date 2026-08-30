@@ -19,9 +19,21 @@ export function createPlaygroundStore(): PortfolioStore & { stats: () => { mutat
   let mutations = 0;
   const listeners = new Set<() => void>();
 
-  const history = () => ({ canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 });
+  // useSyncExternalStore requires CACHED snapshots (Object.is-stable
+  // between changes) — a fresh object per call loops forever. History is
+  // recomputed once per notify into a stable reference; the server
+  // snapshot is a frozen pristine constant (the store is memory-only, so
+  // the server-rendered view is always the untouched demo).
+  const HISTORY_PRISTINE: { canUndo: boolean; canRedo: boolean } = { canUndo: false, canRedo: false };
+  let historyState = HISTORY_PRISTINE;
+
+  const history = () => historyState;
 
   const notify = () => {
+    historyState = {
+      canUndo: undoStack.length > 0,
+      canRedo: redoStack.length > 0,
+    };
     for (const listener of listeners) listener();
   };
 
@@ -33,7 +45,7 @@ export function createPlaygroundStore(): PortfolioStore & { stats: () => { mutat
       return () => listeners.delete(listener);
     },
     getHistory: history,
-    getHistoryServer: () => ({ canUndo: false, canRedo: false }),
+    getHistoryServer: () => HISTORY_PRISTINE,
     mutate: (recipe) => {
       undoStack.push(doc);
       if (undoStack.length > 25) undoStack.shift();
