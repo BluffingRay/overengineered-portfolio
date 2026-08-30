@@ -50,6 +50,7 @@
   },
   "overrides": {
     "jose": "5.10.0",
-    "html-encoding-sniffer": "4.0.0"
+    "html-encoding-sniffer": "4.0.0",
+    "jsdom": "27.3.0"
   }
 }
