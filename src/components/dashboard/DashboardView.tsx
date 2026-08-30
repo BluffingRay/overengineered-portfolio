@@ -219,6 +219,7 @@ function ShowcaseSection(props: {
   items: ShowcaseCard[] | null;
   error: string | null;
   emptyCopy: string;
+  heading?: string;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -226,7 +227,7 @@ function ShowcaseSection(props: {
   return (
     <section className="mt-10">
       <h2 className="text-xs font-semibold uppercase tracking-wide opacity-50">
-        Other portfolios
+        {props.heading ?? 'Other portfolios'}
       </h2>
       {props.error ? (
         <p role="alert" className={`mt-3 text-sm text-red-500 ${CARD}`}>
@@ -248,7 +249,7 @@ function ShowcaseSection(props: {
                 href={`/u/${item.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-skin border border-[var(--border)] bg-surface p-4 hover:border-accent"
+                className="block rounded-skin border border-[var(--border)] bg-surface p-4 hover:-translate-y-0.5 hover:border-accent hover:shadow-sm"
               >
                 <span className="block text-sm font-medium">
                   {item.title ?? item.slug}
@@ -347,6 +348,18 @@ export default function DashboardView() {
   // One file-input ref serves both entry points — the surfaces never
   // coexist, so it can only ever point at the mounted one.
   const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  // 5g-b (followup) — the public hub's tab name is the brand, not
+  // "Dashboard": signed-out visitors browsing the showcase wear the
+  // product name; signed-in keeps the neutral admin title (matching the
+  // page's server metadata). Runs after authReady so it never fights the
+  // splash; document.title is a plain side effect, no state.
+  useEffect(() => {
+    if (!auth.authReady) return;
+    document.title = auth.authenticated
+      ? 'Dashboard'
+      : 'overengineered-portfolio — build yours';
+  }, [auth.authReady, auth.authenticated]);
 
   // Admin chrome is fixed-scale: a view-scale zoom set by a skinned page
   // persists on <html> across SPA navigation (zoom cannot be subtree-
@@ -832,32 +845,64 @@ export default function DashboardView() {
   // (it is keyed on that flag) and the authed dashboard swaps in below —
   // no manual reload.
   if (!auth.authenticated) {
+    // Stagecraft for the public hub (5g-b followup): a faint dot-grid
+    // backdrop, a terminal-style wordmark with the house caret (static —
+    // no keyframe, reduced-motion safe), and three factual chips.
+    // Everything stays inside the neutral admin tokens; the wordmark is
+    // the h1 ("Dashboard" is meaningless to a stranger).
     return (
-      <main data-admin-theme="" className="min-h-dvh">
-        <div className="mx-auto w-full max-w-3xl px-6 py-12">
-          <header>
-            <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          </header>
-
-          {/* The welcome card sits where the hero card sits. One-liner in
-              the README's own words — no invented marketing. */}
-          <section className="mt-8">
+      <main data-admin-theme="" className="relative min-h-dvh overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:22px_22px]"
+        />
+        <div className="relative mx-auto w-full max-w-3xl px-6 py-16">
+          <section>
             <div className={`settle-in ${CARD}`}>
-              <p className="font-mono text-lg font-semibold">
-                overengineered-portfolio
-              </p>
+              <h1 className="font-mono text-xl font-semibold sm:text-2xl">
+                ~/
+                <span className="text-accent">overengineered-portfolio</span>
+                <span className="caret-blink text-accent">▌</span>
+              </h1>
               <p className="mt-2 text-sm opacity-60">
                 A block-based, local-first portfolio CMS. Your entire
                 portfolio is one JSON document — fork it, or host it here.
               </p>
-              <button
-                type="button"
-                aria-expanded={signInOpen}
-                onClick={() => setSignInOpen((open) => !open)}
-                className="mt-4 rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
+              <ul
+                className="mt-4 flex flex-wrap gap-2"
+                aria-label="Product highlights"
               >
-                {signInOpen ? 'Hide sign-in' : 'Sign in to create yours'}
-              </button>
+                {[
+                  'one JSON document',
+                  '4 art directions',
+                  'self-host or hosted',
+                ].map((chip) => (
+                  <li
+                    key={chip}
+                    className="rounded-full border border-[var(--border)] bg-background px-2.5 py-1 font-mono text-xs opacity-70"
+                  >
+                    {chip}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  aria-expanded={signInOpen}
+                  onClick={() => setSignInOpen((open) => !open)}
+                  className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
+                >
+                  {signInOpen ? 'Hide sign-in' : 'Sign in to create yours'}
+                </button>
+                <a
+                  href="https://github.com/BluffingRay/overengineered-portfolio"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs opacity-40 hover:opacity-70"
+                >
+                  fork it on GitHub ↗
+                </a>
+              </div>
             </div>
             {signInOpen && (
               <div className="mt-3">
@@ -866,9 +911,10 @@ export default function DashboardView() {
             )}
           </section>
 
-          {/* Same section implementation as the authed dashboard — only
-              the empty-state copy differs (signed-out pitch). */}
+          {/* Same section implementation as the authed dashboard — the
+              signed-out pitch lives in the heading + empty-state copy. */}
           <ShowcaseSection
+            heading="Live portfolios"
             items={showcase}
             error={showcaseError}
             emptyCopy="No public portfolios yet — yours could be first."
@@ -884,10 +930,31 @@ export default function DashboardView() {
   const slug = meta?.slug ?? null;
 
   return (
-    <main data-admin-theme="" className="min-h-dvh">
-      <div className="mx-auto w-full max-w-3xl px-6 py-12">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    // 5g-b (followup) — the authed dashboard wears the same stagecraft as
+    // the public hub: dot-grid backdrop + terminal header, one identity.
+    <main data-admin-theme="" className="relative min-h-dvh overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:22px_22px]"
+      />
+      <div className="relative mx-auto w-full max-w-3xl px-6 py-12">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="font-mono text-xl font-semibold sm:text-2xl">
+            ~/
+            <span className="text-accent">dashboard</span>
+            <span className="caret-blink text-accent">▌</span>
+          </h1>
+          {/* 5g-b (followup) — signed-in users get the same quiet exit as
+              the hub's welcome card; the how-to link joins when the 6-b
+              demo seed gives it a real target (/u/demo). */}
+          <a
+            href="https://github.com/BluffingRay/overengineered-portfolio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-xs opacity-40 hover:opacity-70"
+          >
+            fork it on GitHub ↗
+          </a>
         </header>
 
         {/* Your portfolio — the hero of the page. */}

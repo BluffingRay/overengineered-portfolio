@@ -493,7 +493,11 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
   from env). README rewrite: architecture (one core, two shells, storage
   seam), quirks ($-in-.env, one-dev-server, WSL2 seriality, ephemeral
   Vercel uploads, draft model + last-save-wins), limitations, Vercel
-  deploy checklist.
+  deploy checklist. DEMO CREDENTIALS (user requirement): the seed script
+  must hand the user the demo account's email + password — write them to
+  a gitignored local txt (e.g. `demo-credentials.local.txt`, add the
+  .gitignore entry) and print the path; NEVER commit the credentials or
+  put them in a public file (anyone with them can deface /u/demo).
 - **6-c — Entry-list card (work experience et al):** ONE new block
   variant — entries `{id, title, subtitle?, meta? (period), description?,
   link?}` (optional fields, render-only-what-exists) — sharing ONE
@@ -505,6 +509,27 @@ Chunks (build in order; each: spec -> build -> verify -> tick):
 - **Deferred (repetitions once 6-c proves out):** Skills (grouped chips —
   different shape), Testimonials (quote shape), more presets.
 
+- **6-0 — Hub chrome trinkets — DONE ✅ (2026-08-30, uncommitted with the
+  6 docs):** the badge became an inline platform credit inside SiteFooter's
+  copyright line (dot-separated, dimmer; B unchanged); site favicon is now
+  build-time doc-derived (`app/icon.tsx`, create-next-app favicon.ico
+  deleted) + a neutral `~` hub mark for `(a-shell)` via shared
+  `components/og/MonogramIcon.tsx`; signed-out hub redesigned (terminal
+  wordmark `~/overengineered-portfolio▌`, factual chips, fork-it-on-GitHub
+  link, "Live portfolios" heading, dot-grid backdrop, showcase-card hover
+  lift); authed dashboard matches (`~/dashboard▌` + backdrop); hub tab
+  title = "overengineered-portfolio — build yours" signed-out ("Dashboard"
+  signed-in); caret blink (`caret-blink`, steps(1)) defined inside the
+  prefers-reduced-motion: no-preference block (static for reduced motion).
+- **6-d — "How to build" link (planning, user idea):** a `How to build ↗`
+  quiet mono link on the dashboard in BOTH states — signed-out next to
+  the GitHub link in the welcome card; signed-in in the header's right
+  link row (where "fork it on GitHub ↗" already lives since the 6-0
+  trinkets). PLAN: the target is simply `/u/demo`, where the how-to post
+  lives in the demo portfolio's blog (floating reader opens it) — the
+  post itself belongs in the 6-b demo seed, so this link ships with 6-b.
+  Future nicety, not a blocker: standalone hosted post URLs (FIX-F
+  deferral) would let the link land on the post itself.
 Build Phase 6 in a FRESH session (this run's lesson).
 
 ## Future plans (was original Phase 6 — polish & cross-product)

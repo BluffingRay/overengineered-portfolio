@@ -490,6 +490,25 @@ html {
   .cutie-float-slow {
     animation: cutie-bob 6s ease-in-out infinite;
   }
+
+  /* 5g-b followup — the hub wordmark's caret. steps(1) = hard terminal
+     on/off, no fade. Defined inside the no-preference block so
+     reduced-motion users get the static block (TypewriterRoles
+     precedent) with zero extra rules. */
+  @keyframes caret-blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .caret-blink {
+    animation: caret-blink 1.1s steps(1) infinite;
+  }
 }
 
 /* Riso — misregistered ink, halftone field, paper grain, duotone. */
