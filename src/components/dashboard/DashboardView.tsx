@@ -970,7 +970,9 @@ export default function DashboardView() {
             </a>
             <button
               type="button"
-              onClick={() => void auth.logout()}
+              onClick={() => {
+                void auth.logout().then(() => window.location.reload());
+              }}
               title="End this session and return to the public hub"
               className="rounded-skin border border-[var(--border)] px-2.5 py-1 font-mono text-xs opacity-60 hover:opacity-100"
             >
