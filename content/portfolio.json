@@ -121,7 +121,7 @@
           "layout": "centered",
           "roles": [
             "Product B — the fork",
-            "Product A — hosted at /u/demo"
+            "Product A — the hosted SaaS"
           ],
           "statusBadge": {
             "enabled": true,
