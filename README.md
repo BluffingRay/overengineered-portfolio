@@ -32,7 +32,9 @@ Then:
 3. **Keep your images publishable — what NOT to gitignore.** Two rules:
    - `content/portfolio.json` must **stay committed** (never add it to `.gitignore`) — it *is* your published portfolio.
    - Images you reference must travel with the repo. Committed images belong in `public/images/`. Runtime uploads land in `public/uploads/`, which **is gitignored** by default — so before publishing, either move the uploads you want to keep into `public/images/` (and fix their URLs in the JSON), or delete the `/public/uploads` line from `.gitignore` to ship them as-is (fine on a persistent host you control; pointless on Vercel, where they vanish on deploy — see [Quirks](#quirks--gotchas)).
-4. **Optional gate** — set `ADMIN_PASSWORD` in `.env.local` to password-gate edit mode, or `ALLOW_EDIT=false` for a fully read-only public site. Setup (incl. the bcrypt `$`-in-`.env` trap) is documented in `.env.example`. It's a guardrail, not real security.
+4. **Optional gate** — set `ADMIN_PASSWORD` in `.env.local` to password-gate edit mode. Setup (incl. the bcrypt `$`-in-`.env` trap) is documented in `.env.example`. It's a guardrail, not real security.
+
+> **`ALLOW_EDIT` — read this before deploying.** `ALLOW_EDIT=false` makes the deployed site fully read-only: no editor, no edit shortcut, `?edit=true` shows nothing, `/write` bounces home. **If your deployment is public, set it to `false`** — anyone on the internet can reach `/?edit=true`, and on a self-hosted B site the "gate" is only a guardrail. Keep `ALLOW_EDIT` unset/`true` **only while editing on your own machine** (local dev, or a private deployment you alone can reach). You flip it per environment: `true` locally while you work, `false` in the deployed project's settings.
 
 That's the whole product. Everything below only matters if you want the hosted version.
 
@@ -142,7 +144,7 @@ Env var names and purposes only — values live in your Vercel project settings 
 | `CLOUDFLARE_ACCOUNT_ID` / `KV_NAMESPACE_ID` / `CLOUDFLARE_API_TOKEN` | Workers KV — hosted document store |
 | `R2_ENDPOINT` (or `R2_ACCOUNT_ID`) / `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_PUBLIC_URL` / `R2_USER_PREFIX` | R2 image storage |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for metadata/OG (unset = localhost) |
-| `ADMIN_PASSWORD` / `ALLOW_EDIT` | B-shell edit gate / read-only switch (see `.env.example` for the `$` trap) |
+| `ADMIN_PASSWORD` / `ALLOW_EDIT` | B-shell edit gate / read-only switch — **set `ALLOW_EDIT=false` on any public deployment**; keep it true only for editing on your own machine (see `.env.example` for the `$` trap) |
 | `LOCAL` | Upload storage switch (auto / local / R2 — semantics in `.env.example`) |
 | `DEMO_EMAIL` / `DEMO_PASSWORD` | Demo seed account (server needs `DEMO_EMAIL` + redeploy; see Demo seed) |
 
