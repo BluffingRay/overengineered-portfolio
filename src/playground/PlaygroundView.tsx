@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { ThemeSkin } from '@/types/schema';
 import { clampViewScale } from '@/types/schema';
@@ -523,9 +523,19 @@ function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel:
   );
 }
 
+function PlaygroundFallback() {
+  return (
+    <main className="grid min-h-dvh place-items-center bg-background text-foreground">
+      <p className="animate-pulse font-mono text-sm opacity-40">
+        ~/loading playground…
+      </p>
+    </main>
+  );
+}
+
 export default function PlaygroundView({
   backHref = '/',
-  backLabel = '← Back',
+  backLabel = '← Back to the site',
 }: {
   backHref?: string;
   backLabel?: string;
@@ -534,8 +544,13 @@ export default function PlaygroundView({
   // demo, same as a refresh. Nothing anywhere persists it.
   const store = useMemo(() => createPlaygroundStore(), []);
   return (
-    <PortfolioStoreProvider store={store}>
-      <PlaygroundInner backHref={backHref} backLabel={backLabel} />
-    </PortfolioStoreProvider>
+    // Suspense: PlaygroundInner reads useSearchParams (?edit=true sync) —
+    // the same prerender contract as PortfolioView. Without this boundary
+    // the static build of /playground fails (the exact Vercel error).
+    <Suspense fallback={<PlaygroundFallback />}>
+      <PortfolioStoreProvider store={store}>
+        <PlaygroundInner backHref={backHref} backLabel={backLabel} />
+      </PortfolioStoreProvider>
+    </Suspense>
   );
 }
