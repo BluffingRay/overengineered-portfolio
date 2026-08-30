@@ -450,7 +450,19 @@ Post-5c audit found the hosted shell unshippable as-is: two security holes (one 
 - **Fix:** Each item is one small commit. `.env.example` gains a commented Firebase block (client keys are public-safe `NEXT_PUBLIC_`; `FIREBASE_PRIVATE_KEY` gets the same `$`/newline warnings as the bcrypt gotcha — note the `\n` → newline note already handled in `admin.ts:10`). Write the 5c-shipped section in AGENTS.md (this section: mark FIX-A…H as they land). Delete dead exports + dead loop. Align logout behavior with its comment (keep Firebase state on network failure; clear only on server confirm — or flip the comment, but pick one).
 - **Verify:** `npx tsc --noEmit` + targeted lint pass; `grep -r "authChecked\|isUsingFirebase" src/` returns nothing outside `useAuth.ts` (or its legit consumers if FIX-C uses them); fresh clone + `.env.example` → `npm run dev` works B-zero-config.
 
-## Phase 6 — Design + small UX (planning — user plan 2026-08-30)
+## Phase 6 — Design + small UX — CLOSED ✅
+
+All chunks shipped (2026-08-30/31): 6-a rendering sweep ✅, 6-c entry
+list (+ user-driven polish: full-width cards, columns 1/2/3, uniform
+heights, collapsible form rows) ✅, 6-b demo seed + README manual ✅,
+6-0 hub chrome ✅, 6-d how-to link ✅, 6-e playground pivot (the
+/u/demo seed machinery removed; self-contained /playground with the
+5-step guided tour) ✅, plus the deploy-readiness pass: 50MB/user
+upload quota enforced, test portfolios hidden (accounts kept), hosted
+save cluster fixed-bottom-right (no toolbar reflow), dashboard logout
++ framed action links. Everything committed & pushed through 935ae76.
+Deferred to Future plans: mobile audit, global row-based card heights,
+Drive BYO. Run `npm run build` once before the first hosted deploy.
 
 More portfolio design with normal portfolio elements, small UX, and repo
 hygiene. Locked decisions from the planning discussion:
