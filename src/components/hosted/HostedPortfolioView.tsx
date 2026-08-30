@@ -326,21 +326,22 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
           </div>
         )}
 
-        <SiteFooter footer={doc.footer} socials={doc.socials} />
-
-        {/* 5g-b — platform badge: quiet "powered by" chrome, rendered
-            regardless of the owner's footer toggle (the platform credit is
-            not the owner's content). Renders as <a href="/"> — hosted /
-            redirects to /dashboard, so the badge always lands on the hub;
-            a future real landing keeps the href correct. NO
+        {/* 5g-b (followup) — platform credit passed INTO the footer so it
+            shares the copyright line instead of stacking one of its own:
+            quieter, and a user-defined footer keeps its length. Link (not
+            <a>) — the project eslint rule; hosted / redirects to
+            /dashboard, so the badge always lands on the hub. NO
             transition/duration utilities: the motion base layer owns link
             transitions (utilities would drop scale from the list). */}
-        <Link
-          href="/"
-          className="mt-6 block text-center text-xs opacity-40 hover:opacity-70"
-        >
-          Built with overengineered-portfolio
-        </Link>
+        <SiteFooter
+          footer={doc.footer}
+          socials={doc.socials}
+          badge={
+            <Link href="/" className="opacity-40 hover:opacity-70">
+              Built with overengineered-portfolio
+            </Link>
+          }
+        />
       </div>
 
       {overlayPostId && (

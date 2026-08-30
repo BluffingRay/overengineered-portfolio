@@ -1,16 +1,26 @@
+import type { ReactNode } from 'react';
 import type { FooterConfig, SocialLink } from '@/types/schema';
 import SocialIcon from './SocialIcon';
 
 interface Props {
   footer?: FooterConfig;
   socials?: SocialLink[];
+  /**
+   * 5g-b followup — optional platform credit (the hosted render only; B
+   * never passes it). Renders INLINE after the copyright — same line, dot
+   * separated, dimmer than the owner's text — instead of a stacked line of
+   * its own, so a user-defined footer keeps its length and the credit
+   * never reads as owning the footer. With the owner's footer disabled it
+   * stands alone as the same whisper.
+   */
+  badge?: ReactNode;
 }
 
-export default function SiteFooter({ footer, socials }: Props) {
-  if (!footer?.enabled) return null;
-
-  const showSocials = footer.showSocials === true && (socials?.length ?? 0) > 0;
-  if (!showSocials && !footer.copyrightText) return null;
+export default function SiteFooter({ footer, socials, badge }: Props) {
+  const showSocials = footer?.showSocials === true && (socials?.length ?? 0) > 0;
+  const copyright = footer?.copyrightText;
+  if (!footer?.enabled && !badge) return null;
+  if (!showSocials && !copyright && !badge) return null;
 
   const year = new Date().getFullYear();
 
@@ -37,11 +47,19 @@ export default function SiteFooter({ footer, socials }: Props) {
         </ul>
       )}
 
-      {footer.copyrightText && (
+      {copyright ? (
         <p className="text-xs opacity-60">
-          {footer.copyrightText.replace(/\{year\}/g, String(year))}
+          {copyright.replace(/\{year\}/g, String(year))}
+          {badge ? (
+            <span className="opacity-50">
+              {' · '}
+              {badge}
+            </span>
+          ) : null}
         </p>
-      )}
+      ) : badge ? (
+        <p className="text-xs opacity-60">{badge}</p>
+      ) : null}
     </footer>
   );
 }
