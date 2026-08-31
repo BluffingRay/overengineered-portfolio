@@ -46,18 +46,34 @@ export function ScrollableTabStrip({
           role="tablist"
           aria-label={ariaLabel}
           onKeyDown={onKeyDown}
-          className="flex gap-1 overflow-x-auto scrollbar-hide scroll-smooth"
+          className="flex gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth pb-2.5 -mb-2.5"
         >
           {children}
         </div>
+        {/* Edge fade — the scrollability indicator on EVERY breakpoint
+            (non-interactive; hints there's content off-screen, shown
+            whenever either edge overflows). The clickable ‹ › arrows are
+            desktop-only, layered on top of the same fade. */}
+        {canScrollLeft && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-background to-transparent"
+          />
+        )}
+        {canScrollRight && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent"
+          />
+        )}
         {isDesktop && canScrollLeft && (
           <button
             type="button"
             aria-label="Scroll tabs left"
             onClick={scrollLeft}
-            className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent text-current opacity-80 hover:opacity-100"
+            className="absolute left-1 top-1/2 flex h-7 w-7 -translate-y-[calc(50%+3px)] items-center justify-center rounded-full border border-current/15 bg-background/80 text-current opacity-70 shadow-sm backdrop-blur hover:opacity-100"
           >
-            ‹
+            <span aria-hidden="true">‹</span>
           </button>
         )}
         {isDesktop && canScrollRight && (
@@ -65,9 +81,9 @@ export function ScrollableTabStrip({
             type="button"
             aria-label="Scroll tabs right"
             onClick={scrollRight}
-            className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent text-current opacity-80 hover:opacity-100"
+            className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-[calc(50%+3px)] items-center justify-center rounded-full border border-current/15 bg-background/80 text-current opacity-70 shadow-sm backdrop-blur hover:opacity-100"
           >
-            ›
+            <span aria-hidden="true">›</span>
           </button>
         )}
       </div>

@@ -25,6 +25,7 @@ import {
   type EditShortcut,
 } from '@/lib/editShortcut';
 import { useAuth } from '@/hooks/useAuth';
+import { isDirty, setIntentionalNav } from '@/lib/hostedDoc';
 import LoginCard from '@/components/auth/LoginCard';
 import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 
@@ -52,8 +53,25 @@ export default function PortfolioView() {
   }, [showLogin, auth.hosted, router]);
 
   async function handleLogout() {
+    // Guard BEFORE destroying the session. The beforeunload listener only
+    // fires on navigation, and auth.logout() would have already completed
+    // by then — so a cancel there would still leave the user logged out.
+    // isDirty() returns false in Product B (no hosted save layer) so the
+    // guard is a no-op there.
+    if (auth.hosted && isDirty()) {
+      const ok = window.confirm(
+        'You have unsaved changes. Leave without saving?',
+      );
+      if (!ok) return;
+      // We confirmed the discard; flag the upcoming navigation so the
+      // beforeunload guard doesn't stack a second "Leave site?" dialog.
+      setIntentionalNav();
+    }
     await auth.logout();
     if (auth.hosted) {
+      // Full page navigation on purpose — logout must re-init every gated
+      // organ from scratch, so this can't be a soft router.push().
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = '/dashboard';
     } else {
       window.location.reload();
@@ -200,7 +218,7 @@ export default function PortfolioView() {
 
   const controls = (
     <>
-      {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} />}
+      {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} onLogout={handleLogout} />}
       <ViewScaleControl
         value={shell.appliedScale}
         official={shell.officialViewScale}
@@ -226,21 +244,21 @@ export default function PortfolioView() {
           type="button"
           aria-expanded={editorOpen}
           onClick={() => setEditorOpen((open) => !open)}
-          className={`rounded-skin border px-2.5 py-1 text-xs font-medium ${
+          className={`rounded-skin border px-2.5 py-1 text-xs font-medium transition-colors ${
             editorOpen
               ? 'border-accent bg-accent text-background'
-              : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
+              : 'border-accent/50 bg-accent/5 text-accent opacity-90 hover:opacity-100'
           }`}
         >
           {editorOpen ? 'Done' : 'Edit'}
         </button>
       )}
-      {canEdit && (
+      {canEdit && !auth.hosted && (
         <button
           type="button"
           onClick={handleLogout}
           title="End this session and return to visitor mode"
-          className="rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium opacity-70 hover:opacity-100"
+          className="rounded-skin border border-red-500/40 bg-red-500/5 px-2.5 py-1 text-xs font-medium text-red-500 opacity-90 transition-colors hover:opacity-100"
         >
           Log out
         </button>

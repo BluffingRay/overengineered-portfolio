@@ -6,6 +6,7 @@ import type { PortfolioData } from '@/types/schema';
 import {
   hasLastSaved,
   isDirty,
+  isIntentionalNav,
   readLastSavedAt,
   recordLastSaved,
   resolveLoadOffer,
@@ -47,6 +48,7 @@ export function useHostedDoc(hosted: boolean, authenticated: boolean) {
   const [loadOfferActive, setLoadOfferActive] = useState(false);
   const [loadOfferLoading, setLoadOfferLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloading, setReloading] = useState(false);
   const loadOfferDecidedRef = useRef(false);
   const loadingRef = useRef(false);
 
@@ -126,10 +128,38 @@ export function useHostedDoc(hosted: boolean, authenticated: boolean) {
     setLoadOfferActive(false);
   }, []);
 
-  // Native leave-site guard while dirty (hosted mode only).
+  // Manual reload: fetch the hosted doc and replace the current draft.
+  // Unlike the load-offer (which only fires once on mount for unverified
+  // drafts), this is an always-available, user-triggered discard — the
+  // caller is responsible for confirming with the user when dirty.
+  const reload = useCallback(async () => {
+    if (!hosted || loadingRef.current) return;
+    loadingRef.current = true;
+    setReloading(true);
+    setLoadError(null);
+    const fetched = await fetchHostedDoc();
+    if (!fetched.ok) {
+      setLoadError(fetched.error);
+      loadingRef.current = false;
+      setReloading(false);
+      return;
+    }
+    const confirmed = fetched.doc;
+    savePortfolioData(confirmed);
+    recordLastSaved(confirmed);
+    setSavedAt(readLastSavedAt());
+    setLoadOfferActive(false);
+    loadingRef.current = false;
+    setReloading(false);
+  }, [hosted]);
+
+  // Native leave-site guard while dirty (hosted mode only). Skipped for
+  // intentional navigations (e.g. logout) that already confirmed — those
+  // set isIntentionalNav() so the browser doesn't stack a second dialog.
   useEffect(() => {
     if (!hosted || !dirty) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isIntentionalNav()) return;
       event.preventDefault();
       // Chrome needs this; most browsers show their own string.
       event.returnValue = '';
@@ -155,5 +185,8 @@ export function useHostedDoc(hosted: boolean, authenticated: boolean) {
       load,
       dismiss,
     },
+    // Manual reload: always-available discard (caller confirms if dirty).
+    reload,
+    reloading: hosted && reloading,
   };
 }

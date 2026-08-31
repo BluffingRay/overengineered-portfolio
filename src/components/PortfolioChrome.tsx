@@ -36,6 +36,12 @@ export default function PortfolioChrome({
   adminRow,
   controls,
 }: PortfolioChromeProps) {
+  // Edit mode renders a heavy controls cluster (UtilityBar + Edit/Logout) that
+  // overflows the row on phones/tablets — force it onto its own line so the
+  // UtilityBar's inner flex-wrap can lay items out at full width. Visitor mode
+  // only has theme + zoom, which fit on one row with the tab strip; keep the
+  // compact desktop-style layout there.
+  const controlsFullWidth = Boolean(adminRow);
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-current/15">
       <ScrollableTabStrip
@@ -103,7 +109,13 @@ export default function PortfolioChrome({
       {adminRow}
 
       {controls && (
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pb-3">{controls}</div>
+        <div
+          className={`flex flex-wrap items-center justify-end gap-3 pb-3 lg:shrink-0 ${
+            controlsFullWidth ? 'w-full' : 'w-auto'
+          }`}
+        >
+          {controls}
+        </div>
       )}
     </div>
   );

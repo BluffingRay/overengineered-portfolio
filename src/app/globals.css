@@ -578,13 +578,24 @@ html {
 }
 
 /* Hide the scrollbar on horizontally scrollable tab strips while keeping
-   the content scrollable (native swipe on mobile / arrows on desktop). */
+   the content scrollable (native swipe on mobile / arrows on desktop).
+   Belt-and-suspenders: every selector variant that any engine honors,
+   plus a transparent track/thumb in case `display: none` is ignored. */
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
+    width: 0;
+    height: 0;
     display: none;
+    background: transparent;
+  }
+  .scrollbar-hide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-hide::-webkit-scrollbar-thumb {
+    background: transparent;
   }
 }

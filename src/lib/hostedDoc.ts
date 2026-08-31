@@ -118,6 +118,24 @@ export function isDirty(): boolean {
   return draft !== saved;
 }
 
+/**
+ * Module-level flag: when true, the useHostedDoc beforeunload guard
+ * skips preventDefault. Used by destructive flows (logout) that do their
+ * own dirty-check confirm and then navigate — the native beforeunload
+ * would otherwise stack a second "Leave site?" dialog on top.
+ *
+ * One-shot: the navigation that consumes it is the next unload, so
+ * callers should set it immediately before the navigation and a fresh
+ * page load resets it naturally (module re-evaluates).
+ */
+let intentionalNav = false;
+export function setIntentionalNav() {
+  intentionalNav = true;
+}
+export function isIntentionalNav() {
+  return intentionalNav;
+}
+
 export function readLastSavedAt(): number | null {
   try {
     const raw = window.localStorage.getItem(LAST_SAVED_AT_KEY);

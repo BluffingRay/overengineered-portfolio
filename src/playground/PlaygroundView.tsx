@@ -195,10 +195,10 @@ function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel:
           type="button"
           aria-expanded={editorOpen}
           onClick={() => setEditorOpen((open) => !open)}
-          className={`rounded-skin border px-2.5 py-1 text-xs font-medium ${
+          className={`rounded-skin border px-2.5 py-1 text-xs font-medium transition-colors ${
             editorOpen
               ? 'border-accent bg-accent text-background'
-              : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
+              : 'border-accent/50 bg-accent/5 text-accent opacity-90 hover:opacity-100'
           }`}
         >
           {editorOpen ? 'Done' : 'Edit'}

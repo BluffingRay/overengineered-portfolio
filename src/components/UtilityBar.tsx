@@ -34,9 +34,17 @@ function savedAgoLabel(savedAt: number | null): string | null {
 export default function UtilityBar({
   hosted = false,
   authenticated = false,
+  onLogout,
 }: {
   hosted?: boolean;
   authenticated?: boolean;
+  /**
+   * Hosted-only logout handler from the host view. Called when the user
+   * clicks Log out in the fixed bottom-right cluster. The host owns the
+   * dirty-check confirm + intentionalNav flag so the beforeunload guard
+   * doesn't stack a second "Leave site?" dialog.
+   */
+  onLogout?: () => void | Promise<void>;
 }) {
   const { data, mutate, reset, undo, redo, canUndo, canRedo } =
     usePortfolioData();
@@ -116,7 +124,7 @@ export default function UtilityBar({
       <div
         role="group"
         aria-label="Accent color"
-        className="flex items-center gap-1"
+        className="flex flex-wrap items-center gap-1"
       >
         <button
           type="button"
@@ -200,7 +208,7 @@ export default function UtilityBar({
         </div>
       )}
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           aria-label="Undo"
@@ -341,6 +349,34 @@ export default function UtilityBar({
                 <Link href="/dashboard" className={BTN}>
                   Dashboard
                 </Link>
+              )}
+              {authenticated && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hostedDoc.dirty) {
+                      const ok = window.confirm(
+                        'Reload will replace your current changes with the last saved version from the cloud. Continue?',
+                      );
+                      if (!ok) return;
+                    }
+                    void hostedDoc.reload();
+                  }}
+                  disabled={hostedDoc.reloading}
+                  title="Replace the current draft with the last saved version from the cloud"
+                  className={BTN}
+                >
+                  {hostedDoc.reloading ? 'Reloading…' : 'Reload'}
+                </button>
+              )}
+              {authenticated && onLogout && (
+                <button
+                  type="button"
+                  onClick={() => void onLogout()}
+                  className="rounded-skin border border-red-500/40 bg-red-500/5 px-2.5 py-1 text-xs font-medium text-red-500 opacity-90 transition-colors hover:opacity-100"
+                >
+                  Log out
+                </button>
               )}
             </div>
           )}
