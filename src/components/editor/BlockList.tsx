@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -10,6 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
@@ -58,22 +59,20 @@ export default function BlockList({ activeTabId }: Props) {
   } = useBlockMutations(activeTabId);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useEditorSensors();
 
-  const usageCounts: Record<string, number> = {};
-  for (const tab of data.tabs) {
-    for (const block of tab.blocks) {
-      if (block.type !== 'app_grid') continue;
-      for (const cardId of block.apps) {
-        usageCounts[cardId] = (usageCounts[cardId] ?? 0) + 1;
+  const usageCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = {};
+    for (const tab of data.tabs) {
+      for (const block of tab.blocks) {
+        if (block.type !== 'app_grid') continue;
+        for (const cardId of block.apps) {
+          counts[cardId] = (counts[cardId] ?? 0) + 1;
+        }
       }
     }
-  }
+    return counts;
+  }, [data.tabs]);
 
   const activeTab = data.tabs.find((tab) => tab.id === activeTabId);
   if (!activeTab) return null;

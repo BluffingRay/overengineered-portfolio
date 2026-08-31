@@ -13,6 +13,7 @@ import {
   seedLastSaved,
   type HostedSaveState,
 } from '@/lib/hostedDoc';
+import { fetchHostedDoc } from '@/lib/hosted/fetch';
 
 /**
  * FIX-C — hosted save layer. Wraps the existing portfolio store (does
@@ -55,30 +56,18 @@ export function useHostedDoc(hosted: boolean, authenticated: boolean) {
   useEffect(() => {
     if (!hosted) return;
     async function seedLastSavedFromServer() {
-      // 5e-e — the offer decision happens ONCE per mount: this guard keeps
-      // StrictMode's double effect from re-deciding, and real edits/undo
-      // after mount never re-run it (the offer can't toggle either way).
       if (loadOfferDecidedRef.current) return;
       loadOfferDecidedRef.current = true;
-      try {
-        const res = await fetch('/api/portfolio?full=1', { cache: 'no-store' });
-        if (res.status === 401) return; // not signed in — no seed, no offer
-        if (!res.ok) return; // fetch failed — no seeding, no offer
-        const doc = await res.json();
-        if (doc && typeof doc === 'object' && Array.isArray(doc.tabs)) {
-          // Landmine probe: did a snapshot exist BEFORE the cloud seeded
-          // the baseline? Afterwards it always does (seedLastSaved wrote
-          // it), so this must run first.
-          const hadSnapshot = hasLastSaved();
-          seedLastSaved(doc);
-          if (readLastSavedAt() !== null) setSavedAt(readLastSavedAt());
-          setLoadOfferActive(
-            resolveLoadOffer({ hadSnapshot, fetchOk: true, dirtyNow: isDirty() }),
-          );
-        }
-      } catch {
-        // Offline — leave unseeded; first save sets the baseline. No offer:
-        // active starts false and is only set on the success path above.
+      const fetched = await fetchHostedDoc();
+      if (!fetched.ok) return;
+      const doc = fetched.doc;
+      if (doc && typeof doc === 'object' && Array.isArray(doc.tabs)) {
+        const hadSnapshot = hasLastSaved();
+        seedLastSaved(doc);
+        if (readLastSavedAt() !== null) setSavedAt(readLastSavedAt());
+        setLoadOfferActive(
+          resolveLoadOffer({ hadSnapshot, fetchOk: true, dirtyNow: isDirty() }),
+        );
       }
     }
     void seedLastSavedFromServer();
@@ -115,43 +104,21 @@ export function useHostedDoc(hosted: boolean, authenticated: boolean) {
     if (!hosted || loadingRef.current) return;
     loadingRef.current = true;
     setLoadOfferLoading(true);
-    setLoadError(null); // reset on retry
-    try {
-      const res = await fetch('/api/portfolio?full=1', { cache: 'no-store' });
-      if (res.status === 401) {
-        setLoadError('Your session expired — sign in again, then retry.');
-        return;
-      }
-      let json: unknown;
-      try {
-        json = await res.json();
-      } catch {
-        setLoadError(`Load failed (${res.status}).`);
-        return;
-      }
-      if (!res.ok) {
-        const message =
-          json && typeof json === 'object' && typeof (json as { error?: unknown }).error === 'string'
-            ? (json as { error: string }).error
-            : `Load failed (${res.status}).`;
-        setLoadError(message);
-        return;
-      }
-      const confirmed = json as PortfolioData;
-      if (typeof confirmed !== 'object' || confirmed === null || !Array.isArray(confirmed.tabs)) {
-        setLoadError('Server returned an invalid document.');
-        return;
-      }
-      savePortfolioData(confirmed);
-      recordLastSaved(confirmed);
-      setSavedAt(readLastSavedAt());
-      setLoadOfferActive(false);
-    } catch {
-      setLoadError('Network error — could not reach the server.');
-    } finally {
+    setLoadError(null);
+    const fetched = await fetchHostedDoc();
+    if (!fetched.ok) {
+      setLoadError(fetched.error);
       loadingRef.current = false;
       setLoadOfferLoading(false);
+      return;
     }
+    const confirmed = fetched.doc;
+    savePortfolioData(confirmed);
+    recordLastSaved(confirmed);
+    setSavedAt(readLastSavedAt());
+    setLoadOfferActive(false);
+    loadingRef.current = false;
+    setLoadOfferLoading(false);
   }, [hosted]);
 
   // Session-only dismissal — no persistence: a reload re-runs detection.

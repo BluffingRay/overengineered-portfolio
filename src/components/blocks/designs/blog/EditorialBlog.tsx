@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ManagedImage from '@/components/ui/ManagedImage';
 import { stripHtml } from '@/components/blog/BlogViews';
 import Reveal from '../../Reveal';
 import {

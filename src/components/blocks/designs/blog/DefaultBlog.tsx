@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ManagedImage from '@/components/ui/ManagedImage';
 import { stripHtml } from '@/components/blog/BlogViews';
 import Reveal from '../../Reveal';
 import {
@@ -55,7 +56,7 @@ export default function CoderBlog({ block, posts, onOpenPost }: BlogDesignProps)
           ))}
         </ul>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
           {visible.map((post, index) => (
             <Reveal key={post.id} delay={Math.min(index * 60, 300)}>
               <article className="lift relative flex h-full flex-col overflow-hidden rounded-skin border border-current/15 hover:border-current/40">

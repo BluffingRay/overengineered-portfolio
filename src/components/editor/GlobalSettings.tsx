@@ -10,6 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
@@ -259,12 +260,7 @@ export default function GlobalSettings({
   const socials = data.socials ?? [];
   const footer = data.footer;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useEditorSensors();
 
   function patchSocials(recipe: (socials: SocialLink[]) => SocialLink[]) {
     mutate((current) => ({ ...current, socials: recipe(current.socials ?? []) }));

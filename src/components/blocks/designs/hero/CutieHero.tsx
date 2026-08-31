@@ -6,7 +6,8 @@ import {
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
   HeroPlaceholder,
-  legacyLayout,
+  useHeroLayout,
+  heroMediaPlacementClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 
@@ -99,14 +100,12 @@ export default function CutieHero({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
-  const splitLeft = layout === 'split' && block.mediaSide === 'left';
-  const badge = block.statusBadge?.enabled ? block.statusBadge : null;
-  const roles = block.roles && block.roles.length > 0 ? block.roles : [];
-  const secondary = block.secondaryAction;
+  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
+    useHeroLayout(block);
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
+  const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
   const media =
-    layout === 'banner' ? (
+    effectiveLayout === 'banner' && isDesktop ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}
@@ -117,37 +116,18 @@ export default function CutieHero({
         />
       ) : null
     ) : block.thumbnail ? (
-      <CutieMedia
-        block={block}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
-      />
+      <CutieMedia block={block} className={placementClass} />
     ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'square'}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
+        className={placementClass}
       />
     ) : null;
 
-  const isCentered = layout === 'centered';
-  const isSplit = layout === 'split';
-  const isBanner = layout === 'banner';
+  const isCentered = effectiveLayout === 'centered';
+  const isSplit = effectiveLayout === 'split';
+  const isBanner = effectiveLayout === 'banner';
 
   return (
     <section

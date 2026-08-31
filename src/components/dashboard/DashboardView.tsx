@@ -2,14 +2,21 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 import { useAuth } from '@/hooks/useAuth';
 import { applySettingsPatch } from '@/lib/portfolioSettings';
 import { isDirty, recordLastSaved, LAST_SAVED_AT_KEY, LAST_SAVED_KEY } from '@/lib/hostedDoc';
 import { savePortfolioData } from '@/lib/storage';
 import { normalizeSlug } from '@/types/schema';
 import type { PortfolioData, PortfolioVisibility } from '@/types/schema';
+import ShowcaseSection from './ShowcaseSection';
+import { CARD } from './styles';
+import { useDashboardMeta } from '@/hooks/useDashboardMeta';
+import DashboardHeroCard from './DashboardHeroCard';
+import PortfolioSettings from './PortfolioSettings';
+import ImportExportBlock from './ImportExportBlock';
+import DeleteGuard from './DeleteGuard';
+import WelcomeCard from './WelcomeCard';
+import NoPortfolioCard from './NoPortfolioCard';
 
 /**
  * 5e-c — the hosted dashboard (Product A shell): calm app chrome with a
@@ -88,15 +95,6 @@ interface ShowcasePage {
   hasMore: boolean;
 }
 
-function parseMeta(data: unknown): PortfolioMeta {
-  const d = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  return {
-    exists: d.exists === true,
-    slug: typeof d.slug === 'string' && d.slug !== '' ? d.slug : null,
-    visibility: d.visibility === 'public' ? 'public' : 'private',
-    showcase: d.showcase === true,
-  };
-}
 
 /**
  * 5g-a — parse the showcase response body (was: a bare array; now the
@@ -122,32 +120,7 @@ function parseShowcasePage(data: unknown): ShowcasePage | null {
   return { entries: cards, hasMore: rec.hasMore === true };
 }
 
-/** First featured_hero's name -> heading, else 'Untitled portfolio'. Same capture order as deriveIndexEntry (the doc is the truth). */
-function extractDocTitle(doc: unknown): string {
-  if (typeof doc !== 'object' || doc === null) return 'Untitled portfolio';
-  const tabs = (doc as { tabs?: unknown }).tabs;
-  if (!Array.isArray(tabs)) return 'Untitled portfolio';
-  for (const tab of tabs) {
-    const blocks = (tab as { blocks?: unknown } | null)?.blocks;
-    if (!Array.isArray(blocks)) continue;
-    for (const block of blocks) {
-      if (typeof block !== 'object' || block === null) continue;
-      const b = block as { type?: unknown; name?: unknown; heading?: unknown };
-      if (b.type !== 'featured_hero') continue;
-      if (typeof b.name === 'string' && b.name.trim() !== '') return b.name;
-      if (typeof b.heading === 'string' && b.heading.trim() !== '') return b.heading;
-      return 'Untitled portfolio';
-    }
-  }
-  return 'Untitled portfolio';
-}
 
-const CARD = 'rounded-skin border border-[var(--border)] bg-surface p-5';
-const ACTION_BTN =
-  'rounded-skin border border-[var(--border)] bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-background disabled:pointer-events-none disabled:opacity-40';
-const INPUT =
-  'w-full rounded-skin border border-[var(--border)] bg-background px-3 py-2 text-sm outline-none focus:border-accent';
-const SEGMENT =
   'rounded-skin border border-[var(--border)] bg-background px-3 py-1.5 text-sm font-medium';
 
 /** 5f-b — import size guard: rejected client-side, before any read or request. */
@@ -163,126 +136,11 @@ type SlugStatus =
   | { kind: 'invalid'; for: string }
   | { kind: 'error'; for: string };
 
-/**
- * 5f-b — the ONE import confirm disclosure, mounted by both entry points
- * (settings panel + Get-started card — mutually exclusive surfaces, so a
- * single implementation serves both). Mild styling by design: default
- * chrome, not the danger zone's red — the server confirm + local-key
- * hygiene are the real safety. The file-title line always renders:
- * extractDocTitle has no null path (it falls back to 'Untitled
- * portfolio'), which stays honest for a parsed-but-not-a-portfolio file.
- */
-function ImportConfirmBlock(props: {
-  docTitle: string;
-  busy: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="space-y-3 rounded-skin border border-[var(--border)] bg-background p-4">
-      <p className="text-sm">
-        Replace your current portfolio with the one in this file? This
-        overwrites everything saved to your account.
-      </p>
-      <p className="font-mono text-xs opacity-60">Found in file: “{props.docTitle}”</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={props.busy}
-          onClick={props.onConfirm}
-          className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:pointer-events-none disabled:opacity-40"
-        >
-          {props.busy ? 'Importing…' : 'Import'}
-        </button>
-        <button
-          type="button"
-          disabled={props.busy}
-          onClick={props.onCancel}
-          className={ACTION_BTN}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * 5g-a — the ONE showcase section: the signed-out public dashboard and
- * the authed dashboard render the exact same markup (same "Other
- * portfolios" heading, same card grid, same Load more) — only the
- * empty-state copy differs per surface. Cards are /u/<slug> links opening
- * in a new tab (5e-h destination rule). Load more shows while `hasMore`,
- * goes busy via `loadingMore`, and disappears once the feed is exhausted.
- */
-function ShowcaseSection(props: {
-  items: ShowcaseCard[] | null;
-  error: string | null;
-  emptyCopy: string;
-  heading?: string;
-  hasMore: boolean;
-  loadingMore: boolean;
-  onLoadMore: () => void;
-}) {
-  return (
-    <section className="mt-10">
-      <h2 className="text-xs font-semibold uppercase tracking-wide opacity-50">
-        {props.heading ?? 'Other portfolios'}
-      </h2>
-      {props.error ? (
-        <p role="alert" className={`mt-3 text-sm text-red-500 ${CARD}`}>
-          {props.error}
-        </p>
-      ) : props.items === null ? (
-        <div className={`mt-3 ${CARD}`}>
-          <p className="text-sm opacity-50">Loading…</p>
-        </div>
-      ) : props.items.length === 0 ? (
-        <div className={`mt-3 ${CARD}`}>
-          <p className="text-sm opacity-60">{props.emptyCopy}</p>
-        </div>
-      ) : (
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-          {props.items.map((item) => (
-            <li key={item.slug}>
-              <Link
-                href={`/u/${item.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-skin border border-[var(--border)] bg-surface p-4 hover:-translate-y-0.5 hover:border-accent hover:shadow-sm"
-              >
-                <span className="block text-sm font-medium">
-                  {item.title ?? item.slug}
-                </span>
-                <span className="mt-0.5 block font-mono text-xs opacity-50">
-                  /u/{item.slug}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      {props.hasMore && props.items !== null && (
-        <button
-          type="button"
-          disabled={props.loadingMore}
-          onClick={props.onLoadMore}
-          className={`mt-3 ${ACTION_BTN}`}
-        >
-          {props.loadingMore ? 'Loading…' : 'Load more'}
-        </button>
-      )}
-    </section>
-  );
-}
-
 export default function DashboardView() {
   const auth = useAuth();
-  const router = useRouter();
 
-  // null = still loading; errors render inline (never blank).
-  const [meta, setMeta] = useState<PortfolioMeta | null>(null);
-  const [metaError, setMetaError] = useState<string | null>(null);
+  const { meta, setMeta, metaError, setMetaError, heroTitle, setHeroTitle, heroTitleReady, setHeroTitleReady, extractDocTitle } =
+    useDashboardMeta(auth.authReady, auth.authenticated);
   const [showcase, setShowcase] = useState<ShowcaseCard[] | null>(null);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);
   // 5g-a — the feed is paginated: page 1 loads in the meta-load effect
@@ -313,10 +171,6 @@ export default function DashboardView() {
     setShowcaseHasMore(false);
     setLoadingMore(false);
   }
-  // Hero title: null until the ?full=1 fetch settles — 'Untitled portfolio'
-  // is a real loaded value, hence the separate ready flag.
-  const [heroTitle, setHeroTitle] = useState<string | null>(null);
-  const [heroTitleReady, setHeroTitleReady] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // 5e-f settings panel (hero card only). Ephemeral form state — never
@@ -369,85 +223,34 @@ export default function DashboardView() {
     document.documentElement.style.removeProperty('zoom');
   }, []);
 
-  // Meta + showcase load — the ONE data-loading effect of this view. Deps
-  // include auth.authenticated: the 5g-a sign-in swap IS this effect
-  // re-running (the welcome card's login flips the flag; FirebaseLoginForm
-  // pushes /dashboard, already here — no navigation, no reload). Signed
-  // out, the same effect loads only the PUBLIC feed (page 1) for the
-  // public dashboard; /api/portfolio/meta is authed-only and is not
-  // fetched. No synchronous setState here — everything applies after
-  // awaits; Load more appends in its own click handler, never here.
+  // Showcase feed loader — meta + hero title now owned by useDashboardMeta.
+  // This effect stays the showcase source of truth for both signed-out
+  // (public feed) and signed-in (caller-excluded feed). Epoch discipline
+  // preserved for Load-more stale-response protection.
   useEffect(() => {
     if (!auth.authReady) return;
-    // Every effect run replaces the feed — bump the epoch so a Load-more
-    // response still in flight from the previous feed discards itself.
     feedEpochRef.current += 1;
     let active = true;
-    async function load() {
-      // Signed-out hosted visitor: the showcase is publicly browsable
-      // (5g-a) — public feed only; no meta/hero fetch (nothing is "yours"
-      // on this surface).
-      if (!auth.authenticated) {
-        try {
-          const res = await fetch('/api/portfolio/showcase');
-          if (!active) return;
-          const page = res.ok ? parseShowcasePage(await res.json()) : null;
-          if (!active) return;
-          if (page === null) {
-            setShowcaseError('Could not load other portfolios.');
-            return;
-          }
-          setShowcase(page.entries);
-          setShowcasePage(1);
-          setShowcaseHasMore(page.hasMore);
-          setShowcaseError(null);
-        } catch {
-          if (!active) return;
-          setShowcaseError('Could not load other portfolios.');
-        }
-        return;
-      }
+    async function loadShowcase() {
       try {
-        const [metaRes, showcaseRes] = await Promise.all([
-          fetch('/api/portfolio/meta'),
-          fetch('/api/portfolio/showcase'),
-        ]);
+        const res = await fetch('/api/portfolio/showcase');
         if (!active) return;
-        let parsedMeta: PortfolioMeta | null = null;
-        if (metaRes.ok) {
-          parsedMeta = parseMeta(await metaRes.json());
-          setMeta(parsedMeta);
-          setMetaError(null);
-        } else {
-          setMetaError('Could not load your portfolio.');
-        }
-        if (showcaseRes.ok) {
-          const page = parseShowcasePage(await showcaseRes.json());
-          if (page !== null) {
-            setShowcase(page.entries);
-            setShowcasePage(1);
-            setShowcaseHasMore(page.hasMore);
-            setShowcaseError(null);
-          } else {
-            setShowcaseError('Could not load other portfolios.');
-          }
-        } else {
+        const page = res.ok ? parseShowcasePage(await res.json()) : null;
+        if (!active) return;
+        if (page === null) {
           setShowcaseError('Could not load other portfolios.');
+          return;
         }
-        // The hero title rides the doc — fetched only when one exists.
-        if (parsedMeta?.exists) {
-          const fullRes = await fetch('/api/portfolio?full=1');
-          if (!active) return;
-          setHeroTitle(extractDocTitle(fullRes.ok ? await fullRes.json() : null));
-          setHeroTitleReady(true);
-        }
+        setShowcase(page.entries);
+        setShowcasePage(1);
+        setShowcaseHasMore(page.hasMore);
+        setShowcaseError(null);
       } catch {
         if (!active) return;
-        setMetaError('Could not load your portfolio.');
         setShowcaseError('Could not load other portfolios.');
       }
     }
-    void load();
+    void loadShowcase();
     return () => {
       active = false;
     };
@@ -845,11 +648,6 @@ export default function DashboardView() {
   // (it is keyed on that flag) and the authed dashboard swaps in below —
   // no manual reload.
   if (!auth.authenticated) {
-    // Stagecraft for the public hub (5g-b followup): a faint dot-grid
-    // backdrop, a terminal-style wordmark with the house caret (static —
-    // no keyframe, reduced-motion safe), and three factual chips.
-    // Everything stays inside the neutral admin tokens; the wordmark is
-    // the h1 ("Dashboard" is meaningless to a stranger).
     return (
       <main data-admin-theme="" className="relative min-h-dvh overflow-hidden">
         <div
@@ -857,68 +655,7 @@ export default function DashboardView() {
           className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:22px_22px]"
         />
         <div className="relative mx-auto w-full max-w-3xl px-6 py-16">
-          <section>
-            <div className={`settle-in ${CARD}`}>
-              <h1 className="font-mono text-xl font-semibold sm:text-2xl">
-                ~/
-                <span className="text-accent">overengineered-portfolio</span>
-                <span className="caret-blink text-accent">▌</span>
-              </h1>
-              <p className="mt-2 text-sm opacity-60">
-                A block-based, local-first portfolio CMS. Your entire
-                portfolio is one JSON document — fork it, or host it here.
-              </p>
-              <ul
-                className="mt-4 flex flex-wrap gap-2"
-                aria-label="Product highlights"
-              >
-                {[
-                  'one JSON document',
-                  '4 art directions',
-                  'self-host or hosted',
-                ].map((chip) => (
-                  <li
-                    key={chip}
-                    className="rounded-full border border-[var(--border)] bg-background px-2.5 py-1 font-mono text-xs opacity-70"
-                  >
-                    {chip}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  aria-expanded={signInOpen}
-                  onClick={() => setSignInOpen((open) => !open)}
-                  className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
-                >
-                  {signInOpen ? 'Hide sign-in' : 'Sign in to create yours'}
-                </button>
-                <a
-                  href="https://github.com/BluffingRay/overengineered-portfolio"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs opacity-40 hover:opacity-70"
-                >
-                  fork it on GitHub ↗
-                </a>
-                <Link
-                  href="/playground"
-                  className="rounded-skin border border-accent/50 px-2.5 py-1 font-mono text-xs font-medium text-accent hover:bg-accent hover:text-background"
-                >
-                  Try the demo ↗
-                </Link>
-              </div>
-            </div>
-            {signInOpen && (
-              <div className="mt-3">
-                <FirebaseLoginCard onLoginWithIdToken={auth.loginWithIdToken} />
-              </div>
-            )}
-          </section>
-
-          {/* Same section implementation as the authed dashboard — the
-              signed-out pitch lives in the heading + empty-state copy. */}
+          <WelcomeCard signInOpen={signInOpen} setSignInOpen={setSignInOpen} onLoginWithIdToken={auth.loginWithIdToken} />
           <ShowcaseSection
             heading="Live portfolios"
             items={showcase}
@@ -995,406 +732,77 @@ export default function DashboardView() {
               <p className="text-sm opacity-50">Loading…</p>
             </div>
           ) : !meta.exists ? (
-            <div className={`mt-3 ${CARD}`}>
-              <p className="text-sm font-medium">No portfolio yet</p>
-              <p className="mt-1 text-sm opacity-60">
-                Pick a design, tell us your name, and your first blocks are
-                generated for you — it takes about a minute.
-              </p>
-              <button
-                type="button"
-                onClick={() => router.push('/onboarding')}
-                className="mt-4 rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
-              >
-                Get started
-              </button>
-              {/* 5f-b — the B→A migration moment: the SAME confirm flow as
-                  the panel's Content section (one implementation — the two
-                  surfaces never coexist, so the shared input ref is safe).
-                  Success reflects the confirmed doc and this card swaps to
-                  the hero card without a reload. */}
-              <button
-                type="button"
-                disabled={importing}
-                onClick={() => importInputRef.current?.click()}
-                className="mt-2 block text-sm underline underline-offset-2 opacity-60 hover:opacity-100"
-              >
-                Import a portfolio file instead
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".json,application/json"
-                className="hidden"
-                aria-label="Import a portfolio JSON file"
-                onChange={handleImportFilePicked}
-              />
-              {importStash !== null && (
-                <div className="mt-3">
-                  <ImportConfirmBlock
-                    docTitle={extractDocTitle(importStash.doc)}
-                    busy={importing}
-                    onConfirm={() => void handleImportConfirmed()}
-                    onCancel={cancelImport}
-                  />
-                </div>
-              )}
-              {contentError !== null && (
-                <p role="alert" className="mt-3 text-sm text-red-500">
-                  {contentError}
-                </p>
-              )}
-            </div>
+            <NoPortfolioCard
+              importing={importing}
+              importStash={importStash}
+              contentError={contentError}
+              importInputRef={importInputRef}
+              onImportFilePicked={handleImportFilePicked}
+              onImportConfirmed={() => void handleImportConfirmed()}
+              onCancelImport={cancelImport}
+              extractDocTitle={extractDocTitle}
+            />
           ) : (
             <div className={`settle-in mt-3 ${CARD}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold">
-                    {heroTitleReady ? heroTitle : <span className="opacity-40">…</span>}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    {slug ? (
-                      <span className="rounded-full border border-[var(--border)] px-2 py-0.5 font-mono">
-                        /u/{slug}
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-[var(--border)] px-2 py-0.5 opacity-60">
-                        No link yet — claim it in onboarding
-                      </span>
-                    )}
-                    <span
-                      className={`rounded-full border px-2 py-0.5 ${
-                        meta.visibility === 'public'
-                          ? 'border-accent/40 text-accent'
-                          : 'border-[var(--border)] opacity-60'
-                      }`}
-                    >
-                      {meta.visibility === 'public' ? 'Public' : 'Private'}
-                    </span>
-                    {meta.showcase && (
-                      <span className="rounded-full border border-accent/40 px-2 py-0.5 text-accent">
-                        In showcase
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* 5e-h — Edit is a destination (the editor) — new tab,
-                      same visual classes the button had. */}
-                  <Link
-                    href="/?edit=true"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background"
-                  >
-                    Edit
-                  </Link>
-                  {slug ? (
-                    <Link
-                      href={`/u/${slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={ACTION_BTN}
-                    >
-                      View
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      title="Claim your link in onboarding first"
-                      className={ACTION_BTN}
-                    >
-                      View
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!slug}
-                    title={slug ? 'Copy the public link' : 'Claim your link in onboarding first'}
-                    onClick={() => {
-                      if (slug) void copyShareLink(slug);
-                    }}
-                    className={ACTION_BTN}
-                  >
-                    {copied ? 'Copied' : 'Copy share link'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => (settingsOpen ? closeSettings() : openSettings())}
-                    className={ACTION_BTN}
-                  >
-                    {settingsOpen ? 'Close' : justSaved ? 'Saved' : 'Settings'}
-                  </button>
-                </div>
-              </div>
+              <DashboardHeroCard
+                heroTitle={heroTitle}
+                heroTitleReady={heroTitleReady}
+                slug={slug}
+                visibility={meta.visibility}
+                showcase={meta.showcase}
+                copied={copied}
+                settingsOpen={settingsOpen}
+                justSaved={justSaved}
+                onCopyShareLink={(s) => void copyShareLink(s)}
+                onToggleSettings={() => (settingsOpen ? closeSettings() : openSettings())}
+              />
 
               {settingsOpen && (
-                <div className="mt-4 space-y-4 border-t border-[var(--border)] pt-4">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium">Your link</span>
-                    <div className="flex items-center gap-0">
-                      <span className="rounded-l-skin border border-r-0 border-[var(--border)] bg-background px-3 py-2 font-mono text-sm opacity-60">
-                        /u/
-                      </span>
-                      <input
-                        type="text"
-                        value={settingsSlug}
-                        onChange={(event) => {
-                          setSettingsSlug(event.target.value);
-                          setSaveError(null);
-                        }}
-                        placeholder="jane-doe"
-                        autoComplete="off"
-                        spellCheck={false}
-                        className={`${INPUT} rounded-l-none font-mono`}
-                      />
-                    </div>
-                    <p className="mt-1.5 font-mono text-xs" aria-live="polite">
-                      {availability.kind === 'idle' && (
-                        <span className="opacity-50">
-                          3–40 lowercase letters, numbers, hyphens.
-                        </span>
-                      )}
-                      {availability.kind === 'checking' && (
-                        <span className="opacity-50">Checking…</span>
-                      )}
-                      {availability.kind === 'available' && (
-                        <span className="text-emerald-600">
-                          ✓ /u/{normalizedSettingsSlug ?? trimmedSettingsSlug} is available
-                        </span>
-                      )}
-                      {availability.kind === 'taken' && (
-                        <span className="text-red-500">
-                          /u/{normalizedSettingsSlug ?? trimmedSettingsSlug} is already
-                          taken — try another.
-                        </span>
-                      )}
-                      {availability.kind === 'reserved' && (
-                        <span className="text-red-500">
-                          That one is reserved by the site — try another.
-                        </span>
-                      )}
-                      {availability.kind === 'invalid' && (
-                        <span className="text-red-500">
-                          Use 3–40 lowercase letters, numbers or hyphens (no edge
-                          hyphens).
-                        </span>
-                      )}
-                      {availability.kind === 'error' && (
-                        <span className="text-red-500">
-                          Could not check availability — try again.
-                        </span>
-                      )}
-                    </p>
-                  </label>
+                <>
+                  <PortfolioSettings
+                    settingsSlug={settingsSlug}
+                    setSettingsSlug={setSettingsSlug}
+                    settingsVisibility={settingsVisibility}
+                    setSettingsVisibility={setSettingsVisibility}
+                    settingsShowcase={settingsShowcase}
+                    setSettingsShowcase={setSettingsShowcase}
+                    availability={availability}
+                    normalizedSettingsSlug={normalizedSettingsSlug}
+                    trimmedSettingsSlug={trimmedSettingsSlug}
+                    canSave={canSave}
+                    saving={saving}
+                    saveError={saveError}
+                    onSave={() => void handleSaveSettings()}
+                    onCancel={closeSettings}
+                    setSaveError={setSaveError}
+                  />
 
-                  <div>
-                    <span className="mb-1 block text-sm font-medium">Visibility</span>
-                    <div className="inline-flex" role="group" aria-label="Visibility">
-                      <button
-                        type="button"
-                        aria-pressed={settingsVisibility === 'private'}
-                        onClick={() => setSettingsVisibility('private')}
-                        className={`${SEGMENT} rounded-r-none ${
-                          settingsVisibility === 'private'
-                            ? 'border-accent text-accent'
-                            : 'opacity-70'
-                        }`}
-                      >
-                        Private
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={settingsVisibility === 'public'}
-                        onClick={() => setSettingsVisibility('public')}
-                        className={`${SEGMENT} rounded-l-none border-l-0 ${
-                          settingsVisibility === 'public'
-                            ? 'border-accent text-accent'
-                            : 'opacity-70'
-                        }`}
-                      >
-                        Public
-                      </button>
-                    </div>
-                    <p className="mt-1 text-xs opacity-50" aria-live="polite">
-                      {settingsVisibility === 'public'
-                        ? 'Public — anyone with your link can view your portfolio.'
-                        : 'Private — only you (while signed in) can open your link; everyone else gets a not-found page.'}
-                    </p>
-                  </div>
+                  <ImportExportBlock
+                    exporting={exporting}
+                    importing={importing}
+                    importStash={importStash}
+                    contentError={contentError}
+                    importInputRef={importInputRef}
+                    onExport={() => void handleExport()}
+                    onImportFilePicked={handleImportFilePicked}
+                    onImportConfirmed={() => void handleImportConfirmed()}
+                    onCancelImport={cancelImport}
+                    extractDocTitle={extractDocTitle}
+                  />
 
-                  <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={settingsShowcase}
-                      onChange={(event) => setSettingsShowcase(event.target.checked)}
-                      className="mt-1 h-4 w-4 accent-[var(--accent)]"
-                    />
-                    <span className="text-sm">
-                      <span className="font-medium">
-                        Show my portfolio in the gallery
-                      </span>
-                      <span
-                        className={`mt-0.5 block text-xs ${
-                          settingsVisibility === 'public' ? 'opacity-50' : 'opacity-40'
-                        }`}
-                      >
-                        {settingsVisibility === 'public'
-                          ? 'Listed under “Other portfolios” on other dashboards.'
-                          : 'Needs Public visibility to have an effect.'}
-                      </span>
-                    </span>
-                  </label>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      disabled={!canSave}
-                      title={
-                        canSave
-                          ? undefined
-                          : 'Pick an available link first — or keep your current one'
-                      }
-                      onClick={() => void handleSaveSettings()}
-                      className="rounded-skin border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:pointer-events-none disabled:opacity-40"
-                    >
-                      {saving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={closeSettings}
-                      className={ACTION_BTN}
-                    >
-                      Cancel
-                    </button>
-                    {saveError && (
-                      <p role="alert" className="text-sm text-red-500">
-                        {saveError}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 5f-b — Content: the portability bridge. Export is a
-                      read-only download of the confirmed doc; import is
-                      confirm-gated and reflects only the server's confirmed
-                      doc. Lives between Save/Cancel and the danger zone
-                      (which stays last). */}
-                  <div className="mt-4 border-t border-[var(--border)] pt-4">
-                    <span className="mb-1 block text-sm font-medium">Content</span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={exporting}
-                        onClick={() => void handleExport()}
-                        className={ACTION_BTN}
-                      >
-                        {exporting ? 'Exporting…' : 'Export JSON'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={importing}
-                        onClick={() => importInputRef.current?.click()}
-                        className={ACTION_BTN}
-                      >
-                        Import from file…
-                      </button>
-                      <input
-                        ref={importInputRef}
-                        type="file"
-                        accept=".json,application/json"
-                        className="hidden"
-                        aria-label="Import a portfolio JSON file"
-                        onChange={handleImportFilePicked}
-                      />
-                    </div>
-                    {importStash !== null && (
-                      <div className="mt-3">
-                        <ImportConfirmBlock
-                          docTitle={extractDocTitle(importStash.doc)}
-                          busy={importing}
-                          onConfirm={() => void handleImportConfirmed()}
-                          onCancel={cancelImport}
-                        />
-                      </div>
-                    )}
-                    {contentError !== null && (
-                      <p role="alert" className="mt-3 text-sm text-red-500">
-                        {contentError}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 5e-i — danger zone (lives INSIDE the settings panel,
-                      per user: a permanent red button on the hero card is
-                      too loud): irreversible deletion behind a typed
-                      confirm. */}
-                  <div className="mt-4 border-t border-[var(--border)] pt-4">
-                    {!deleteOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteOpen(true);
-                          setDeleteError(null);
-                        }}
-                        className="rounded-skin border border-red-500/40 bg-background px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-500/10"
-                      >
-                        Delete portfolio
-                      </button>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-sm text-red-500">
-                          This permanently deletes your portfolio, its link,
-                          and its uploaded files. This cannot be undone.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={deleteConfirm}
-                            onChange={(event) => {
-                              setDeleteConfirm(event.target.value);
-                              setDeleteError(null);
-                            }}
-                            placeholder="Type DELETE to confirm"
-                            aria-label="Type DELETE to confirm deletion"
-                            autoComplete="off"
-                            spellCheck={false}
-                            disabled={deleting}
-                            className={`${INPUT} max-w-56 font-mono`}
-                          />
-                          <button
-                            type="button"
-                            disabled={deleting || deleteConfirm !== 'DELETE'}
-                            onClick={() => void handleDeletePortfolio()}
-                            className="rounded-skin border border-red-500/60 bg-red-500 px-3 py-1.5 text-sm font-medium text-white disabled:pointer-events-none disabled:opacity-40"
-                          >
-                            {deleting ? 'Deleting…' : 'Delete forever'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={deleting}
-                            onClick={() => {
-                              setDeleteOpen(false);
-                              setDeleteConfirm('');
-                              setDeleteError(null);
-                            }}
-                            className={ACTION_BTN}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                        {deleteError && (
-                          <p role="alert" className="text-sm text-red-500">
-                            {deleteError}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <DeleteGuard
+                    deleteOpen={deleteOpen}
+                    deleteConfirm={deleteConfirm}
+                    deleting={deleting}
+                    deleteError={deleteError}
+                    setDeleteOpen={setDeleteOpen}
+                    setDeleteConfirm={setDeleteConfirm}
+                    setDeleteError={setDeleteError}
+                    onDelete={() => void handleDeletePortfolio()}
+                  />
+                </>
               )}
-              </div>
+            </div>
           )}
         </section>
 

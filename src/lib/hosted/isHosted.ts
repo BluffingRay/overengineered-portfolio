@@ -1,8 +1,5 @@
 import { isAdminConfigured } from '@/lib/firebase/admin';
-
-function hasKv(): boolean {
-  return !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.KV_NAMESPACE_ID && process.env.CLOUDFLARE_API_TOKEN);
-}
+import { hasKv } from '@/lib/kv';
 
 function pickEnv(...keys: string[]): string | undefined {
   for (const k of keys) {

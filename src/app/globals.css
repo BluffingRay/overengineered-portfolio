@@ -85,16 +85,12 @@
    Every interaction rides the skin's tokens: HUD snaps, Notebook
    springs, Clean glides. Base layer, so explicit utilities win. */
 @layer base {
-  [data-skin] {
-    --dur: 160ms;
-    --ease: ease-out;
-    --press: 0.97;
-  }
-
   /* Single motion owner for buttons and links — colors, opacity,
      shadow and the individual transform properties all share the
      skin's timing. `transform` stays out so dnd-kit drags (inline
-     transforms) never lag behind a transition. */
+     transforms) never lag behind a transition. Skin --dur/--ease/--press
+     now flow from [data-skin='hud'|'notebook'|'clean'] only (M6 fix:
+     removed the [data-skin] { --dur:160ms } override that clobbered HUD 90ms). */
   [data-skin] :is(button, a):not(:disabled) {
     transition-property: color, background-color, border-color, fill, stroke,
       opacity, box-shadow, translate, rotate, scale;
@@ -111,15 +107,9 @@
   [data-skin] .rich-text a:active {
     scale: none;
   }
-}
 
-/* Keyboard-focus audit (6-c) — one token-driven ring, keyboard-only:
-   :focus-visible never matches pointer input, so mouse users see no
-   rings while keyboard users get them everywhere in every skin (the
-   admin token set also declares --accent, so dashboard chrome inherits
-   it). .rich-editor .ProseMirror keeps its outline:none — contenteditable
-   owns its caret, and the unlayered rule wins over this base layer. */
-@layer base {
+  /* Keyboard-focus audit (6-c) — one token-driven ring, keyboard-only
+     (merged into single @layer base per M6). */
   :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -585,4 +575,16 @@ html {
 
 .riso-duotone {
   filter: grayscale(1) contrast(1.05);
+}
+
+/* Hide the scrollbar on horizontally scrollable tab strips while keeping
+   the content scrollable (native swipe on mobile / arrows on desktop). */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

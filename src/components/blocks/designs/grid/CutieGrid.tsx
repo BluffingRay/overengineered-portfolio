@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
 import Reveal from '../../Reveal';
-import { hasExtraLinks, resolveCardLinks, staggerDelay } from './shared';
+import { hasExtraLinks, resolveCardLinks } from './shared';
+import GridShell from './GridShell';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -16,8 +17,6 @@ export default function CutieGrid({
   posts,
   onOpenPost,
 }: GridDesignProps) {
-  const cardById = new Map((cards ?? []).map((card) => [card.id, card]));
-
   return (
     <section className="dsn-cutie relative space-y-8">
       {/* Wall garnish — pure decoration */}
@@ -38,14 +37,9 @@ export default function CutieGrid({
         {block.title}
       </h2>
       <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-        {block.apps.map((appId, index) => {
-          const app = cardById.get(appId);
-          if (!app) return null; // dangling ref — sanitizer normally removes these
-
+                <GridShell cards={cards} cardIds={block.apps} renderCard={(app, index) => {
           const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
-
           return (
-            <Reveal key={appId} delay={staggerDelay(index)}>
               <article
                 className={`relative flex h-full flex-col bg-surface p-3 pb-10 shadow-md shadow-accent/10 transition-transform ${
                   index % 2 ? 'rotate-1' : '-rotate-1'
@@ -170,9 +164,8 @@ export default function CutieGrid({
                   )}
                 </div>
               </article>
-            </Reveal>
           );
-        })}
+        }} />
       </div>
     </section>
   );

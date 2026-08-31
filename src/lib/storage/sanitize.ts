@@ -1,4 +1,3 @@
-import { initialData } from '@/data/initialData';
 import {
   BLOCK_DESIGNS,
   BLOCK_WIDTHS,
@@ -28,54 +27,8 @@ import type {
   SocialLink,
   Tab,
 } from '@/types/schema';
-
-const STORAGE_KEY = 'portfolio-data';
-const CHANGE_EVENT = 'portfolio-data:changed';
-
-const CURRENT_VERSION = 3;
-
-interface SnapshotCache {
-  raw: string | null;
-  data: PortfolioData;
-}
-
-let snapshotCache: SnapshotCache | null = null;
-const listeners = new Set<() => void>();
-
-const HISTORY_LIMIT = 25;
-const undoStack: PortfolioData[] = [];
-let redoStack: PortfolioData[] = [];
-
-interface HistorySnapshot {
-  canUndo: boolean;
-  canRedo: boolean;
-}
-
-const EMPTY_HISTORY: HistorySnapshot = { canUndo: false, canRedo: false };
-let historySnapshot: HistorySnapshot = EMPTY_HISTORY;
-
-function syncHistorySnapshot(): void {
-  const next: HistorySnapshot = {
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
-  };
-
-  if (next.canUndo !== historySnapshot.canUndo || next.canRedo !== historySnapshot.canRedo) {
-    historySnapshot = next;
-  }
-}
-
-export function getHistorySnapshot(): HistorySnapshot {
-  return historySnapshot;
-}
-
-export function getHistoryServerSnapshot(): HistorySnapshot {
-  return EMPTY_HISTORY;
-}
-
-function pristine(): PortfolioData {
-  return structuredClone(initialData);
-}
+import { CURRENT_VERSION } from './constants';
+import { migrateV1ToV2, migrateV2ToV3 } from './migrations';
 
 function isValidAppCard(value: unknown): value is AppCardItem {
   return (
@@ -87,7 +40,7 @@ function isValidAppCard(value: unknown): value is AppCardItem {
   );
 }
 
-function isPortfolioData(value: unknown): value is PortfolioData {
+export function isPortfolioData(value: unknown): value is PortfolioData {
   if (typeof value !== 'object' || value === null) return false;
 
   const data = value as Record<string, unknown>;
@@ -119,25 +72,6 @@ function isPortfolioData(value: unknown): value is PortfolioData {
           )),
     );
   });
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function migrateRichTextContent(content: string): string {
-  if (/<\/?[a-z][^>]*>/i.test(content)) return content;
-
-  return content
-    .split(/\n{2,}/)
-    .map(
-      (paragraph) =>
-        `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`,
-    )
-    .join('');
 }
 
 function sanitizeSocials(candidate: unknown): SocialLink[] | undefined {
@@ -425,32 +359,6 @@ function sanitizeBlock(block: Record<string, unknown>): Record<string, unknown> 
   );
 }
 
-function migrateV1ToV2(
-  document: Record<string, unknown>,
-): Record<string, unknown> {
-  const tabs: Array<Record<string, unknown>> = Array.isArray(document.tabs)
-    ? document.tabs
-    : [];
-
-  return {
-    ...document,
-    version: CURRENT_VERSION,
-    tabs: tabs.map((tab) => ({
-      ...tab,
-      blocks: Array.isArray(tab.blocks)
-        ? (tab.blocks as Array<Record<string, unknown>>).map((block) =>
-            block.type === 'rich_text' && typeof block.content === 'string'
-              ? {
-                  ...block,
-                  content: migrateRichTextContent(block.content),
-                }
-              : block,
-          )
-        : [],
-    })),
-  };
-}
-
 function sanitizeThemeFont(theme: unknown): Record<string, unknown> {
   if (typeof theme !== 'object' || theme === null) return {};
   const clean = { ...(theme as Record<string, unknown>) };
@@ -473,62 +381,6 @@ function sanitizeThemeFont(theme: unknown): Record<string, unknown> {
     delete clean.viewScale;
   }
   return clean;
-}
-
-/**
- * v2 -> v3: hoist every inline app card into the root library and swap
- * each grid's embedded list for ordered id references. Cards sharing an
- * id but diverging in content get a fresh id on the later copy.
- */
-function migrateV2ToV3(
-  document: Record<string, unknown>,
-): Record<string, unknown> {
-  const library: Record<string, unknown>[] = [];
-  const indexById = new Map<string, number>();
-
-  const tabs = Array.isArray(document.tabs) ? document.tabs : [];
-  const nextTabs = (tabs as Record<string, unknown>[]).map((tab) => ({
-    ...tab,
-    blocks: Array.isArray(tab.blocks) ? tab.blocks : [],
-  }));
-
-  for (const tab of nextTabs) {
-    tab.blocks = (tab.blocks as Record<string, unknown>[]).map((block) => {
-      if (block.type !== 'app_grid' || !Array.isArray(block.apps)) {
-        return block;
-      }
-
-      const refs: string[] = [];
-      for (const app of block.apps as Record<string, unknown>[]) {
-        if (
-          typeof app !== 'object' ||
-          app === null ||
-          typeof app.id !== 'string'
-        ) {
-          continue;
-        }
-
-        let id = app.id;
-        const existingIndex = indexById.get(id);
-        if (
-          existingIndex !== undefined &&
-          JSON.stringify(library[existingIndex]) !== JSON.stringify(app)
-        ) {
-          // Same id, different content: keep both, re-id this one.
-          id = crypto.randomUUID();
-        }
-        if (existingIndex === undefined) {
-          indexById.set(id, library.length);
-          library.push({ ...app, id });
-        }
-        refs.push(id);
-      }
-
-      return { ...block, apps: refs };
-    });
-  }
-
-  return { ...document, version: CURRENT_VERSION, cards: library, tabs: nextTabs };
 }
 
 function sanitizeAssets(
@@ -676,125 +528,4 @@ export function prepareDocument(parsed: unknown): PortfolioData | null {
   };
 
   return isPortfolioData(candidate) ? candidate : null;
-}
-
-export function getPortfolioDataSnapshot(): PortfolioData {
-  if (typeof window === 'undefined') return initialData;
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (snapshotCache && snapshotCache.raw === raw) {
-    return snapshotCache.data;
-  }
-
-  let data = pristine();
-  if (raw) {
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      const prepared = prepareDocument(parsed);
-      if (prepared) data = prepared;
-    } catch {
-      data = pristine();
-    }
-  }
-
-  snapshotCache = { raw, data };
-  return data;
-}
-
-export function getPortfolioDataServerSnapshot(): PortfolioData {
-  return initialData;
-}
-
-export function subscribeToPortfolioData(listener: () => void): () => void {
-  listeners.add(listener);
-  window.addEventListener('storage', listener);
-  window.addEventListener(CHANGE_EVENT, listener);
-
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener('storage', listener);
-    window.removeEventListener(CHANGE_EVENT, listener);
-  };
-}
-
-function notify(): void {
-  for (const listener of listeners) listener();
-}
-
-export function importPortfolioData(raw: string): PortfolioData | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return prepareDocument(parsed);
-  } catch {
-    return null;
-  }
-}
-
-function writeDocument(data: PortfolioData): boolean {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return true;
-  } catch {
-    console.warn('[storage] could not persist portfolio data');
-    return false;
-  }
-}
-
-export function savePortfolioData(data: PortfolioData): void {
-  if (typeof window === 'undefined') return;
-
-  const previous = getPortfolioDataSnapshot();
-  if (!writeDocument(data)) return;
-
-  undoStack.push(previous);
-  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-  redoStack = [];
-  syncHistorySnapshot();
-
-  notify();
-}
-
-export function undoPortfolioData(): void {
-  if (typeof window === 'undefined' || undoStack.length === 0) return;
-
-  const current = getPortfolioDataSnapshot();
-  const target = undoStack.pop();
-  if (!target || !writeDocument(target)) {
-    if (target) undoStack.push(target);
-    return;
-  }
-
-  redoStack.push(current);
-  syncHistorySnapshot();
-  notify();
-}
-
-export function redoPortfolioData(): void {
-  if (typeof window === 'undefined' || redoStack.length === 0) return;
-
-  const current = getPortfolioDataSnapshot();
-  const target = redoStack.pop();
-  if (!target || !writeDocument(target)) {
-    if (target) redoStack.push(target);
-    return;
-  }
-
-  undoStack.push(current);
-  syncHistorySnapshot();
-  notify();
-}
-
-export function resetPortfolioData(): void {
-  if (typeof window === 'undefined') return;
-
-  const previous = getPortfolioDataSnapshot();
-  window.localStorage.removeItem(STORAGE_KEY);
-
-  undoStack.push(previous);
-  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-  redoStack = [];
-  syncHistorySnapshot();
-
-  notify();
 }

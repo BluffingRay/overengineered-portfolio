@@ -3,33 +3,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
-import { clampViewScale } from '@/types/schema';
-import type { ThemeSkin } from '@/types/schema';
+import { usePortfolioShell } from '@/hooks/usePortfolioShell';
+import PortfolioChrome from '@/components/PortfolioChrome';
 import BlockRenderer from '@/components/blocks/BlockRenderer';
 import SkinSwitcher from '@/components/SkinSwitcher';
 import ViewScaleControl from '@/components/ViewScaleControl';
+import { useIsDesktopWidth } from '@/hooks/useIsDesktopWidth';
 
-const DARK_QUERY = '(prefers-color-scheme: dark)';
-// Visitor skin pick — persisted separately from the document so it
-// survives navigation to the standalone /write and /blog routes.
-const SKIN_OVERRIDE_KEY = 'portfolio-skin-override';
-// Visitor view-scale pick — same persistence model as the skin override.
-const VIEW_SCALE_OVERRIDE_KEY = 'portfolio-view-scale-override';
-// Last-viewed tab — restored when visitors return from a standalone
-// route, so Back lands them where they left off (per browser session).
-const LAST_TAB_KEY = 'portfolio-last-tab';
-
-function subscribeSystemTheme(onChange: () => void) {
-  const query = window.matchMedia(DARK_QUERY);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-}
-
-function subscribeDesktopWidth(onChange: () => void) {
-  const query = window.matchMedia('(min-width: 768px)');
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-}
 import UtilityBar from '@/components/UtilityBar';
 import PostAdmin from '@/components/editor/PostAdmin';
 import FloatingPage from '@/components/FloatingPage';
@@ -54,31 +34,15 @@ export default function PortfolioView() {
   const [isEditMode, setIsEditMode] = useState(
     searchParams.get('edit') === 'true',
   );
-  // Phase 4b/5c FIX-D — auth gate. In hosted mode (`auth.hosted`) the
-  // Firebase cookie is the only identity source; the B password gate
-  // doesn't apply. `auth.gated` is true when either gate is active and
-  // `auth.authenticated` reflects the correct one for this shell.
   const auth = useAuth();
   const gated = auth.gated;
   const isAuthed = auth.authenticated;
   const editingAllowed = auth.allowEdit;
   const canEdit = isEditMode && isAuthed && editingAllowed;
-  // Login card follows the SERVER's hosted flag only — never Firebase
-  // client env presence (NEXT_PUBLIC_* keys alone must not activate
-  // Product A UI; LOCAL=true runs B even with them present). The authReady
-  // gate waits for BOTH fetches (status + session cookie): hosted resolves
-  // first, and a card gated before the cookie check flashes for signed-in
-  // hosted users. Render nothing until it has.
   const showLogin =
     isEditMode && gated && !auth.authenticated && editingAllowed && auth.authReady;
   const useFirebaseLogin = auth.hosted;
 
-  // 5e-c front door: a signed-out hosted user on ?edit=true is sent to the
-  // dashboard — the login card below demotes to a fallback for if the
-  // redirect is interrupted. Fired ONCE: the ref guard exists for
-  // StrictMode's double effect invocation, and the write happens in the
-  // effect, never in render (the lint flags ref writes in render bodies).
-  // Product B never enters (auth.hosted false) — its gate is untouched.
   const router = useRouter();
   const frontDoorFired = useRef(false);
   useEffect(() => {
@@ -89,19 +53,12 @@ export default function PortfolioView() {
 
   async function handleLogout() {
     await auth.logout();
-    // 6-f: hosted logout lands on /dashboard (the 5e-c front door); B
-    // exits to a clean visitor view. A full reload guarantees the gate
-    // state (and every organ reading it) re-decides from scratch instead
-    // of relying on in-place flag flips.
     if (auth.hosted) {
       window.location.href = '/dashboard';
     } else {
       window.location.reload();
     }
   }
-  // its own localStorage key (like the skin override). It's a dependency of
-  // the keydown effect below, so that listener re-subscribes only when it
-  // changes (rare) and always reads the current value.
   const [editShortcut, setEditShortcut] = useState<EditShortcut>(() =>
     readStoredShortcut(),
   );
@@ -109,167 +66,45 @@ export default function PortfolioView() {
     setEditShortcut(next);
     writeStoredShortcut(next);
   }
-  // Floating pages — /write and /blog cover the site in-place instead
-  // of navigating, so closing unmasks the exact view underneath.
   const [overlay, setOverlay] = useState<
-    { kind: 'write' | 'read'; id: string } | null
+    { kind: 'write'; id: string } | { kind: 'read'; id: string } | null
   >(null);
-  const [activeTabId, setActiveTabId] = useState<string | null>(() => {
-    try {
-      return window.sessionStorage.getItem(LAST_TAB_KEY);
-    } catch {
-      return null;
-    }
+  // shell handles tabs, theme, nav, scroll
+  const shell = usePortfolioShell({
+    tabs: data.tabs,
+    docSkin: data.skin,
+    docTheme: data.theme,
+    persistTabKey: 'portfolio-last-tab',
+    adminTabIds: ['admin:posts', 'admin:site'],
+    posts: data.posts,
   });
+
+  // Keep shell's activeId seeded correctly on first mount if session had admin id?
+  // shell already seeds from sessionStorage, we just need to derive admin view from it
+  const ADMIN_TABS = [
+    { id: 'admin:posts', label: 'Posts' },
+    { id: 'admin:site', label: 'Site' },
+  ] as const;
+  type AdminTabId = (typeof ADMIN_TABS)[number]['id'];
+  const activeAdmin = ADMIN_TABS.find((t) => t.id === shell.activeId);
+  const adminView: AdminTabId | null =
+    canEdit && activeAdmin ? activeAdmin.id : null;
+
+  const activeTab = adminView ? undefined : shell.activeTab;
+  const activeIndex = adminView ? -1 : shell.activeIndex;
+
+  // Override shell's activeIndex for navDirection when admin is active
+  // shell's navDirection already tracks activeIndex, but we need to ensure admin -1 is considered
+  // For simplicity, reuse shell's navDirection (it tracks regular tabs); when admin active, direction is preserved.
+  const navDirection = shell.navDirection;
+
   const [editorOpen, setEditorOpen] = useState(false);
-  // Render gate: hold everything back (splash only) until the client
-  // store is live, so visitors never see the SSR default document flash
-  // before their persisted one. Images are the exception — they stream.
-  // useSyncExternalStore gives a hydration-safe flip without an effect.
   const ready = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
-  // Visitor skin preference — persisted under its own key (never in the
-  // document, never in undo history). The layout's pre-paint script reads
-  // the same key so every route wears the pick from the first frame.
-  // The document's `skin` remains the admin's official default.
-  const [skinOverride, setSkinOverride] = useState<
-    ThemeSkin | 'auto' | null
-  >(() => {
-    try {
-      const stored = window.localStorage.getItem(SKIN_OVERRIDE_KEY);
-      return stored === 'hud' ||
-        stored === 'notebook' ||
-        stored === 'clean' ||
-        stored === 'auto'
-        ? stored
-        : null;
-    } catch {
-      return null;
-    }
-  });
-
-  function changeSkinOverride(next: ThemeSkin | 'auto') {
-    setSkinOverride(next);
-    try {
-      window.localStorage.setItem(SKIN_OVERRIDE_KEY, next);
-    } catch {
-      // Private mode etc. — override just stays ephemeral.
-    }
-  }
-
-  // Visitor view-scale pick — persisted under its own key (never in the
-  // document, never in undo history). Applied on desktop widths only; the
-  // admin's default (theme.viewScale) is what every new visitor sees.
-  const [scaleOverride, setScaleOverride] = useState<number | null>(() => {
-    try {
-      const raw = window.localStorage.getItem(VIEW_SCALE_OVERRIDE_KEY);
-      const parsed = raw === null ? NaN : Number(raw);
-      return Number.isFinite(parsed) ? clampViewScale(parsed) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  function changeScaleOverride(next: number | null) {
-    setScaleOverride(next);
-    try {
-      if (next === null) {
-        window.localStorage.removeItem(VIEW_SCALE_OVERRIDE_KEY);
-      } else {
-        window.localStorage.setItem(VIEW_SCALE_OVERRIDE_KEY, String(next));
-      }
-    } catch {
-      // Private mode etc. — the pick just stays ephemeral.
-    }
-  }
-
-  // 'auto' maps the visitor's OS preference onto the skin trio:
-  // dark → HUD (terminal night), light → Clean. Notebook stays a manual
-  // pick (it's a read-mode flavor, not a light/dark state).
-  const systemPrefersDark = useSyncExternalStore(
-    subscribeSystemTheme,
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-    () => false,
-  );
-  const isSkinLocked = data.theme.lockSkin === true;
-  const activeSkin: ThemeSkin = isSkinLocked
-    ? data.skin
-    : skinOverride === 'auto'
-      ? systemPrefersDark
-        ? 'hud'
-        : 'clean'
-      : (skinOverride ?? data.skin);
-
-  // Mirror the resolved pick onto <html>, not just this page's <main>:
-  // the standalone /write and /blog routes hang off the html attribute
-  // alone, so a stale default there would greet visitors who navigate.
-  useEffect(() => {
-    document.documentElement.dataset.skin = activeSkin;
-  }, [activeSkin]);
-
-  // Same mirror for the admin-owned accent/font: html carries the
-  // pre-paint copies that standalone routes inherit — keep them live
-  // with document edits instead of waiting for a full reload.
-  // --font-custom is the heavy override that all designs respect;
-  // --font keeps the body in sync for backwards compat.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (data.theme.accentColor) {
-      root.style.setProperty('--accent', data.theme.accentColor);
-    } else {
-      root.style.removeProperty('--accent');
-    }
-    if (data.theme.fontFamily) {
-      root.style.setProperty('--font', data.theme.fontFamily);
-      root.style.setProperty('--font-custom', data.theme.fontFamily);
-    } else {
-      root.style.removeProperty('--font');
-      root.style.removeProperty('--font-custom');
-    }
-  }, [data.theme.accentColor, data.theme.fontFamily]);
-
-  // Effective view scale: visitor override, else the admin's doc default,
-  // applied on desktop widths only (phones always render at 1). The
-  // pre-paint script set the first frame; this keeps it live with changes.
-  const officialViewScale =
-    typeof data.theme.viewScale === 'number'
-      ? clampViewScale(data.theme.viewScale)
-      : 1;
-  const pickedViewScale = scaleOverride ?? officialViewScale;
-  const isDesktopWidth = useSyncExternalStore(
-    subscribeDesktopWidth,
-    () => window.matchMedia('(min-width: 768px)').matches,
-    () => false,
-  );
-  const effectiveViewScale = isDesktopWidth ? pickedViewScale : 1;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (effectiveViewScale !== 1) {
-      root.style.zoom = String(effectiveViewScale);
-    } else {
-      root.style.removeProperty('zoom');
-    }
-  }, [effectiveViewScale]);
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  // Remember the visitor's place so returning from /write or /blog
-  // restores the tab they left (writing an external system — allowed).
-  // Remember the visitor's/admin's place so returning from /write or
-  // /blog restores the view they left — INCLUDING admin tabs (finish
-  // writing → Done → land back in Posts). Visitor mode simply ignores
-  // stored admin ids via the regular fallback resolution.
-  useEffect(() => {
-    if (!activeTabId) return;
-    try {
-      window.sessionStorage.setItem(LAST_TAB_KEY, activeTabId);
-    } catch {
-      // Session storage unavailable — memory just stays per-mount.
-    }
-  }, [activeTabId]);
+  const isDesktop = useIsDesktopWidth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -297,8 +132,6 @@ export default function PortfolioView() {
         return;
       }
 
-      const mod = event.ctrlKey || event.metaKey;
-
       if (editingAllowed && shortcutMatches(event, editShortcut)) {
         event.preventDefault();
         setIsEditMode((mode) => !mode);
@@ -306,6 +139,8 @@ export default function PortfolioView() {
       }
 
       if (!canEdit) return;
+
+      const mod = event.ctrlKey || event.metaKey;
 
       if (mod && !event.shiftKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
@@ -324,98 +159,9 @@ export default function PortfolioView() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isEditMode, canEdit, undo, redo, editShortcut, editingAllowed]);
 
-  const tabs = data.tabs;
+  if (data.tabs.length === 0 || (!adminView && !activeTab)) return null;
 
-  // Hidden admin "tabs" — revealed by edit mode, never stored in the
-  // document, never URL-synced. They render management surfaces
-  // (posts / site settings) full-width in the tabpanel region.
-  const ADMIN_TABS = [
-    { id: 'admin:posts', label: 'Posts' },
-    { id: 'admin:site', label: 'Site' },
-  ] as const;
-  type AdminTabId = (typeof ADMIN_TABS)[number]['id'];
-  const activeAdmin = ADMIN_TABS.find((t) => t.id === activeTabId);
-  const adminView: AdminTabId | null =
-    canEdit && activeAdmin ? activeAdmin.id : null;
-
-  const activeTab = adminView
-    ? undefined
-    : (tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]);
-  // -1 while an admin view owns the panel — no regular tab highlighted.
-  const activeIndex = activeTab ? tabs.indexOf(activeTab) : -1;
-
-  // Visitors read published posts, newest first.
-  const publishedPosts = (data.posts ?? [])
-    .filter((post) => post.status === 'published')
-    .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
-
-  // Render-phase direction tracking (no effect): remember whether
-  // navigation moved right or left so the panel enters from that side.
-  const [navDirection, setNavDirection] = useState<1 | -1>(1);
-  const [prevActiveIndex, setPrevActiveIndex] = useState(activeIndex);
-  if (prevActiveIndex !== activeIndex) {
-    setNavDirection(activeIndex > prevActiveIndex ? 1 : -1);
-    setPrevActiveIndex(activeIndex);
-  }
-
-  if (tabs.length === 0 || (!adminView && !activeTab)) return null;
-
-  function selectAndFocus(index: number) {
-    const tab = tabs[index];
-    if (!tab) return;
-    setActiveTabId(tab.id);
-    tabRefs.current[index]?.focus();
-  }
-
-  // Hero CTAs (and any future in-page links) resolve against tabs.
-  // Only `#`-prefixed values are tab candidates — `#tab-projects`,
-  // bare ids (`#projects`) and label slugs (`#hero-lab`) all match.
-  // Real URLs / paths / empty hashes pass through untouched.
-  function handleNavigate(href: string): boolean {
-    if (!href.trim().startsWith('#')) return false;
-    const raw = href.trim().toLowerCase().replace(/^#/, '');
-    if (!raw) return false;
-
-    const slug = raw.replace(/^tab-/, '');
-    const match = tabs.find((tab) => {
-      const id = tab.id.toLowerCase();
-      return (
-        id === raw ||
-        id.replace(/^tab-/, '') === slug ||
-        tab.label.toLowerCase().replace(/\s+/g, '-') === slug
-      );
-    });
-    if (!match) return false;
-
-    setActiveTabId(match.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return true;
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent) {
-    const last = tabs.length - 1;
-    let next: number | null = null;
-
-    switch (event.key) {
-      case 'ArrowRight':
-        next = activeIndex === last ? 0 : activeIndex + 1;
-        break;
-      case 'ArrowLeft':
-        next = activeIndex === 0 ? last : activeIndex - 1;
-        break;
-      case 'Home':
-        next = 0;
-        break;
-      case 'End':
-        next = last;
-        break;
-    }
-
-    if (next !== null) {
-      event.preventDefault();
-      selectAndFocus(next);
-    }
-  }
+  const publishedPosts = shell.publishedPosts;
 
   if (!ready) {
     return (
@@ -426,6 +172,81 @@ export default function PortfolioView() {
       </main>
     );
   }
+
+  const adminRow = canEdit ? (
+    <div className="flex items-center gap-1.5 self-start pt-1.5">
+      <span aria-hidden="true" className="mx-1 h-5 w-px self-center bg-current/15" />
+      {ADMIN_TABS.map((adminTab) => {
+        const isActive = adminView === adminTab.id;
+        return (
+          <button
+            key={adminTab.id}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => shell.setActiveId(adminTab.id)}
+            title={`Edit mode only — ${adminTab.id.replace('admin:', '')} settings`}
+            className={`whitespace-nowrap rounded-skin border px-2.5 py-1 text-xs font-medium ${
+              isActive
+                ? 'border-accent bg-accent text-background'
+                : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
+            }`}
+          >
+            {adminTab.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : undefined;
+
+  const controls = (
+    <>
+      {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} />}
+      <ViewScaleControl
+        value={shell.appliedScale}
+        official={shell.officialViewScale}
+        overridden={shell.scalePick !== null}
+        onChange={(v) => shell.setScale(v)}
+      />
+      {!shell.isSkinLocked ? (
+        <SkinSwitcher
+          value={shell.skinPick ?? shell.appliedSkin}
+          official={data.skin}
+          onChange={shell.setSkin}
+        />
+      ) : (
+        <span
+          className="inline-flex items-center gap-1.5 rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs opacity-50"
+          title="Theme locked by site owner"
+        >
+          {data.skin.toUpperCase()} locked
+        </span>
+      )}
+      {canEdit && (
+        <button
+          type="button"
+          aria-expanded={editorOpen}
+          onClick={() => setEditorOpen((open) => !open)}
+          className={`rounded-skin border px-2.5 py-1 text-xs font-medium ${
+            editorOpen
+              ? 'border-accent bg-accent text-background'
+              : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
+          }`}
+        >
+          {editorOpen ? 'Done' : 'Edit'}
+        </button>
+      )}
+      {canEdit && (
+        <button
+          type="button"
+          onClick={handleLogout}
+          title="End this session and return to visitor mode"
+          className="rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium opacity-70 hover:opacity-100"
+        >
+          Log out
+        </button>
+      )}
+    </>
+  );
 
   return (
     <main
@@ -442,120 +263,16 @@ export default function PortfolioView() {
       className="flex min-h-dvh flex-col overflow-x-clip"
     >
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pt-6 pb-16">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-current/15">
-          <div
-            role="tablist"
-            aria-label="Portfolio sections"
-            onKeyDown={handleKeyDown}
-            className="flex gap-1"
-          >
-        {tabs.map((tab, index) => {
-          const isActive = index === activeIndex;
-
-          return (
-            <button
-              key={tab.id}
-              ref={(el) => {
-                tabRefs.current[index] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`tab-${tab.id}`}
-              aria-selected={isActive}
-              aria-controls={
-                activeTab ? `panel-${activeTab.id}` : undefined
-              }
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => setActiveTabId(tab.id)}
-              className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-                isActive
-                  ? 'border-accent'
-                  : 'border-transparent opacity-60 hover:opacity-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-          })}
-          </div>
-
-          {canEdit && (
-            <div className="flex items-center gap-1.5 self-start pt-1.5">
-              <span
-                aria-hidden="true"
-                className="mx-1 h-5 w-px self-center bg-current/15"
-              />
-              {ADMIN_TABS.map((adminTab) => {
-                const isActive = adminView === adminTab.id;
-
-                return (
-                  <button
-                    key={adminTab.id}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setActiveTabId(adminTab.id)}
-                    title={`Edit mode only — ${adminTab.id.replace('admin:', '')} settings`}
-                    className={`whitespace-nowrap rounded-skin border px-2.5 py-1 text-xs font-medium ${
-                      isActive
-                        ? 'border-accent bg-accent text-background'
-                        : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    {adminTab.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center justify-end gap-3 pb-3">
-            {canEdit && <UtilityBar hosted={auth.hosted} authenticated={isAuthed} />}
-            <ViewScaleControl
-              value={pickedViewScale}
-              official={officialViewScale}
-              overridden={scaleOverride !== null}
-              onChange={changeScaleOverride}
-            />
-            {!isSkinLocked ? (
-              <SkinSwitcher
-                value={skinOverride ?? activeSkin}
-                official={data.skin}
-                onChange={changeSkinOverride}
-              />
-            ) : (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs opacity-50"
-                title="Theme locked by site owner"
-              >
-                {data.skin.toUpperCase()} locked
-              </span>
-            )}
-            {canEdit && (
-              <button
-                type="button"
-                aria-expanded={editorOpen}
-                onClick={() => setEditorOpen((open) => !open)}
-                className={`rounded-skin border px-2.5 py-1 text-xs font-medium ${
-                  editorOpen
-                    ? 'border-accent bg-accent text-background'
-                    : 'border-[var(--border)] bg-surface opacity-70 hover:opacity-100'
-                }`}
-              >
-                {editorOpen ? 'Done' : 'Edit'}
-              </button>
-            )}
-            {canEdit && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                title="End this session and return to visitor mode"
-                className="rounded-skin border border-[var(--border)] bg-surface px-2.5 py-1 text-xs font-medium opacity-70 hover:opacity-100"
-              >
-                Log out
-              </button>
-            )}
-          </div>
-        </div>
+        <PortfolioChrome
+          tabs={data.tabs}
+          activeIndex={activeIndex}
+          onTabChange={shell.setActiveId}
+          onKeyDown={shell.handleKeyDownForTabs}
+          scrollable={shell}
+          isDesktop={isDesktop}
+          adminRow={adminRow}
+          controls={controls}
+        />
 
         {canEdit && editorOpen && !adminView && activeTab && (
           <EditorPanel activeTabId={activeTab.id} />
@@ -606,7 +323,7 @@ export default function PortfolioView() {
                   socials={data.socials}
                   cards={data.cards}
                   posts={publishedPosts}
-                  onNavigate={handleNavigate}
+                  onNavigate={shell.handleNavigate}
                   onOpenPost={(id) => setOverlay({ kind: 'read', id })}
                   showMediaPlaceholders={canEdit}
                 />
@@ -615,7 +332,7 @@ export default function PortfolioView() {
           )
         )}
 
-      <SiteFooter footer={data.footer} socials={data.socials} />
+        <SiteFooter footer={data.footer} socials={data.socials} />
       </div>
 
       {overlay && (

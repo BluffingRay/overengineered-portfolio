@@ -34,6 +34,8 @@ import {
   INPUT,
   STATUS_COLOR_LABELS,
 } from '../editor-shared';
+import LinkTargetPicker from '../LinkTargetPicker';
+import SegmentedControl from '@/components/ui/SegmentedControl';
 
 function NameInput({
   value,
@@ -128,40 +130,8 @@ const PILLS =
 const PILL =
   'rounded-[calc(var(--radius)-0.15rem)] px-2 py-0.5 text-[10px]';
 
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-}: {
-  options: Array<{ value: T; label: string }>;
-  value: T;
-  onChange: (next: T) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div role="group" aria-label={ariaLabel} className={PILLS}>
-      {options.map((option) => {
-        const isActive = option.value === value;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={isActive}
-            onClick={() => onChange(option.value)}
-            className={`${PILL} ${
-              isActive
-                ? 'bg-accent text-background'
-                : 'opacity-60 hover:opacity-100'
-            }`}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+function Segmented<T extends string>(props: { options: Array<{ value: T; label: string }>; value: T; onChange: (next: T) => void; ariaLabel: string }) {
+  return <SegmentedControl value={props.value} options={props.options} onChange={props.onChange} ariaLabel={props.ariaLabel} />;
 }
 
 interface Props {
@@ -195,45 +165,8 @@ function resolveTab(
 
 /** Link control that offers existing tabs as one-click choices and only
     falls back to a raw URL input when "Custom URL…" is selected. */
-function TabLinkPicker({
-  tabs,
-  value,
-  onChange,
-}: {
-  tabs: Array<Pick<Tab, 'id' | 'label'>>;
-  value: string;
-  onChange: (href: string) => void;
-}) {
-  const matched = resolveTab(tabs, value);
-
-  return (
-    <div className="space-y-1">
-      <select
-        value={matched?.id ?? 'custom'}
-        onChange={(event) => {
-          const next = event.target.value;
-          onChange(next === 'custom' ? '' : `#${next}`);
-        }}
-        aria-label="Link target"
-        className={INPUT}
-      >
-        {tabs.map((tab) => (
-          <option key={tab.id} value={tab.id}>
-            {tab.label}
-          </option>
-        ))}
-        <option value="custom">Custom URL…</option>
-      </select>
-      {!matched && (
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="/cv.pdf or https://…"
-          className={`${INPUT} font-mono text-xs`}
-        />
-      )}
-    </div>
-  );
+function TabLinkPicker(props: { tabs: Array<Pick<Tab, 'id' | 'label'>>; value: string; onChange: (href: string) => void }) {
+  return <LinkTargetPicker tabs={props.tabs} value={props.value} onChange={props.onChange} />;
 }
 
 export default function HeroForm({ block, tabs, patch }: Props) {

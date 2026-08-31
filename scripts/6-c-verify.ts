@@ -23,6 +23,7 @@ import { prepareDocument } from '../src/lib/storage';
 import { sanitizePortfolioDocument } from '../src/lib/sanitize-html';
 import { initialData } from '../src/data/initialData';
 import EntryListBlockComponent from '../src/components/blocks/EntryListBlock';
+import { check as _sharedCheck } from './_helpers';
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {

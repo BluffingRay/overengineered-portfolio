@@ -6,7 +6,8 @@ import {
   MEDIA_SIZE_CLASSES,
   HeroPlaceholder,
   STATUS_STYLES,
-  legacyLayout,
+  useHeroLayout,
+  heroMediaPlacementClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 function EditorialMedia({
@@ -62,16 +63,14 @@ export default function EditorialHero({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
-  const splitLeft = layout === 'split' && block.mediaSide === 'left';
-  const badge = block.statusBadge?.enabled ? block.statusBadge : null;
-  const roles = block.roles && block.roles.length > 0 ? block.roles : [];
-  const secondary = block.secondaryAction;
+  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
+    useHeroLayout(block);
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
   const statusDot = STATUS_STYLES[badge?.color ?? 'green'].dot;
+  const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
 
   const media =
-    layout === 'banner' ? (
+    effectiveLayout === 'banner' && isDesktop ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}
@@ -82,36 +81,17 @@ export default function EditorialHero({
         />
       ) : null
     ) : block.thumbnail ? (
-      <EditorialMedia
-        block={block}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
-      />
+      <EditorialMedia block={block} className={placementClass} />
     ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'portrait'}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
+        className={placementClass}
       />
     ) : null;
 
-  const isSplit = layout === 'split';
-  const isBanner = layout === 'banner';
+  const isSplit = effectiveLayout === 'split';
+  const isBanner = effectiveLayout === 'banner';
 
   if (isBanner) {
     return (

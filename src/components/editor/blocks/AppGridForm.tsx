@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCommittedValue } from '@/hooks/useCommittedValue';
 import MediaPicker from '@/components/editor/MediaPicker';
 import {
   DndContext,
@@ -11,6 +12,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -387,29 +389,18 @@ function TagsInput({
   tags?: string[];
   onChange: (next: string[] | undefined) => void;
 }) {
-  const [draft, setDraft] = useState(tags?.join(', ') ?? '');
-  const committedRef = useRef(tags?.join(', ') ?? '');
-
-  useEffect(() => {
-    const external = tags?.join(', ') ?? '';
-    if (external !== committedRef.current) {
-      committedRef.current = external;
-      setDraft(external);
-    }
-  }, [tags]);
-
-  function handleChange(raw: string) {
-    setDraft(raw);
-
-    const parsed = raw
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    const next = parsed.length > 0 ? parsed : undefined;
-
-    committedRef.current = next?.join(', ') ?? '';
-    onChange(next);
-  }
+  const { draft, onChange: handleChange } = useCommittedValue(
+    tags,
+    onChange,
+    (v) => v?.join(', ') ?? '',
+    (draft) => {
+      const parsed = draft
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      return parsed.length > 0 ? parsed : undefined;
+    },
+  );
 
   return (
     <input
@@ -441,20 +432,19 @@ export default function AppGridForm({
   const [pickerQuery, setPickerQuery] = useState('');
   const [coverPickerCardId, setCoverPickerCardId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useEditorSensors();
 
-  const cardById = new Map(cards.map((card) => [card.id, card]));
+  const cardById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
 
   // Newest first: publishedAt desc, then id desc (matches PostAdmin's recency heuristic).
-  const sortedPosts = [...posts].sort(
-    (a, b) =>
-      (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '') ||
-      b.id.localeCompare(a.id),
+  const sortedPosts = useMemo(
+    () =>
+      [...posts].sort(
+        (a, b) =>
+          (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '') ||
+          b.id.localeCompare(a.id),
+      ),
+    [posts],
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -468,10 +458,14 @@ export default function AppGridForm({
     reorderApps(from, to);
   }
 
-  const availableCards = cards.filter(
-    (card) =>
-      !block.apps.includes(card.id) &&
-      card.name.toLowerCase().includes(pickerQuery.trim().toLowerCase()),
+  const availableCards = useMemo(
+    () =>
+      cards.filter(
+        (card) =>
+          !block.apps.includes(card.id) &&
+          card.name.toLowerCase().includes(pickerQuery.trim().toLowerCase()),
+      ),
+    [cards, block.apps, pickerQuery],
   );
 
   return (

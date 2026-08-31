@@ -4,10 +4,10 @@ import { prepareDocument } from "@/lib/storage";
 import { kvDelete, kvGet, kvPut, HOSTED_PORTFOLIO_KEY, hasKv, portfolioKeyFor } from "@/lib/kv";
 import { readIndex, removeFromIndex, updateIndexForDoc } from "@/lib/portfolioIndex";
 import { assetPrefixForUid, purgeAssetPrefix } from "@/lib/r2Assets";
-import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
+import { isAdminConfigured } from "@/lib/firebase/admin";
+import { getRequestUid, assertSlugAvailable } from "@/lib/api/guard";
 import { sanitizePortfolioDocument } from "@/lib/sanitize-html";
 import { stripDrafts } from "@/lib/loadHostedDoc";
-import { normalizeSlug } from "@/types/schema";
 export const runtime = "nodejs";
 
 // GET /api/portfolio — hosted JSON (KV) with local fallback for Product B.
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   // When Firebase admin configured, enforce access model
   let uid: string | null = null;
   if (isAdminConfigured()) {
-    uid = await getUserIdFromSessionCookie(request as unknown as Request);
+    uid = await getRequestUid(request);
     if (wantFull && !uid) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
@@ -69,40 +69,14 @@ export async function PUT(request: NextRequest) {
   }
   let uid: string | null = null;
   if (isAdminConfigured()) {
-    uid = await getUserIdFromSessionCookie(request as unknown as Request);
+    uid = await getRequestUid(request);
     if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
     const body = await request.json();
 
-    // 5e-a: slug claim. "Present" = non-empty string — undefined/null/empty/
-    // whitespace-only is absent (no claim, no 400: clearing the slug is never
-    // rejected). Present but invalid rejects loudly (server is authority —
-    // the doc sanitizer silently drops, the API 400s); a non-string truthy
-    // value is also a rejected claim (it can never normalize).
-    let claim: string | null = null;
-    if (typeof body?.slug === "string") {
-      if (body.slug.trim() !== "") {
-        claim = normalizeSlug(body.slug);
-        if (!claim) {
-          return NextResponse.json({ error: "invalid-slug" }, { status: 400 });
-        }
-      }
-    } else if (body?.slug) {
-      return NextResponse.json({ error: "invalid-slug" }, { status: 400 });
-    }
-
-    // 5e-a: slug uniqueness — 409 against the registry BEFORE persist.
-    // Null uid = legacy no-admin path: no identity, no registry interaction.
-    if (claim && uid) {
-      const index = await readIndex();
-      const taken = Object.entries(index).some(
-        ([otherUid, entry]) => otherUid !== uid && entry.slug === claim,
-      );
-      if (taken) {
-        return NextResponse.json({ error: "slug-taken" }, { status: 409 });
-      }
-    }
+    const { slug: claim, error: slugError } = await assertSlugAvailable(body?.slug, uid);
+    if (slugError) return slugError;
 
     const doc = prepareDocument(body);
     if (!doc) {
@@ -141,7 +115,7 @@ export async function DELETE(request: NextRequest) {
   if (!hasKv() || !isAdminConfigured()) {
     return NextResponse.json({ error: "not-hosted" }, { status: 503 });
   }
-  const uid = await getUserIdFromSessionCookie(request as unknown as Request);
+  const uid = await getRequestUid(request);
   if (!uid) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

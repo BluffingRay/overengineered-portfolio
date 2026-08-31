@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getRequestUid } from "@/lib/api/guard";
 import { hasKv } from "@/lib/kv";
-import { getUserIdFromSessionCookie } from "@/lib/firebase/admin";
+
 import { resolveHostedDoc, stripDrafts } from "@/lib/loadHostedDoc";
 import type { PortfolioData } from "@/types/schema";
 export const runtime = "nodejs";
@@ -62,7 +63,7 @@ export async function GET(
       // 5e-h gate's identity). No session or not the owner -> 404, NOT
       // 401/403 — a stranger can't distinguish "private doc" from "wrong
       // owner". getUserIdFromSessionCookie fails closed.
-      const uid = await getUserIdFromSessionCookie(request as unknown as Request);
+      const uid = await getRequestUid(request);
       if (!uid || uid !== loaded.ownerUid) return notFoundResponse();
       return exportResponse(loaded.doc, slug);
     }

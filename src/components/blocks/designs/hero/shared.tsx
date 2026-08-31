@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import ManagedImage from '@/components/ui/ManagedImage';
+import { useIsDesktopWidth } from '@/hooks/useIsDesktopWidth';
 import type {
   FeaturedHeroBlock as FeaturedHeroBlockData,
   HeroMediaFrame,
@@ -159,6 +160,47 @@ export function legacyLayout(align: ImageAlignment): HeroLayout {
     case 'backdrop':
       return 'banner';
   }
+}
+
+export function useHeroLayout(block: FeaturedHeroBlockData) {
+  const isDesktop = useIsDesktopWidth();
+  const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
+  const effectiveLayout = isDesktop ? layout : 'centered';
+  const mobileMediaAtTop = block.mediaPosition !== 'bottom';
+  const splitLeft = layout === 'split' && block.mediaSide === 'left';
+  const isBanner = effectiveLayout === 'banner';
+  const isSplit = effectiveLayout === 'split';
+  const isCentered = effectiveLayout === 'centered';
+  const badge = block.statusBadge?.enabled ? block.statusBadge : null;
+  const roles = block.roles && block.roles.length > 0 ? block.roles : [];
+  const secondary = block.secondaryAction;
+  return {
+    isDesktop,
+    layout,
+    effectiveLayout,
+    mobileMediaAtTop,
+    splitLeft,
+    isBanner,
+    isSplit,
+    isCentered,
+    badge,
+    roles,
+    secondary,
+  };
+}
+
+export function heroMediaPlacementClass(
+  effectiveLayout: HeroLayout,
+  mobileMediaAtTop: boolean,
+  splitLeft: boolean,
+): string | undefined {
+  if (effectiveLayout === 'centered') {
+    return mobileMediaAtTop ? 'order-first mx-auto' : 'mx-auto';
+  }
+  if (effectiveLayout === 'split') {
+    return splitLeft ? 'order-first justify-self-start' : 'order-first justify-self-end md:order-none';
+  }
+  return undefined;
 }
 
 const TYPE_SPEED_MS = 55;

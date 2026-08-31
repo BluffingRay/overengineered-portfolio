@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
-import Reveal from '../../Reveal';
-import { hasExtraLinks, resolveCardLinks, staggerDelay } from './shared';
+import { hasExtraLinks, resolveCardLinks } from './shared';
+import GridShell from './GridShell';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -16,22 +16,18 @@ export default function RisoGrid({
   posts,
   onOpenPost,
 }: GridDesignProps) {
-  const cardById = new Map((cards ?? []).map((card) => [card.id, card]));
-
   return (
     <section className="dsn-riso space-y-6">
       <h2 className="riso-misprint text-2xl font-black uppercase tracking-tight">
         {block.title}
       </h2>
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {block.apps.map((appId, index) => {
-          const app = cardById.get(appId);
-          if (!app) return null; // dangling ref — sanitizer normally removes these
-
-          const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
-
-          return (
-            <Reveal key={appId} delay={staggerDelay(index)}>
+        <GridShell
+          cards={cards}
+          cardIds={block.apps}
+          renderCard={(app, index) => {
+            const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
+            return (
               <article className="relative flex h-full flex-col border-2 border-current bg-background shadow-[4px_4px_0_0_currentColor] transition-[translate,box-shadow] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_currentColor] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none">
                 <figure className="border-b-2 border-current">
                   <div className="relative aspect-video overflow-hidden">
@@ -142,9 +138,9 @@ export default function RisoGrid({
                   )}
                 </div>
               </article>
-            </Reveal>
-          );
-        })}
+            );
+          }}
+        />
       </div>
     </section>
   );

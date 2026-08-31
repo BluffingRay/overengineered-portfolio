@@ -9,6 +9,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
@@ -180,12 +181,7 @@ export default function EntryListForm({ block, patch }: Props) {
   // the block row compact and draggable.
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useEditorSensors();
 
   const titleField = useTrimmedCommit(block.title, (title) => patch({ title }));
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import Reveal from '../../Reveal';
-import { hasExtraLinks, resolveCardLinks, staggerDelay } from './shared';
+import { hasExtraLinks, resolveCardLinks } from './shared';
+import GridShell from './GridShell';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -14,30 +14,21 @@ export default function EditorialGrid({
   posts,
   onOpenPost,
 }: GridDesignProps) {
-  const cardById = new Map((cards ?? []).map((card) => [card.id, card]));
-
   return (
     <section className="dsn-editorial space-y-5">
       <h2 className="ed-serif border-t-2 border-current pt-4 text-3xl tracking-tight">
         {block.title}
       </h2>
       <ul className="divide-y divide-current/10">
-        {block.apps.map((appId, index) => {
-          const app = cardById.get(appId);
-          if (!app) return null; // dangling ref — sanitizer normally removes these
-
-          const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
-
-          // Category first; tags stand in when there is no category.
-          const meta =
-            app.category ??
-            (app.tags && app.tags.length > 0
-              ? app.tags.join(' · ')
-              : undefined);
-
-          return (
-            <li key={appId} className="relative">
-              <Reveal delay={staggerDelay(index)}>
+        <GridShell
+          cards={cards}
+          cardIds={block.apps}
+          renderCard={(app, index) => {
+            const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
+            const meta =
+              app.category ?? (app.tags && app.tags.length > 0 ? app.tags.join(' · ') : undefined);
+            return (
+              <li key={app.id} className="relative">
                 <div className="group flex items-start gap-4 py-4">
                   <span
                     aria-hidden="true"
@@ -130,10 +121,10 @@ export default function EditorialGrid({
                     )}
                   </span>
                 </div>
-              </Reveal>
-            </li>
-          );
-        })}
+              </li>
+            );
+          }}
+        />
       </ul>
     </section>
   );

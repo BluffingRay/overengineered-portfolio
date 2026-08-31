@@ -1,9 +1,10 @@
 import { mkdir, writeFile, unlink, readdir } from 'node:fs/promises';
+import { getRequestUid } from "@/lib/api/guard";
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getUserIdFromSessionCookie, isAdminConfigured } from '@/lib/firebase/admin';
+import { isAdminConfigured } from '@/lib/firebase/admin';
 // 5e-i: the R2 client construction, env-alias resolution, per-user prefix
 // derivation, and the ?list=1 listing logic live in r2Assets so the
 // portfolio delete purge shares the exact same setup. Behavior unchanged.
@@ -140,7 +141,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 export async function POST(request: Request) {
   let sessionUid: string | null = null;
   if (isAdminConfigured()) {
-    sessionUid = await getUserIdFromSessionCookie(request);
+    sessionUid = await getRequestUid(request);
     if (!sessionUid) return NextResponse.json({ error: "unauthorized — sign in to upload" }, { status: 401 });
   }
   let file: File | null = null;
@@ -204,7 +205,7 @@ export async function DELETE(request: Request) {
   // source; without admin config (Product B local) there is no gate by
   // design and everyone shares the dev prefix.
   if (isAdminConfigured()) {
-    const uid = await getUserIdFromSessionCookie(request);
+    const uid = await getRequestUid(request);
     if (!uid) return NextResponse.json({ error: "unauthorized — sign in to delete" }, { status: 401 });
   }
   const myPrefix = `uploads/${await getUserPrefix(request)}/`;

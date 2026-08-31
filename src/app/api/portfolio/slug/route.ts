@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasKv, kvGet, portfolioKeyFor } from "@/lib/kv";
 import { readIndex } from "@/lib/portfolioIndex";
-import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
+import { isAdminConfigured } from "@/lib/firebase/admin";
+import { getRequestUid } from "@/lib/api/guard";
 import { prepareDocument } from "@/lib/storage";
 import { RESERVED_SLUGS, SLUG_PATTERN } from "@/types/schema";
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (!hasKv() || !isAdminConfigured()) {
     return NextResponse.json({ error: "not-hosted" }, { status: 503 });
   }
-  const uid = await getUserIdFromSessionCookie(request as unknown as Request);
+  const uid = await getRequestUid(request);
   if (!uid) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

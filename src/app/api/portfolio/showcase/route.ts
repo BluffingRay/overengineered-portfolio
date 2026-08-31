@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasKv } from "@/lib/kv";
 import { filterShowcase, pageOf, readIndex } from "@/lib/portfolioIndex";
-import { getUserIdFromSessionCookie, isAdminConfigured } from "@/lib/firebase/admin";
+import { isAdminConfigured } from "@/lib/firebase/admin";
+import { getRequestUid } from "@/lib/api/guard";
 export const runtime = "nodejs";
 
 // 5g-a — "Other portfolios" feed, now PUBLIC and paginated. Hosted-only
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   if (!hasKv() || !isAdminConfigured()) {
     return NextResponse.json({ error: "not-hosted" }, { status: 503 });
   }
-  const uid = (await getUserIdFromSessionCookie(request as unknown as Request)) ?? "";
+  const uid = (await getRequestUid(request)) ?? "";
   // 1-based, default 1; garbage (`?page=abc` -> NaN) clamps to 1 inside
   // pageOf, so unparseable input degrades to page 1, never a crash.
   const page = Number.parseInt(request.nextUrl.searchParams.get("page") ?? "", 10);

@@ -1,5 +1,6 @@
 import type { Post } from '@/types/schema';
 import Link from 'next/link';
+import ManagedImage from '@/components/ui/ManagedImage';
 import { stripHtml } from '@/components/blog/BlogViews';
 import Reveal from '../../Reveal';
 import {
@@ -97,7 +98,7 @@ export default function RisoBlog({ block, posts, onOpenPost }: BlogDesignProps) 
           ))}
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
           {visible.map((post, index) => (
             <Reveal key={post.id} delay={Math.min(index * 60, 300)}>
               <Link

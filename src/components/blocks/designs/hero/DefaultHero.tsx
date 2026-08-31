@@ -7,8 +7,9 @@ import {
   HeroMedia,
   HeroPlaceholder,
   TypewriterRoles,
-  legacyLayout,
   useFitOneLine,
+  useHeroLayout,
+  heroMediaPlacementClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 
@@ -19,21 +20,18 @@ export default function DefaultHero({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
-  const splitLeft = layout === 'split' && block.mediaSide === 'left';
-
-  const identityRoles =
-    block.roles && block.roles.length > 0 ? block.roles : [];
+  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles: identityRoles, secondary } =
+    useHeroLayout(block);
   const nameRef = useRef<HTMLHeadingElement>(null);
   // `free` (default) auto-fits the font to one line; `compact` wraps naturally.
   useFitOneLine(nameRef, block.name ?? '', (block.nameFit ?? 'free') === 'free');
-  const badge = block.statusBadge?.enabled ? block.statusBadge : null;
   const status = STATUS_STYLES[badge?.color ?? 'green'];
-  const secondary = block.secondaryAction;
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
 
+  const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
+
   const media =
-    layout === 'banner' ? (
+    effectiveLayout === 'banner' && isDesktop ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}
@@ -45,64 +43,41 @@ export default function DefaultHero({
         />
       ) : null
     ) : block.thumbnail ? (
-      <HeroMedia
-        block={block}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : layout === 'split'
-              ? splitLeft
-                  ? 'order-first justify-self-start'
-                  : 'order-first justify-self-end md:order-none'
-              : undefined
-        }
-      />
+      <HeroMedia block={block} className={placementClass} />
     ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'square'}
-        className={
-          layout === 'centered'
-            ? block.mediaPosition === 'top'
-              ? 'order-first mx-auto'
-              : 'mx-auto'
-            : layout === 'split'
-              ? splitLeft
-                  ? 'order-first justify-self-start'
-                  : 'order-first justify-self-end md:order-none'
-              : undefined
-        }
+        className={placementClass}
       />
     ) : null;
   return (
     <section
       className={`isolate ${
-        layout === 'split'
+        effectiveLayout === 'split'
           ? // Edge-anchored two-column row: media always `auto` (hugs its size), copy always `1fr` (fills).
             // Left swaps cols so media stays `auto` even when it visually leads.
             `grid items-center gap-6 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`
-          : layout === 'banner'
+          : effectiveLayout === 'banner'
             ? 'relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-skin'
             : 'flex flex-col items-center gap-6 text-center'
       }`}
     >
       {/* Banner background only — split media follows the copy so it trails on md+ */}
-      {layout === 'banner' && media}
+      {effectiveLayout === 'banner' && media}
 
       <div
         className={
-          layout === 'banner'
+          effectiveLayout === 'banner'
             ? 'w-full rounded-skin bg-black/50 p-10 text-white backdrop-blur-sm'
-            : layout === 'split'
+            : effectiveLayout === 'split'
               ? 'max-w-xl space-y-4'
               : 'w-full'
         }
       >
         {(block.eyebrow || badge) && (
           <div
-            className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${layout === 'centered' ? 'justify-center' : ''}`}
+            className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${effectiveLayout === 'centered' ? 'justify-center' : ''}`}
           >
             {block.eyebrow && (
               <p
@@ -154,7 +129,7 @@ export default function DefaultHero({
         )}
         <p
           className={`mt-2 max-w-xl text-lg opacity-60 ${
-            layout === 'centered' ? 'mx-auto' : ''
+            effectiveLayout === 'centered' ? 'mx-auto' : ''
           }`}
         >
           {block.subheading}
@@ -162,7 +137,7 @@ export default function DefaultHero({
 
         <div
           className={`mt-7 flex flex-wrap items-center gap-3 ${
-            layout === 'centered' ? 'justify-center' : ''
+            effectiveLayout === 'centered' ? 'justify-center' : ''
           }`}
         >
           <a
@@ -197,7 +172,7 @@ export default function DefaultHero({
         {showSocials && (
           <ul
             className={`mt-4 flex flex-wrap items-center gap-1.5 ${
-              layout === 'centered' ? 'justify-center' : ''
+              effectiveLayout === 'centered' ? 'justify-center' : ''
             }`}
             aria-label="Social links"
           >
@@ -222,7 +197,7 @@ export default function DefaultHero({
       </div>
 
       {/* Centered stacks media under the copy; split places it after the copy on md+ */}
-      {(layout === 'centered' || layout === 'split') && media}
+      {(effectiveLayout === 'centered' || effectiveLayout === 'split') && media}
     </section>
   );
 }

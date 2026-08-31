@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
 import Reveal from '../../Reveal';
-import { resolveCardLinks, staggerDelay } from './shared';
+import { resolveCardLinks } from './shared';
+import GridShell from './GridShell';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -15,20 +16,13 @@ export default function CoderGrid({
   posts,
   onOpenPost,
 }: GridDesignProps) {
-  const cardById = new Map((cards ?? []).map((card) => [card.id, card]));
-
   return (
     <section className="space-y-6">
       <h2 className="text-2xl font-semibold tracking-tight">{block.title}</h2>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {block.apps.map((appId, index) => {
-          const app = cardById.get(appId);
-          if (!app) return null; // dangling ref — sanitizer normally removes these
-
+                <GridShell cards={cards} cardIds={block.apps} renderCard={(app, index) => {
           const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
-
           return (
-            <Reveal key={appId} delay={staggerDelay(index)}>
               <article className="lift relative flex h-full flex-col overflow-hidden rounded-skin border border-current/15 hover:border-current/40">
                 {/* Uniform media slot: every card shares the same cover band,
                     image or not — rows stop stretching to the tallest sibling. */}
@@ -140,9 +134,8 @@ export default function CoderGrid({
                   )}
                 </div>
               </article>
-            </Reveal>
           );
-        })}
+        }} />
       </div>
     </section>
   );

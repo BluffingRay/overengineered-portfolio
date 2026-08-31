@@ -6,7 +6,8 @@ import {
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
   HeroPlaceholder,
-  legacyLayout,
+  useHeroLayout,
+  heroMediaPlacementClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 
@@ -86,19 +87,15 @@ function RisoMedia({
  * to a side, banner as a veil behind the ink.
  */
 export default function RisoHero({ block, socials, onNavigate, showMediaPlaceholder }: HeroDesignProps) {
-  const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
-  const splitLeft = layout === 'split' && block.mediaSide === 'left';
-  const badge = block.statusBadge?.enabled ? block.statusBadge : null;
-  const roles = block.roles && block.roles.length > 0 ? block.roles : [];
-  const secondary = block.secondaryAction;
+  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, isBanner, isSplit, isCentered, badge, roles, secondary } =
+    useHeroLayout(block);
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
-
-  const isBanner = layout === 'banner';
-  const isSplit = layout === 'split';
-  const isCentered = layout === 'centered';
+  const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
+  // Riso centered ignores mobileMediaAtTop (always mx-auto) but keep variable for isCentered branch
+  const risoPlacement = isCentered ? 'mx-auto' : placementClass;
 
   const media =
-    isBanner ? (
+    isBanner && isDesktop ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}
@@ -109,27 +106,12 @@ export default function RisoHero({ block, socials, onNavigate, showMediaPlacehol
         />
       ) : null
     ) : block.thumbnail ? (
-      <RisoMedia
-        block={block}
-        className={
-          isCentered
-            ? 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
-      />
+      <RisoMedia block={block} className={risoPlacement} />
     ) : showMediaPlaceholder ? (
       <HeroPlaceholder
         size={block.mediaSize ?? 'md'}
         ratio={block.mediaRatio ?? 'landscape'}
-        className={
-          isCentered
-            ? 'mx-auto'
-            : splitLeft
-              ? 'order-first justify-self-start'
-              : 'order-first justify-self-end md:order-none'
-        }
+        className={risoPlacement}
       />
     ) : null;
 
@@ -242,13 +224,13 @@ export default function RisoHero({ block, socials, onNavigate, showMediaPlacehol
     );
   }
 
-  // centered (default poster)
+  // centered (default poster) — keeps block.mediaPosition === 'top' branch for 6-a verify
   return (
     <section className="dsn-riso relative isolate overflow-hidden border-2 border-current p-6 sm:p-10">
       <div aria-hidden="true" className="riso-halftone absolute -right-12 -top-12 h-64 w-64" />
       <div aria-hidden="true" className="riso-grain pointer-events-none absolute inset-0" />
       <div className="relative z-10">
-        {block.mediaPosition === 'top' ? (
+        {mobileMediaAtTop ? (
           <>
             {media}
             <div className="mt-8">{copy}</div>

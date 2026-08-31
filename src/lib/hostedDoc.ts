@@ -17,6 +17,7 @@
  */
 
 import type { PortfolioData } from '@/types/schema';
+import { saveHostedDoc } from './hosted/fetch';
 
 export const LAST_SAVED_KEY = 'portfolio-last-saved';
 export const LAST_SAVED_AT_KEY = 'portfolio-last-saved-at';
@@ -140,36 +141,5 @@ export async function saveToHosted(): Promise<HostedSaveResult> {
   if (draftRaw === null) {
     return { ok: false, error: 'Nothing to save — no local draft.', needsAuth: false };
   }
-  let res: Response;
-  try {
-    res = await fetch('/api/portfolio', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: draftRaw,
-    });
-  } catch {
-    return { ok: false, error: 'Network error — could not reach the server.', needsAuth: false };
-  }
-  if (res.status === 401) {
-    return { ok: false, error: 'Your session expired — sign in again, then retry Save.', needsAuth: true };
-  }
-  let json: unknown;
-  try {
-    json = await res.json();
-  } catch {
-    return { ok: false, error: `Save failed (${res.status}).`, needsAuth: false };
-  }
-  if (!res.ok) {
-    const message =
-      json && typeof json === 'object' && typeof (json as { error?: unknown }).error === 'string'
-        ? (json as { error: string }).error
-        : `Save failed (${res.status}).`;
-    return { ok: false, error: message, needsAuth: false };
-  }
-  // Server confirms with the sanitized doc — trust nothing else.
-  const confirmed = json as PortfolioData;
-  if (typeof confirmed !== 'object' || confirmed === null || !Array.isArray(confirmed.tabs)) {
-    return { ok: false, error: 'Server returned an invalid document.', needsAuth: false };
-  }
-  return { ok: true, confirmed };
+  return saveHostedDoc(draftRaw);
 }

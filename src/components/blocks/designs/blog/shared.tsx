@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import ManagedImage from '@/components/ui/ManagedImage';
 import type { Post } from '@/types/schema';
 
 /* Atoms shared by blog designs: the published feed + its slicing rule,
@@ -26,9 +27,7 @@ export function Cover({
 }) {
   return (
     <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-current/[0.04]">
-      {post.coverImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+      {post.coverImage ? (          <ManagedImage
           src={post.coverImage}
           alt=""
           loading="lazy"

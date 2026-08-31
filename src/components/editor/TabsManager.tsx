@@ -10,6 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
@@ -84,12 +85,7 @@ export default function TabsManager({ activeTabId }: { activeTabId: string }) {
   const { data, mutate } = usePortfolioData();
   const [open, setOpen] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useEditorSensors();
 
   function reorderTabs(from: number, to: number) {
     mutate((current) => ({
