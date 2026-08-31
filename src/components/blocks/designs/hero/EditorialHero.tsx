@@ -70,7 +70,7 @@ export default function EditorialHero({
   const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
 
   const media =
-    effectiveLayout === 'banner' && isDesktop ? (
+    effectiveLayout === 'banner' ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}

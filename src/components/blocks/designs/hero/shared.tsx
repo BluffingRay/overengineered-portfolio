@@ -165,7 +165,12 @@ export function legacyLayout(align: ImageAlignment): HeroLayout {
 export function useHeroLayout(block: FeaturedHeroBlockData) {
   const isDesktop = useIsDesktopWidth();
   const layout = block.layout ?? legacyLayout(block.imageAlign ?? 'right');
-  const effectiveLayout = isDesktop ? layout : 'centered';
+  // On mobile, `split` collapses to `centered` (the two-col grid doesn't
+  // narrow well); `centered` and `banner` pass through unchanged so banner
+  // keeps its full-bleed backdrop on mobile. Paired with the HeroForm
+  // clearing `mediaPosition` on layout change, a stale "bottom" never
+  // silently overrides the mobile default.
+  const effectiveLayout = !isDesktop && layout === 'split' ? 'centered' : layout;
   const mobileMediaAtTop = block.mediaPosition !== 'bottom';
   const splitLeft = layout === 'split' && block.mediaSide === 'left';
   const isBanner = effectiveLayout === 'banner';

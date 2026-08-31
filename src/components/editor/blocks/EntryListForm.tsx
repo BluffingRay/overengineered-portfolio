@@ -145,7 +145,7 @@ function SortableEntry({
               value={meta.draft}
               onChange={(e) => meta.onChange(e.target.value)}
               onBlur={meta.onBlur}
-              placeholder="2024 — Now"
+              placeholder="2024 – Now"
               className={INPUT}
             />
           </Field>
@@ -308,7 +308,7 @@ export default function EntryListForm({ block, patch }: Props) {
       </DndContext>
 
       {block.entries.length === 0 && (
-        <p className="text-xs opacity-50">No entries yet — add one below.</p>
+            <p className="text-xs opacity-50">No entries yet. Add one below.</p>
       )}
 
       <button

@@ -212,7 +212,7 @@ export default function DashboardView() {
     if (!auth.authReady) return;
     document.title = auth.authenticated
       ? 'Dashboard'
-      : 'overengineered-portfolio — build yours';
+      : 'overengineered-portfolio · build yours';
   }, [auth.authReady, auth.authenticated]);
 
   // Admin chrome is fixed-scale: a view-scale zoom set by a skinned page
@@ -693,6 +693,8 @@ export default function DashboardView() {
           <div className="flex items-center gap-2">
             <Link
               href="/playground"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-skin border border-accent/50 px-2.5 py-1 font-mono text-xs font-medium text-accent hover:bg-accent hover:text-background"
             >
               How to build ↗
@@ -812,7 +814,7 @@ export default function DashboardView() {
         <ShowcaseSection
           items={showcase}
           error={showcaseError}
-          emptyCopy="Nothing here yet — portfolios published to the showcase will appear here."
+          emptyCopy="Nothing here yet. Portfolios published to the showcase will appear here."
           hasMore={showcaseHasMore}
           loadingMore={loadingMore}
           onLoadMore={() => void loadMoreShowcase()}

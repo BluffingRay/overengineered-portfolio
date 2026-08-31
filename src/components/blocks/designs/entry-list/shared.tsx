@@ -40,9 +40,9 @@ export function EntryListSkeleton({ block, classes, number }: EntryListSkeletonP
   // row-based stretching across grids is a future plan).
   const listClass =
     block.columns === 2
-      ? `${classes.list} grid gap-3 sm:grid-cols-2`
+      ? `${classes.list} grid grid-cols-2 gap-3`
       : block.columns === 3
-        ? `${classes.list} grid gap-3 sm:grid-cols-2 lg:grid-cols-3`
+        ? `${classes.list} grid grid-cols-2 gap-3 lg:grid-cols-3`
         : `${classes.list} space-y-3 [&_>li]:h-40 [&_>li]:overflow-y-auto`;
 
   return (

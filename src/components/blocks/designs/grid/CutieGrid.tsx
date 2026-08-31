@@ -36,7 +36,7 @@ export default function CutieGrid({
       <h2 className="text-center text-2xl font-extrabold tracking-tight">
         {block.title}
       </h2>
-      <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10">
                 <GridShell cards={cards} cardIds={block.apps} renderCard={(app, index) => {
           const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
           return (

@@ -52,6 +52,8 @@ export default function WelcomeCard({ signInOpen, setSignInOpen, onLoginWithIdTo
           </a>
           <Link
             href="/playground"
+            target="_blank"
+            rel="noopener noreferrer"
             className="rounded-skin border border-accent/50 px-2.5 py-1 font-mono text-xs font-medium text-accent hover:bg-accent hover:text-background"
           >
             Try the demo ↗

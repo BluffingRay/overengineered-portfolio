@@ -95,7 +95,7 @@ export default function RisoHero({ block, socials, onNavigate, showMediaPlacehol
   const risoPlacement = isCentered ? 'mx-auto' : placementClass;
 
   const media =
-    isBanner && isDesktop ? (
+    isBanner ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}

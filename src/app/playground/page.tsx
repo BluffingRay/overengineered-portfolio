@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import PlaygroundView from '@/playground/PlaygroundView';
 
 export const metadata: Metadata = {
-  title: 'Playground — overengineered-portfolio',
+  title: 'Playground · overengineered-portfolio',
   description:
     'The real editor over the demo portfolio. Nothing is saved — play freely.',
 };

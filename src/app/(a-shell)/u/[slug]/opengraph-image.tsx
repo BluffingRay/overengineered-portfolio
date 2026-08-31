@@ -14,9 +14,9 @@ import { resolveHostedDoc } from '@/lib/loadHostedDoc';
 
 // Static by convention (the file convention reads exported values, not the
 // doc): the per-doc title can't be expressed here, so the alt names the
-// artifact, mirroring the "<title> — portfolio" shape as closely as a
+// artifact, mirroring the "<title> · portfolio" shape as closely as a
 // static string allows.
-export const alt = 'Portfolio — share card';
+export const alt = 'Portfolio · share card';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

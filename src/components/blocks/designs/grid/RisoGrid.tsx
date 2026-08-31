@@ -21,7 +21,7 @@ export default function RisoGrid({
       <h2 className="riso-misprint text-2xl font-black uppercase tracking-tight">
         {block.title}
       </h2>
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-8">
         <GridShell
           cards={cards}
           cardIds={block.apps}

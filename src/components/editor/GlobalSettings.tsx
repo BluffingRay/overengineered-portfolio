@@ -544,7 +544,7 @@ export default function GlobalSettings({
                     onChange={(e) =>
                       patchFooter({ copyrightText: e.target.value || undefined })
                     }
-                    placeholder="© {year} Raymar. Built by hand."
+                    placeholder="© {year} Your Name. Built by hand."
                     className={INPUT}
                   />
                 </Field>

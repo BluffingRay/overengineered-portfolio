@@ -13,7 +13,7 @@ import OgCard from '@/components/og/OgCard';
 // the alt always matches what the image paints.
 const card = buildOgCardData(initialData);
 
-export const alt = `${card.title} — portfolio`;
+export const alt = `${card.title} · portfolio`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

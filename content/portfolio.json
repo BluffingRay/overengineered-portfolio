@@ -112,7 +112,7 @@
           "type": "featured_hero",
           "design": "default",
           "eyebrow": "~/demo — overengineered portfolio",
-          "name": "Demo",
+          "name": "overengineered-portfolio",
           "heading": "Yes, this whole site is editable.",
           "subheading": "You are standing inside the demo portfolio. Nothing here is precious — it exists to be poked, dragged, and deleted. Press the big button and we will walk you through it.",
           "ctaLabel": "Start the tour",

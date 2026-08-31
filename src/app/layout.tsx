@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { buildPortfolioMetadata } from "@/lib/metadata";
-import { initialData } from "@/data/initialData";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,14 +12,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 5d-a — base metadata composed from the committed Product B doc
-// (content/portfolio.json, baked at build time via initialData): the root /
-// portfolio page inherits the real title/description/OG. The consequence is
-// the design: in hosted mode the seed name can only appear on routes
-// without their own metadata — /blog, /write, /dashboard, /onboarding and
-// /u/<slug> all carry explicit overrides (5d-a spec).
-const docMeta = buildPortfolioMetadata(initialData);
-
+// Neutral product metadata for the root chrome: the site is
+// "overengineered-portfolio" regardless of which shell is in front, so
+// the editor at `/` in Product A and the fresh-clone root in Product B
+// no longer wear the committed B-seed's name ("Demo") on the tab.
+// Per-route composition still lives in the route files (5d-a):
+// /blog title from the doc, /write + admin absolute neutrals,
+// /u/<slug> from the hosted doc. The `template` keeps the product
+// suffix on child routes that opt into the default.
 export const metadata: Metadata = {
   // Canonical base for URL-bearing tags. NEXT_PUBLIC_SITE_URL (see
   // .env.example) wins when set — `||` (not `??`) so the set-but-empty
@@ -30,13 +28,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   ),
-  ...docMeta,
-  // default = child routes without their own title; template = their suffix
-  // (absolute child titles ignore it).
   title: {
-    default: docMeta.title,
-    template: `%s · ${docMeta.title}`,
+    default: "overengineered-portfolio",
+    template: "%s · overengineered-portfolio",
   },
+  description:
+    "A block-based, local-first portfolio CMS. Edit and publish from the browser, or fork the whole thing.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

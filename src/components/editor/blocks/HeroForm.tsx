@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MediaPicker from '@/components/editor/MediaPicker';
 import type {
   FeaturedHeroBlock,
@@ -50,7 +50,7 @@ function NameInput({
       value={draft}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      placeholder="Raymar"
+      placeholder="Your name"
       className={`${INPUT} font-medium`}
     />
   );
@@ -69,7 +69,7 @@ function EyebrowInput({
       value={draft}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      placeholder="~/raymar — portfolio"
+      placeholder="~/your-name/portfolio"
       className={INPUT}
     />
   );
@@ -169,6 +169,53 @@ function TabLinkPicker(props: { tabs: Array<Pick<Tab, 'id' | 'label'>>; value: s
   return <LinkTargetPicker tabs={props.tabs} value={props.value} onChange={props.onChange} />;
 }
 
+// Roles textarea — local-draft + blur-commit so typing spaces and
+// pressing Enter don't get eaten by the store echo-fight (same shape as
+// MarqueeForm's items textarea).
+function RolesTextarea({
+  value,
+  onCommit,
+}: {
+  value?: string[];
+  onCommit: (next: string[] | undefined) => void;
+}) {
+  const itemsKey = (value ?? []).join('\n');
+  const [draft, setDraft] = useState(itemsKey);
+  const seedRef = useRef(itemsKey);
+
+  // Reseed the draft when the store changes from outside (undo, add block).
+  useEffect(() => {
+    if (itemsKey !== seedRef.current) {
+      seedRef.current = itemsKey;
+      setDraft(itemsKey);
+    }
+  }, [itemsKey]);
+
+  const commit = useCallback(
+    (raw: string) => {
+      const roles = raw
+        .split('\n')
+        .map((role) => role.trim())
+        .filter(Boolean);
+      seedRef.current = roles.join('\n');
+      onCommit(roles.length > 0 ? roles : undefined);
+    },
+    [onCommit],
+  );
+
+  return (
+    <textarea
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => commit(e.target.value)}
+      rows={3}
+      placeholder={'Full-Stack Developer\nMachine Learning Trainer\nBackend Developer'}
+      aria-label="Roles, one per line"
+      className={`${INPUT} resize-y font-mono text-xs leading-relaxed`}
+    />
+  );
+}
+
 export default function HeroForm({ block, tabs, patch }: Props) {
   const badge = block.statusBadge;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -252,20 +299,7 @@ export default function HeroForm({ block, tabs, patch }: Props) {
         {block.name && (
           <div className="sm:col-span-2">
             <Field label="Roles (one per line — typewriter cycles them)">
-              <textarea
-                value={(block.roles ?? []).join('\n')}
-                onChange={(e) => {
-                  const roles = e.target.value
-                    .split('\n')
-                    .map((role) => role.trim())
-                    .filter(Boolean);
-                  patch({ roles });
-                }}
-                rows={3}
-                placeholder={'Full-Stack Developer\nMachine Learning Trainer\nBackend Developer'}
-                aria-label="Roles, one per line"
-                className={`${INPUT} resize-y font-mono text-xs leading-relaxed`}
-              />
+              <RolesTextarea value={block.roles} onCommit={(roles) => patch({ roles })} />
             </Field>
           </div>
         )}
@@ -280,7 +314,9 @@ export default function HeroForm({ block, tabs, patch }: Props) {
         <Field label="Layout">
           <select
             value={block.layout ?? 'split'}
-            onChange={(e) => patch({ layout: e.target.value as HeroLayout })}
+            onChange={(e) =>
+              patch({ layout: e.target.value as HeroLayout, mediaPosition: undefined })
+            }
             className={INPUT}
           >
             {HERO_LAYOUTS.map((layout) => (
@@ -297,17 +333,17 @@ export default function HeroForm({ block, tabs, patch }: Props) {
                 <button
                   key={position}
                   type="button"
-                  aria-pressed={(block.mediaPosition ?? 'bottom') === position}
+                  aria-pressed={(block.mediaPosition ?? 'top') === position}
                   onClick={() =>
                     patch({
                       mediaPosition:
-                        (block.mediaPosition ?? 'bottom') === position
+                        (block.mediaPosition ?? 'top') === position
                           ? undefined
                           : position,
                     })
                   }
                   className={`px-2.5 py-1 text-xs font-medium capitalize ${
-                    (block.mediaPosition ?? 'bottom') === position
+                    (block.mediaPosition ?? 'top') === position
                       ? 'bg-accent text-background'
                       : 'opacity-60 hover:opacity-100'
                   }`}

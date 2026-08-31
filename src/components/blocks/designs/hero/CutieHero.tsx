@@ -105,7 +105,7 @@ export default function CutieHero({
   const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
   const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
   const media =
-    effectiveLayout === 'banner' && isDesktop ? (
+    effectiveLayout === 'banner' ? (
       block.thumbnail ? (
         <img
           src={block.thumbnail}
