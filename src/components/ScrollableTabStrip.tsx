@@ -46,7 +46,7 @@ export function ScrollableTabStrip({
           role="tablist"
           aria-label={ariaLabel}
           onKeyDown={onKeyDown}
-          className="flex gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth pb-2.5 -mb-2.5"
+          className="flex gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth pb-3.5 -mb-3.5"
         >
           {children}
         </div>
