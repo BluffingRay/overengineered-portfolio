@@ -689,6 +689,7 @@ Build Phase 6 in a FRESH session (this run's lesson).
   option across all rows for a cleaner look. Applies to single-column
   entry lists too.
 - **Design DRY — blog/grid copy-paste (noted 2026-09-02):** 4 designs per block (default/cutie/editorial/riso) still duplicate `postHref`/`openPostHandler` wiring and card/blog markup across `designs/blog/*` + `designs/grid/*` (the `?post=` hosted shareable change touched 8 files). Refactor to shared skeleton + per-design decoration layer like `MarqueeHalves` — one skeleton, 4 thin skins. Deferred: works, just noisy to maintain.
+- **Blog post crawlability (parked 2026-09-02, cool):** `.../u/[slug]?post=ID` is shareable (OG via `src/app/(a-shell)/u/[slug]/page.tsx:58`, float on `HostedPortfolioView.tsx:62`) but body is client `FloatingPage` (`createPortal` `src/components/FloatingPage.tsx:55` returns null on SSR) so `curl`/Gemini sees portfolio shell, not article. Parked fix: SSR the post body when `?post=` is present + add `...?post=` URLs to `sitemap.xml` `src/app/sitemap.ts:35` for public posts. Not worth now — blog is `budget-Medium` browsed inside tabs.
 - **Accessibility:** editor UI audit (screen reader labels; the motion
   system is already a11y-aware), broader keyboard navigation.
 - **UI/UX polish:** popover enter/exit animations (IconPicker),
