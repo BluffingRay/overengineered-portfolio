@@ -21,7 +21,7 @@ export default function WelcomeCard({ signInOpen, setSignInOpen, onLoginWithIdTo
           <span className="caret-blink text-accent">▌</span>
         </h1>
         <p className="mt-2 text-sm opacity-60">
-          A block-based, local-first portfolio CMS. Your entire portfolio is one JSON document — fork it, or host it here.
+          A block-based, local-first portfolio CMS. Your entire portfolio is one JSON document: fork it, or host it here.
         </p>
         <ul className="mt-4 flex flex-wrap gap-2" aria-label="Product highlights">
           {['one JSON document', '4 art directions', 'self-host or hosted'].map((chip) => (
