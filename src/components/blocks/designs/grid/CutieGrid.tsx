@@ -3,6 +3,7 @@ import ProjectIcon from '@/components/ui/ProjectIcon';
 import Reveal from '../../Reveal';
 import { hasExtraLinks, resolveCardLinks } from './shared';
 import GridShell from './GridShell';
+import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -108,12 +109,12 @@ export default function CutieGrid({
                       {app.name}
                     </a>
                   </h3>
-                  <p
-                    className="mt-1 line-clamp-3 text-sm opacity-60"
-                    title={app.description}
-                  >
-                    {app.description}
-                  </p>
+                  <ExpandableDescription
+                    text={app.description}
+                    collapsedClass="line-clamp-3"
+                    textClass="mt-1 text-sm opacity-60"
+                    buttonClass="cutie-btn relative z-10 mt-1 text-xs font-semibold text-accent"
+                  />
 
                   {hasExtraLinks(app, linkedPost) && (
                     <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-sm font-semibold">

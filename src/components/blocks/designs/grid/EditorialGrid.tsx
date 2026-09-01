@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { hasExtraLinks, resolveCardLinks } from './shared';
 import GridShell from './GridShell';
+import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -37,13 +38,7 @@ export default function EditorialGrid({
                     {String(index + 1).padStart(2, '0')}.
                   </span>
 
-                  {/* Row-wide overlay link: everything not z-10 clicks through */}
-                  <a
-                    href={primaryHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-w-0 flex-1 items-start gap-4 after:absolute after:inset-0"
-                  >
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
                     {app.coverImage && (
                       <img
                         src={app.coverImage}
@@ -53,18 +48,26 @@ export default function EditorialGrid({
                         className="h-14 w-14 shrink-0 border border-current/15 object-cover"
                       />
                     )}
-                    <div className="min-w-0">
-                      <h3 className="ed-serif text-xl italic leading-snug group-hover:text-accent">
-                        {app.name}
-                      </h3>
-                      <p
-                        className="mt-0.5 line-clamp-1 text-sm opacity-50"
-                        title={app.description}
+                    <div className="min-w-0 flex-1">
+                      <a
+                        href={primaryHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="after:absolute after:inset-0"
                       >
-                        {app.description}
-                      </p>
+                        <h3 className="ed-serif text-xl italic leading-snug group-hover:text-accent">
+                          {app.name}
+                        </h3>
+                      </a>
+                      <ExpandableDescription
+                        text={app.description}
+                        collapsedClass="line-clamp-1"
+                        textClass="mt-0.5 text-sm opacity-50"
+                        buttonClass="relative z-10 mt-1 text-[11px] uppercase tracking-[0.2em] text-accent hover:underline underline-offset-4"
+                        threshold={50}
+                      />
                     </div>
-                  </a>
+                  </div>
 
                   <span className="relative z-10 shrink-0 pt-1 text-right">
                     {meta && (

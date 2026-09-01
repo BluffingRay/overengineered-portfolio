@@ -3,6 +3,7 @@ import ProjectIcon from '@/components/ui/ProjectIcon';
 import Reveal from '../../Reveal';
 import { resolveCardLinks } from './shared';
 import GridShell from './GridShell';
+import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -78,12 +79,11 @@ export default function CoderGrid({
                       {app.name}
                     </a>
                   </h3>
-                  <p
-                    className="mt-1 line-clamp-3 text-sm opacity-60"
-                    title={app.description}
-                  >
-                    {app.description}
-                  </p>
+                  <ExpandableDescription
+                    text={app.description}
+                    collapsedClass="line-clamp-3"
+                    textClass="mt-1 text-sm opacity-60"
+                  />
 
                   {(app.demoUrl || app.githubUrl || linkedPost || app.customUrl) && (
                     <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-sm">

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
 import { hasExtraLinks, resolveCardLinks } from './shared';
 import GridShell from './GridShell';
+import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
 
 /**
@@ -82,12 +83,12 @@ export default function RisoGrid({
                       {app.name}
                     </a>
                   </h3>
-                  <p
-                    className="mt-1.5 line-clamp-3 font-mono text-xs leading-relaxed opacity-70"
-                    title={app.description}
-                  >
-                    {app.description}
-                  </p>
+                  <ExpandableDescription
+                    text={app.description}
+                    collapsedClass="line-clamp-3"
+                    textClass="mt-1.5 font-mono text-xs leading-relaxed opacity-70"
+                    buttonClass="relative z-10 mt-1 font-mono text-xs font-bold uppercase text-accent hover:underline underline-offset-4"
+                  />
 
                   {hasExtraLinks(app, linkedPost) && (
                     <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 font-mono text-xs font-bold uppercase">
