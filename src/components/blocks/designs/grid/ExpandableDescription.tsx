@@ -69,7 +69,7 @@ export default function ExpandableDescription({
           e.stopPropagation();
           setExpanded((v) => !v);
         }}
-        className="relative z-10 mt-1 text-[11px] leading-none opacity-40 hover:opacity-100 hover:text-accent"
+        className="relative z-10 mt-1 ml-auto block text-right text-[11px] leading-none opacity-40 hover:opacity-100 hover:text-accent"
       >
         {expanded ? 'Show less ↑' : 'Show more ↓'}
       </button>
