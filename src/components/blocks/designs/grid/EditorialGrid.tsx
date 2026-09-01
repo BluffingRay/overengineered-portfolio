@@ -63,7 +63,6 @@ export default function EditorialGrid({
                         text={app.description}
                         collapsedClass="line-clamp-1"
                         textClass="mt-0.5 text-sm opacity-50"
-                        buttonClass="relative z-10 mt-1 text-[11px] uppercase tracking-[0.2em] text-accent hover:underline underline-offset-4"
                         threshold={50}
                       />
                     </div>

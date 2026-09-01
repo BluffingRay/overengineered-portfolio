@@ -87,7 +87,6 @@ export default function RisoGrid({
                     text={app.description}
                     collapsedClass="line-clamp-3"
                     textClass="mt-1.5 font-mono text-xs leading-relaxed opacity-70"
-                    buttonClass="relative z-10 mt-1 font-mono text-xs font-bold uppercase text-accent hover:underline underline-offset-4"
                   />
 
                   {hasExtraLinks(app, linkedPost) && (

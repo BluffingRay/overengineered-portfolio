@@ -113,7 +113,6 @@ export default function CutieGrid({
                     text={app.description}
                     collapsedClass="line-clamp-3"
                     textClass="mt-1 text-sm opacity-60"
-                    buttonClass="cutie-btn relative z-10 mt-1 text-xs font-semibold text-accent"
                   />
 
                   {hasExtraLinks(app, linkedPost) && (
