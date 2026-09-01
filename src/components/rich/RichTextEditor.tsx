@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import MediaPicker from '@/components/editor/MediaPicker';
+import { usePortfolioData } from '@/hooks/usePortfolioData';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { Color, FontSize, TextStyle } from '@tiptap/extension-text-style';
@@ -75,9 +76,111 @@ export default function RichTextEditor({
   const [, setTick] = useState(0);
   const sizeRef = useRef<HTMLInputElement>(null);
   const [mediaOpen, setMediaOpen] = useState(false);
+  const { mutate } = usePortfolioData();
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const uploadImageFile = useCallback(async (file: File): Promise<string | null> => {
+    if (!file.type.startsWith('image/')) return null;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body });
+      const json = (await res.json()) as { url?: string; name?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
+      mutate((current) => ({
+        ...current,
+        assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+      }));
+      return json.url;
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }, [mutate]);
 
   const editor = useEditor({
     immediatelyRender: false,
+    editorProps: {
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        const dt = event.dataTransfer;
+        if (!dt) return false;
+        const files = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+        if (files.length === 0) return false;
+        event.preventDefault();
+        (async () => {
+          for (const file of files) {
+            const body = new FormData();
+            body.append('file', file);
+            try {
+              const res = await fetch('/api/upload', { method: 'POST', body });
+              const json = (await res.json()) as { url?: string; name?: string; error?: string };
+              if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
+              mutate((current) => ({
+                ...current,
+                assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+              }));
+              const url = json.url;
+              const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from;
+              const node = view.state.schema.nodes.image?.create({ src: url });
+              if (node) {
+                const tr = view.state.tr.insert(pos, node);
+                view.dispatch(tr);
+              }
+            } catch (e) {
+              setUploadError(e instanceof Error ? e.message : 'Upload failed');
+            }
+          }
+        })();
+        return true;
+      },
+      handlePaste: (view, event) => {
+        const dt = event.clipboardData;
+        if (!dt) return false;
+        const files: File[] = [];
+        if (dt.files.length) {
+          for (const f of Array.from(dt.files)) if (f.type.startsWith('image/')) files.push(f);
+        } else {
+          for (const item of Array.from(dt.items)) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+              const f = item.getAsFile();
+              if (f) files.push(f);
+            }
+          }
+        }
+        if (files.length === 0) return false;
+        event.preventDefault();
+        (async () => {
+          for (const file of files) {
+            const body = new FormData();
+            body.append('file', file);
+            try {
+              const res = await fetch('/api/upload', { method: 'POST', body });
+              const json = (await res.json()) as { url?: string; name?: string; error?: string };
+              if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
+              mutate((current) => ({
+                ...current,
+                assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+              }));
+              const url = json.url;
+              const { state } = view;
+              const pos = state.selection.from;
+              const node = state.schema.nodes.image?.create({ src: url });
+              if (node) view.dispatch(state.tr.insert(pos, node));
+            } catch (e) {
+              setUploadError(e instanceof Error ? e.message : 'Upload failed');
+            }
+          }
+        })();
+        return true;
+      },
+    },
     extensions: [
       // ClearableParagraph below IS the Paragraph node (extended with the
       // clear-float attribute) — StarterKit's bundled copy is disabled so
@@ -117,6 +220,41 @@ export default function RichTextEditor({
     contentRef.current = content;
     editor.commands.setContent(content, { emitUpdate: false });
   }, [editor, content]);
+
+  const handleWrapperDrop = useCallback(async (e: React.DragEvent) => {
+    if (e.defaultPrevented) return;
+    if (!editor) return;
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    e.preventDefault();
+    setDragOver(false);
+    for (const file of files) {
+      const url = await uploadImageFile(file);
+      if (url) editor.chain().focus().setImage({ src: url }).run();
+    }
+  }, [editor, uploadImageFile]);
+
+  const handleWrapperPaste = useCallback(async (e: React.ClipboardEvent) => {
+    if (e.defaultPrevented) return;
+    if (!editor) return;
+    const files: File[] = [];
+    if (e.clipboardData.files.length) {
+      for (const f of Array.from(e.clipboardData.files)) if (f.type.startsWith('image/')) files.push(f);
+    } else {
+      for (const item of Array.from(e.clipboardData.items)) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+    }
+    if (files.length === 0) return;
+    e.preventDefault();
+    for (const file of files) {
+      const url = await uploadImageFile(file);
+      if (url) editor.chain().focus().setImage({ src: url }).run();
+    }
+  }, [editor, uploadImageFile]);
 
   if (!editor) return null;
 
@@ -172,7 +310,24 @@ export default function RichTextEditor({
   const inTable = editor.isActive('table');
 
   return (
-    <div className="overflow-hidden rounded-skin border border-[var(--border)] bg-background">
+    <div
+      className={`overflow-hidden rounded-skin border bg-background ${dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-[var(--border)]'}`}
+      onDragOver={(e) => {
+        if (Array.from(e.dataTransfer.types).includes('Files')) {
+          e.preventDefault();
+          setDragOver(true);
+        }
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        if (Array.from(e.dataTransfer.types).includes('Files')) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+      }}
+      onDrop={handleWrapperDrop}
+      onPaste={handleWrapperPaste}
+    >
       <div
         role="toolbar"
         aria-label="Formatting"
@@ -403,11 +558,18 @@ export default function RichTextEditor({
       </div>
 
       <div
-        className="rich-text rich-editor"
+        className="rich-text rich-editor relative"
         style={{ minHeight }}
       >
         <EditorContent editor={editor} />
+        {dragOver && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-accent/10 backdrop-blur-[1px]">
+            <span className="rounded-skin bg-surface px-3 py-1.5 text-xs font-medium shadow">Drop image to upload</span>
+          </div>
+        )}
       </div>
+      {uploading && <p className="px-2 py-1 text-center text-xs opacity-60">Uploading image…</p>}
+      {uploadError && <p role="alert" className="px-2 py-1 text-center text-xs text-red-500">{uploadError}</p>}
 
       <MediaPicker
         open={mediaOpen}

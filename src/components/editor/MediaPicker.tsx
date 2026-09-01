@@ -20,6 +20,7 @@ export default function MediaPicker({
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storageFiles, setStorageFiles] = useState<{ url: string; key: string; source: 'r2' | 'local' }[] | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const reload = () => {
@@ -49,6 +50,40 @@ export default function MediaPicker({
     };
   }, [open, onClose]);
 
+  // Paste image from clipboard (screenshot, copied file) while the library is open
+  useEffect(() => {
+    if (!open) return;
+    function onPaste(event: ClipboardEvent) {
+      if (event.defaultPrevented) return;
+      const items = event.clipboardData?.files;
+      const files = items ? Array.from(items).filter((f) => f.type.startsWith('image/')) : [];
+      if (files.length > 0) {
+        // Don't let the underlying input or editor also handle it
+        event.preventDefault();
+        void handleFiles(files);
+        return;
+      }
+      // Fallback: some browsers put the image as item kind 'file' not in files list
+      const clipboardItems = event.clipboardData?.items;
+      if (clipboardItems) {
+        const fileFromItem: File[] = [];
+        for (const item of Array.from(clipboardItems)) {
+          if (item.kind === 'file' && item.type.startsWith('image/')) {
+            const f = item.getAsFile();
+            if (f) fileFromItem.push(f);
+          }
+        }
+        if (fileFromItem.length > 0) {
+          event.preventDefault();
+          void handleFiles(fileFromItem);
+          return;
+        }
+      }
+    }
+    document.addEventListener('paste', onPaste as unknown as EventListener);
+    return () => document.removeEventListener('paste', onPaste as unknown as EventListener);
+  }, [open]);
+
   if (!open) return null;
 
   function pick(url: string) {
@@ -76,6 +111,44 @@ export default function MediaPicker({
         assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
       }));
       pick(json.url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleFiles(files: File[]) {
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+    if (imageFiles.length === 1) {
+      await handleUpload(imageFiles[0]!);
+      return;
+    }
+    setError(null);
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of imageFiles) {
+        const body = new FormData();
+        body.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body });
+        const json = (await res.json()) as { url?: string; name?: string; error?: string };
+        if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed for ${file.name}`);
+        urls.push(json.url);
+        mutate((current) => ({
+          ...current,
+          assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+        }));
+      }
+      // Keep the library open so the user sees all uploads; auto-select the first for convenience
+      if (urls[0]) {
+        // Add silently already done; now select first without re-adding
+        onSelect(urls[0]);
+        onClose();
+      }
+      // Refresh the R2 inventory so newly uploaded keys show immediately
+      fetch('/api/upload?list=1', { cache: 'no-store' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => {});
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Upload failed');
     } finally {
@@ -135,7 +208,38 @@ export default function MediaPicker({
 
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div ref={rootRef} role="dialog" aria-label="Media library" className="w-full max-w-xl rounded-skin border border-[var(--border)] bg-surface p-4 shadow-xl">
+      <div
+        ref={rootRef}
+        role="dialog"
+        aria-label="Media library"
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes('text/plain') || e.dataTransfer.types.includes('text/uri-list')) setDragOver(true);
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+          if (files.length > 0) {
+            void handleFiles(files);
+            return;
+          }
+          // Dropped URL (e.g. dragging an image from another tab)
+          const uri = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+          const url = uri?.trim().split('\n')[0]?.trim();
+          if (url && (/^https?:\/\//i.test(url) || url.startsWith('/') || url.startsWith('data:image'))) {
+            pick(url);
+          }
+        }}
+        className={`w-full max-w-xl rounded-skin border bg-surface p-4 shadow-xl ${dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-[var(--border)]'}`}
+      >
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">Media library</p>
           <div className="flex items-center gap-1.5">
@@ -143,7 +247,7 @@ export default function MediaPicker({
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-skin border border-accent/60 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-background">
               <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
               {uploading ? 'Uploading…' : 'Upload'}
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleUpload(file); }} />
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple className="hidden" disabled={uploading} onChange={(event) => { const files = event.target.files ? Array.from(event.target.files) : []; event.target.value = ''; if (files.length) void handleFiles(files); }} />
             </label>
           </div>
         </div>
@@ -152,6 +256,8 @@ export default function MediaPicker({
           <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-700">● Hosted (R2 + uploads/)</span>
           <span className="rounded-full bg-zinc-100 px-2.5 py-1 opacity-50">Custom API — Coming soon</span>
         </div>
+            {dragOver && <p className="mt-2 rounded-skin bg-accent/10 px-2 py-1 text-center text-xs font-medium text-accent">Drop image to upload</p>}
+            {uploading && <p className="mt-2 text-center text-xs opacity-60">Uploading…</p>}
             {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
             {inventory.length > 0 ? (
               <ul className="mt-3 grid max-h-80 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
@@ -170,9 +276,25 @@ export default function MediaPicker({
               <p className="mt-3 text-xs opacity-50">Nothing here yet — upload your first image above.</p>
             )}
             <form className="mt-3 flex gap-1.5 border-t border-current/10 pt-3" onSubmit={(event) => { event.preventDefault(); if (urlDraft.trim()) pick(urlDraft.trim()); }}>
-              <input value={urlDraft} onChange={(event) => setUrlDraft(event.target.value)} placeholder="…or paste an image URL" aria-label="Paste image URL" spellCheck={false} className="min-w-0 flex-1 rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs" />
+              <input
+                value={urlDraft}
+                onChange={(event) => setUrlDraft(event.target.value)}
+                onPaste={(event) => {
+                  // If pasting an image file, upload instead of filling the URL field
+                  const files = Array.from(event.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+                  if (files.length > 0) {
+                    event.preventDefault();
+                    void handleFiles(files);
+                  }
+                }}
+                placeholder="…or paste an image URL — or drop/paste an image anywhere here (⌘V)"
+                aria-label="Paste image URL"
+                spellCheck={false}
+                className="min-w-0 flex-1 rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs"
+              />
               <button type="submit" disabled={!urlDraft.trim()} className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:pointer-events-none disabled:opacity-30">Use</button>
             </form>
+            <p className="mt-2 text-center text-[10px] opacity-40">Tip: drag & drop images onto this dialog, or paste (Ctrl/⌘+V) a screenshot — they upload automatically</p>
       </div>
     </div>,
     document.body,
