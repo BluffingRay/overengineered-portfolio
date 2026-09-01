@@ -5,6 +5,7 @@ import {
   Cover,
   EmptyFeed,
   openPostHandler,
+  postHref,
   selectPublished,
   selectVisible,
 } from './shared';
@@ -16,7 +17,7 @@ import type { BlogDesignProps } from '../types';
  * look at it), dates become sticker pills, rows are separated by
  * dashed washi lines and the empty-cover glyph blooms.
  */
-export default function CutieBlog({ block, posts, onOpenPost }: BlogDesignProps) {
+export default function CutieBlog({ block, posts, onOpenPost, slug }: BlogDesignProps) {
   const published = selectPublished(posts);
 
   const isAll = block.variant === 'all';
@@ -39,7 +40,7 @@ export default function CutieBlog({ block, posts, onOpenPost }: BlogDesignProps)
             >
               <Reveal delay={Math.min(index * 40, 200)}>
                 <Link
-                  href={`/blog?post=${post.id}`}
+                  href={postHref(post.id, slug)}
                   className="group flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6"
                   onClick={openPostHandler(post.id, onOpenPost)}
                 >
@@ -78,7 +79,7 @@ export default function CutieBlog({ block, posts, onOpenPost }: BlogDesignProps)
                   }`}
                 >
                   <Link
-                    href={`/blog?post=${post.id}`}
+                    href={postHref(post.id, slug)}
                     className="after:absolute after:inset-0 after:rounded-md"
                     onClick={openPostHandler(post.id, onOpenPost)}
                   >

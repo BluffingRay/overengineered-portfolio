@@ -32,6 +32,7 @@ export interface GridDesignProps {
   cards?: AppCardItem[];
   posts?: Post[];
   onOpenPost?: (id: string) => void;
+  slug?: string;
 }
 
 export interface RichDesignProps {
@@ -50,4 +51,6 @@ export interface BlogDesignProps {
   block: BlogBlock;
   posts?: Post[];
   onOpenPost?: (id: string) => void;
+  /** Hosted slug — when present, post links become /u/[slug]?post=ID (shareable). Absent = B's /blog?post=ID. */
+  slug?: string;
 }

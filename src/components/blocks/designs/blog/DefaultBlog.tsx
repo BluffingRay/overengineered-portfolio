@@ -6,13 +6,14 @@ import {
   Cover,
   EmptyFeed,
   openPostHandler,
+  postHref,
   selectPublished,
   selectVisible,
 } from './shared';
 import type { BlogDesignProps } from '../types';
 
 /** The original blog rendering, moved verbatim out of BlogBlock. */
-export default function CoderBlog({ block, posts, onOpenPost }: BlogDesignProps) {
+export default function CoderBlog({ block, posts, onOpenPost, slug }: BlogDesignProps) {
   const published = selectPublished(posts);
 
   const isAll = block.variant === 'all';
@@ -30,7 +31,7 @@ export default function CoderBlog({ block, posts, onOpenPost }: BlogDesignProps)
             <li key={post.id}>
               <Reveal delay={Math.min(index * 40, 200)}>
                 <Link
-                  href={`/blog?post=${post.id}`}
+                  href={postHref(post.id, slug)}
                   className="lift group flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:gap-6"
                   onClick={openPostHandler(post.id, onOpenPost)}
                 >
@@ -71,7 +72,7 @@ export default function CoderBlog({ block, posts, onOpenPost }: BlogDesignProps)
 
                   <h3 className="mt-1 font-medium leading-snug">
                     <Link
-                      href={`/blog?post=${post.id}`}
+                      href={postHref(post.id, slug)}
                       className="text-accent after:absolute after:inset-0 after:rounded-skin"
                       onClick={openPostHandler(post.id, onOpenPost)}
                     >

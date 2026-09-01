@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
 import { hasExtraLinks, resolveCardLinks } from './shared';
+import { postHref } from '../blog/shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -16,6 +17,7 @@ export default function RisoGrid({
   cards,
   posts,
   onOpenPost,
+  slug,
 }: GridDesignProps) {
   return (
     <section className="dsn-riso space-y-6">
@@ -113,7 +115,7 @@ export default function RisoGrid({
                       )}
                       {linkedPost ? (
                         <Link
-                          href={`/blog?post=${linkedPost.id}`}
+                          href={postHref(linkedPost.id, slug)}
                           className="underline-offset-4 hover:text-accent hover:underline"
                           onClick={(event) => {
                             if (onOpenPost) {

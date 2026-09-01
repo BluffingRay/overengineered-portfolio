@@ -23,6 +23,7 @@ function renderBlock(
   onNavigate?: (href: string) => boolean,
   onOpenPost?: (id: string) => void,
   showMediaPlaceholders?: boolean,
+  slug?: string,
 ) {
   switch (block.type) {
     case 'featured_hero':
@@ -35,18 +36,9 @@ function renderBlock(
         />
       );
     case 'app_grid':
-      return (
-        <AppGridBlock
-          block={block}
-          cards={cards}
-          posts={posts}
-          onOpenPost={onOpenPost}
-        />
-      );
+      return <AppGridBlock block={block} cards={cards} posts={posts} onOpenPost={onOpenPost} slug={slug} />;
     case 'blog':
-      return (
-        <BlogBlock block={block} posts={posts} onOpenPost={onOpenPost} />
-      );
+      return <BlogBlock block={block} posts={posts} onOpenPost={onOpenPost} slug={slug} />;
     case 'rich_text':
       return <RichTextBlock block={block} />;
     case 'custom_html':
@@ -74,6 +66,7 @@ interface Props {
   onOpenPost?: (id: string) => void;
   /** Edit-mode-only: heroes show the empty-media slot (absent = hidden). */
   showMediaPlaceholders?: boolean;
+  slug?: string;
 }
 
 export default function BlockRenderer({
@@ -84,11 +77,12 @@ export default function BlockRenderer({
   onNavigate,
   onOpenPost,
   showMediaPlaceholders,
+  slug,
 }: Props) {
   return (
     <div className={SPACING_CLASSES[block.spacing ?? 'normal']}>
       <Reveal>
-        {renderBlock(block, socials, cards, posts, onNavigate, onOpenPost, showMediaPlaceholders)}
+        {renderBlock(block, socials, cards, posts, onNavigate, onOpenPost, showMediaPlaceholders, slug)}
       </Reveal>
     </div>
   );

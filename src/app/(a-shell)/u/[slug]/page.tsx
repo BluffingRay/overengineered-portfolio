@@ -41,8 +41,10 @@ async function getSessionUid(): Promise<string | null> {
  */
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   // In Product B this route always 404s (the page's isHosted gate below) —
   // skip the doc load so a KV-less deploy can't turn that 404 into a
@@ -66,6 +68,47 @@ export async function generateMetadata({
       ).origin;
     } catch {
       baseUrl = undefined;
+    }
+  }
+
+  // If ?post= is present and resolves to a published post, use post-specific
+  // metadata (title + stripped content + coverImage) so shared links unfurl
+  // as the post, not just the portfolio. Draft/missing → fall back to portfolio.
+  const sp = await searchParams;
+  const postId = typeof sp.post === 'string' ? sp.post : undefined;
+  if (postId) {
+    const post = (loaded.doc.posts ?? []).find((p) => p.id === postId && p.status === 'published');
+    if (post) {
+      const title = post.title?.trim() ? post.title.trim() : 'Untitled';
+      const description = post.content
+        ? post.content
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 160) || undefined
+        : undefined;
+      const rawCover = post.coverImage ?? '';
+      let ogImage: string | undefined;
+      if (/^https?:\/\//i.test(rawCover)) ogImage = rawCover;
+      else if (rawCover.startsWith('/') && !rawCover.startsWith('//') && baseUrl) {
+        ogImage = `${baseUrl.replace(/\/+$/, '')}${rawCover}`;
+      }
+      const url = baseUrl ? `${baseUrl}/u/${slug}?post=${encodeURIComponent(postId)}` : undefined;
+      return {
+        title: { absolute: `${title} · ${buildPortfolioMetadata(loaded.doc, { baseUrl }).title}` },
+        ...(description ? { description } : {}),
+        ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+        openGraph: {
+          title,
+          ...(description ? { description } : {}),
+          type: 'article',
+          ...(url ? { url } : {}),
+          ...(ogImage ? { images: [ogImage] } : {}),
+        },
+        twitter: ogImage
+          ? { card: 'summary_large_image', title, ...(description ? { description } : {}) }
+          : { card: 'summary', title, ...(description ? { description } : {}) },
+      };
     }
   }
 
@@ -114,8 +157,9 @@ export default async function HostedPortfolioPage({
 }) {
   if (!isHosted()) notFound();
   const { slug } = await params;
-  const { t } = await searchParams;
+  const { t, post } = await searchParams;
   const requestedTab = typeof t === 'string' ? t : undefined;
+  const requestedPost = typeof post === 'string' ? post : undefined;
 
   // 5d-a — the shared cached load (see resolveHostedDoc): with
   // generateMetadata resolving on the same request, the pipeline still
@@ -148,11 +192,18 @@ export default async function HostedPortfolioPage({
   // route + GET /api/portfolio); same filter + sort + spread.
   const publicDoc: PortfolioData = stripDrafts(doc);
 
+  // Validate ?post= for the hosted deep-link: only published posts are
+  // shareable. Draft/missing → no overlay, just the portfolio (same as
+  // BlogSite's "doesn't exist" but without a dedicated 404 page).
+  const initialPostId =
+    requestedPost && publicDoc.posts?.some((p) => p.id === requestedPost) ? requestedPost : undefined;
+
   return (
     <HostedPortfolioView
       doc={publicDoc}
       slug={slug}
       activeTabId={activeTab?.id ?? ''}
+      initialPostId={initialPostId}
     />
   );
 }

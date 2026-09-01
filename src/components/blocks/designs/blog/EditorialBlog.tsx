@@ -5,6 +5,7 @@ import Reveal from '../../Reveal';
 import {
   EmptyFeed,
   openPostHandler,
+  postHref,
   selectPublished,
   selectVisible,
 } from './shared';
@@ -15,7 +16,7 @@ import type { BlogDesignProps } from '../types';
  * three ruled columns, all as a numbered print index. Typography does
  * the layout; covers shrink to bordered thumbnails or vanish entirely.
  */
-export default function EditorialBlog({ block, posts, onOpenPost }: BlogDesignProps) {
+export default function EditorialBlog({ block, posts, onOpenPost, slug }: BlogDesignProps) {
   const published = selectPublished(posts);
 
   const isAll = block.variant === 'all';
@@ -36,7 +37,7 @@ export default function EditorialBlog({ block, posts, onOpenPost }: BlogDesignPr
               <Reveal delay={Math.min(index * 40, 200)}>
                 {/* Whole row is the anchor — a print index line, not a card. */}
                 <Link
-                  href={`/blog?post=${post.id}`}
+                  href={postHref(post.id, slug)}
                   className="group flex items-baseline gap-4 py-3 sm:gap-6"
                   onClick={openPostHandler(post.id, onOpenPost)}
                 >
@@ -87,7 +88,7 @@ export default function EditorialBlog({ block, posts, onOpenPost }: BlogDesignPr
                 )}
                 <h3 className="ed-serif mt-1 text-2xl leading-tight">
                   <Link
-                    href={`/blog?post=${post.id}`}
+                    href={postHref(post.id, slug)}
                     className="after:absolute after:inset-0"
                     onClick={openPostHandler(post.id, onOpenPost)}
                   >

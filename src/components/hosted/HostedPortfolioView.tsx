@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { PortfolioData } from '@/types/schema';
 import BlockRenderer from '@/components/blocks/BlockRenderer';
@@ -18,9 +18,10 @@ interface Props {
   doc: PortfolioData;
   slug: string;
   activeTabId: string;
+  initialPostId?: string;
 }
 
-export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
+export default function HostedPortfolioView({ doc, slug, activeTabId, initialPostId }: Props) {
   const shell = usePortfolioShell({
     tabs: doc.tabs,
     docSkin: doc.skin,
@@ -32,7 +33,35 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
     posts: doc.posts,
   });
 
-  const [overlayPostId, setOverlayPostId] = useState<string | null>(null);
+  const [overlayPostId, setOverlayPostId] = useState<string | null>(initialPostId ?? null);
+
+  // Keep URL in sync with overlay: ?post=ID is the shareable deep-link.
+  // Server already validated initialPostId as published, so direct visits open.
+  useEffect(() => {
+    function syncFromUrl() {
+      const post = new URLSearchParams(window.location.search).get('post');
+      // Only honor published posts (drafts are not shareable)
+      const isPublished = post ? doc.posts?.some((p) => p.id === post && p.status === 'published') : false;
+      setOverlayPostId(isPublished ? post : null);
+    }
+    // Popstate handles back/forward across ?post= changes
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, [doc.posts]);
+
+  function openPost(id: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('post', id);
+    window.history.pushState(null, '', url.toString());
+    setOverlayPostId(id);
+  }
+
+  function closePost() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('post');
+    window.history.pushState(null, '', url.toString());
+    setOverlayPostId(null);
+  }
 
   const activeTab = shell.activeTab;
   const activeIndex = shell.activeIndex;
@@ -93,7 +122,8 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
                 cards={doc.cards}
                 posts={publishedPosts}
                 onNavigate={shell.handleNavigate}
-                onOpenPost={(id) => setOverlayPostId(id)}
+                onOpenPost={openPost}
+                slug={slug}
               />
             ))}
           </div>
@@ -112,15 +142,11 @@ export default function HostedPortfolioView({ doc, slug, activeTabId }: Props) {
 
       {overlayPostId && (
         <FloatingPage
-          onClose={() => setOverlayPostId(null)}
+          onClose={closePost}
           themeSkin={shell.appliedSkin}
           themeStyle={shell.themeStyle as CSSProperties}
         >
-          <BlogSite
-            postId={overlayPostId}
-            posts={publishedPosts}
-            onClose={() => setOverlayPostId(null)}
-          />
+          <BlogSite postId={overlayPostId} posts={publishedPosts} onClose={closePost} />
         </FloatingPage>
       )}
     </main>

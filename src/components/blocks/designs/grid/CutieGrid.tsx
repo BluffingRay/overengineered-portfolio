@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
 import Reveal from '../../Reveal';
 import { hasExtraLinks, resolveCardLinks } from './shared';
+import { postHref } from '../blog/shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -17,6 +18,7 @@ export default function CutieGrid({
   cards,
   posts,
   onOpenPost,
+  slug,
 }: GridDesignProps) {
   return (
     <section className="dsn-cutie relative space-y-8">
@@ -139,7 +141,7 @@ export default function CutieGrid({
                       )}
                       {linkedPost ? (
                         <Link
-                          href={`/blog?post=${linkedPost.id}`}
+                          href={postHref(linkedPost.id, slug)}
                           className="cutie-btn text-accent"
                           onClick={(event) => {
                             if (onOpenPost) {

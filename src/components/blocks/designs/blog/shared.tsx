@@ -50,7 +50,12 @@ export function EmptyFeed() {
   return <p className="text-sm opacity-50">Nothing published yet.</p>;
 }
 
-/** Link click → floating reader when present; else plain /blog navigation. */
+/** Hosted shareable href: /u/[slug]?post=ID vs B's /blog?post=ID. */
+export function postHref(id: string, slug?: string): string {
+  return slug ? `/u/${slug}?post=${encodeURIComponent(id)}` : `/blog?post=${encodeURIComponent(id)}`;
+}
+
+/** Link click → floating reader when present; else plain navigation (href already points to correct shell). */
 export function openPostHandler(
   id: string,
   onOpenPost?: (id: string) => void,

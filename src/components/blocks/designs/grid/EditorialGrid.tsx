@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { hasExtraLinks, resolveCardLinks } from './shared';
+import { postHref } from '../blog/shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -14,6 +15,7 @@ export default function EditorialGrid({
   cards,
   posts,
   onOpenPost,
+  slug,
 }: GridDesignProps) {
   return (
     <section className="dsn-editorial space-y-5">
@@ -98,7 +100,7 @@ export default function EditorialGrid({
                         )}
                         {linkedPost ? (
                           <Link
-                            href={`/blog?post=${linkedPost.id}`}
+                            href={postHref(linkedPost.id, slug)}
                             className="opacity-50 hover:text-accent hover:opacity-100"
                             onClick={(event) => {
                               if (onOpenPost) {

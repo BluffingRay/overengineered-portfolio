@@ -6,6 +6,7 @@ import Reveal from '../../Reveal';
 import {
   EmptyFeed,
   openPostHandler,
+  postHref,
   selectPublished,
   selectVisible,
 } from './shared';
@@ -48,7 +49,7 @@ function RisoCover({ post }: { post: Post }) {
  * through the duotone press, and each plate carries a numbered date
  * strip like an edition stamp.
  */
-export default function RisoBlog({ block, posts, onOpenPost }: BlogDesignProps) {
+export default function RisoBlog({ block, posts, onOpenPost, slug }: BlogDesignProps) {
   const published = selectPublished(posts);
 
   const isAll = block.variant === 'all';
@@ -72,7 +73,7 @@ export default function RisoBlog({ block, posts, onOpenPost }: BlogDesignProps) 
           {visible.map((post, index) => (
             <Reveal key={post.id} delay={Math.min(index * 40, 200)}>
               <Link
-                href={`/blog?post=${post.id}`}
+                href={postHref(post.id, slug)}
                 onClick={openPostHandler(post.id, onOpenPost)}
                 className={`${plate} flex flex-col gap-4 sm:flex-row sm:items-start`}
               >
@@ -102,7 +103,7 @@ export default function RisoBlog({ block, posts, onOpenPost }: BlogDesignProps) 
           {visible.map((post, index) => (
             <Reveal key={post.id} delay={Math.min(index * 60, 300)}>
               <Link
-                href={`/blog?post=${post.id}`}
+                href={postHref(post.id, slug)}
                 onClick={openPostHandler(post.id, onOpenPost)}
                 className={`${plate} flex h-full flex-col`}
               >
