@@ -49,10 +49,10 @@ export default function ExpandableDescription({
   }
 
   return (
-    <div className="relative">
+    <>
       <p
         ref={pRef}
-        className={`${textClass} ${expanded ? '' : `${collapsedClass} pr-6`} ${!expanded ? 'cursor-pointer' : ''}`}
+        className={`${textClass} ${expanded ? '' : collapsedClass} ${!expanded ? 'cursor-pointer' : ''}`}
         title={expanded ? undefined : text}
         onClick={() => {
           if (!expanded) setExpanded(true);
@@ -60,35 +60,19 @@ export default function ExpandableDescription({
       >
         {text}
       </p>
-      {!expanded ? (
-        <button
-          type="button"
-          aria-label="Show more"
-          aria-expanded={false}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setExpanded(true);
-          }}
-          className="absolute bottom-0 right-0 z-10 flex items-center bg-gradient-to-l from-surface via-surface/90 to-transparent pl-3 text-[11px] leading-none opacity-60 hover:opacity-100 hover:text-accent"
-        >
-          <span aria-hidden="true">…&nbsp;→</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          aria-label="Show less"
-          aria-expanded={true}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setExpanded(false);
-          }}
-          className="relative z-10 mt-1 text-[11px] leading-none opacity-40 hover:opacity-100 hover:text-accent"
-        >
-          ↑ Show less
-        </button>
-      )}
-    </div>
+      <button
+        type="button"
+        aria-label={expanded ? 'Show less' : 'Show more'}
+        aria-expanded={expanded}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setExpanded((v) => !v);
+        }}
+        className="relative z-10 mt-1 text-[11px] leading-none opacity-40 hover:opacity-100 hover:text-accent"
+      >
+        {expanded ? 'Show less ↑' : 'Show more ↓'}
+      </button>
+    </>
   );
 }
