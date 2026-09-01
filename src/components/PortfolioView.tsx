@@ -32,9 +32,7 @@ import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 export default function PortfolioView() {
   const { data, undo, redo } = usePortfolioData();
   const searchParams = useSearchParams();
-  const [isEditMode, setIsEditMode] = useState(
-    searchParams.get('edit') === 'true',
-  );
+  const [isEditMode, setIsEditMode] = useState(searchParams.get('edit') === 'true');
   const auth = useAuth();
   const gated = auth.gated;
   const isAuthed = auth.authenticated;
@@ -68,6 +66,10 @@ export default function PortfolioView() {
       setIntentionalNav();
     }
     await auth.logout();
+    try {
+      window.sessionStorage.removeItem('portfolio-edit-mode');
+      document.cookie = 'portfolio-edit-mode=; Path=/; SameSite=Lax; Max-Age=0';
+    } catch {}
     if (auth.hosted) {
       // Full page navigation on purpose — logout must re-init every gated
       // organ from scratch, so this can't be a soft router.push().
@@ -124,17 +126,36 @@ export default function PortfolioView() {
   );
   const isDesktop = useIsDesktopWidth();
 
+  // Restore edit intent from persisted storage (covers reload at `/` after `?edit=true` was set
+  // but the URL lost it before the server could see it). Runs once on mount.
   useEffect(() => {
+    if (isEditMode) return;
+    try {
+      if (window.sessionStorage.getItem('portfolio-edit-mode') === '1' || document.cookie.includes('portfolio-edit-mode=1')) {
+        setIsEditMode(true);
+      }
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    try {
+      if (isEditMode) {
+        window.sessionStorage.setItem('portfolio-edit-mode', '1');
+        document.cookie = 'portfolio-edit-mode=1; Path=/; SameSite=Lax; Max-Age=86400';
+      } else {
+        window.sessionStorage.removeItem('portfolio-edit-mode');
+        document.cookie = 'portfolio-edit-mode=; Path=/; SameSite=Lax; Max-Age=0';
+      }
+    } catch {}
     const params = new URLSearchParams(window.location.search);
     if (isEditMode) params.set('edit', 'true');
     else params.delete('edit');
 
     const queryString = params.toString();
-    window.history.replaceState(
-      null,
-      '',
-      queryString ? `/?${queryString}` : window.location.pathname,
-    );
+    const target = queryString ? `/?${queryString}` : window.location.pathname;
+    if (target !== window.location.pathname + window.location.search) {
+      window.history.replaceState(null, '', target);
+    }
   }, [isEditMode]);
 
   useEffect(() => {

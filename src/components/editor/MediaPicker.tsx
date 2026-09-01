@@ -26,7 +26,7 @@ export default function MediaPicker({
   const reload = () => {
     setReloading(true);
     setError(null);
-    fetch('/api/upload?list=1', { cache: 'no-store' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => setError('Reload failed')).finally(() => setReloading(false));
+    fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => setError('Reload failed')).finally(() => setReloading(false));
   };
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function MediaPicker({
     try {
       const body = new FormData();
       body.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body });
+      const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
       const json = (await res.json()) as { url?: string; name?: string; error?: string };
       if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
       mutate((current) => ({
@@ -132,7 +132,7 @@ export default function MediaPicker({
       for (const file of imageFiles) {
         const body = new FormData();
         body.append('file', file);
-        const res = await fetch('/api/upload', { method: 'POST', body });
+        const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
         const json = (await res.json()) as { url?: string; name?: string; error?: string };
         if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed for ${file.name}`);
         urls.push(json.url);
@@ -148,7 +148,7 @@ export default function MediaPicker({
         onClose();
       }
       // Refresh the R2 inventory so newly uploaded keys show immediately
-      fetch('/api/upload?list=1', { cache: 'no-store' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => {});
+      fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => {});
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Upload failed');
     } finally {
@@ -163,7 +163,7 @@ export default function MediaPicker({
     if (!url) return;
     const key = (storageFiles ?? []).find((f) => f.url === url)?.key ?? (() => { try { return new URL(url, 'http://x').pathname.replace(/^\//, ''); } catch { return null; } })();
     if (!window.confirm(`Delete ${url.split('/').pop() ?? url}? ${isRef ? 'Remove from doc — file stays in bucket if it exists.' : 'Delete file (R2 + local) and clear doc refs?'}`)) return;
-    const doDelete = isRef ? Promise.resolve({ ok: true } as Response) : fetch(`/api/upload?${key ? `key=${encodeURIComponent(key)}` : `url=${encodeURIComponent(url)}`}`, { method: 'DELETE' });
+    const doDelete = isRef ? Promise.resolve({ ok: true } as Response) : fetch(`/api/upload?${key ? `key=${encodeURIComponent(key)}` : `url=${encodeURIComponent(url)}`}`, { method: 'DELETE', credentials: 'same-origin' });
     doDelete.then(async (r) => {
       if (!r.ok) { const j = await (r as Response).json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? 'Delete failed'); }
       setStorageFiles((prev) => (prev ?? []).filter((f) => f.url !== url));

@@ -141,7 +141,7 @@ export default function OnboardingView() {
     let active = true;
     async function load() {
       try {
-        const res = await fetch('/api/portfolio/meta');
+        const res = await fetch('/api/portfolio/meta', { credentials: 'same-origin' });
         if (!active) return;
         if (!res.ok) {
           setMetaError('Could not check your account — refresh to try again.');
@@ -239,7 +239,7 @@ export default function OnboardingView() {
         design,
         slug: normalizedSlug,
       });
-      const res = await fetch('/api/portfolio', {
+      const res = await fetch('/api/portfolio', { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(doc),

@@ -54,7 +54,7 @@ export function useDashboardMeta(authReady: boolean, authenticated: boolean) {
     let active = true;
     async function load() {
       try {
-        const metaRes = await fetch('/api/portfolio/meta');
+        const metaRes = await fetch('/api/portfolio/meta', { credentials: 'same-origin' });
         if (!active) return;
         let parsedMeta: PortfolioMeta | null = null;
         if (metaRes.ok) {
@@ -65,7 +65,7 @@ export function useDashboardMeta(authReady: boolean, authenticated: boolean) {
           setMetaError('Could not load your portfolio.');
         }
         if (parsedMeta?.exists) {
-          const fullRes = await fetch('/api/portfolio?full=1');
+          const fullRes = await fetch('/api/portfolio?full=1', { credentials: 'same-origin' });
           if (!active) return;
           setHeroTitle(extractDocTitle(fullRes.ok ? await fullRes.json() : null));
           setHeroTitleReady(true);

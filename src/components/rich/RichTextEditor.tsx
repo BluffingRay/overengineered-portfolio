@@ -88,7 +88,7 @@ export default function RichTextEditor({
     try {
       const body = new FormData();
       body.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body });
+      const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
       const json = (await res.json()) as { url?: string; name?: string; error?: string };
       if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
       mutate((current) => ({
@@ -119,7 +119,7 @@ export default function RichTextEditor({
             const body = new FormData();
             body.append('file', file);
             try {
-              const res = await fetch('/api/upload', { method: 'POST', body });
+              const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
               const json = (await res.json()) as { url?: string; name?: string; error?: string };
               if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
               mutate((current) => ({
@@ -161,7 +161,7 @@ export default function RichTextEditor({
             const body = new FormData();
             body.append('file', file);
             try {
-              const res = await fetch('/api/upload', { method: 'POST', body });
+              const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
               const json = (await res.json()) as { url?: string; name?: string; error?: string };
               if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
               mutate((current) => ({

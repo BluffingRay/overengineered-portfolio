@@ -11,7 +11,7 @@ export type FetchDocResult =
 export async function fetchHostedDoc(): Promise<FetchDocResult> {
   let res: Response;
   try {
-    res = await fetch('/api/portfolio?full=1', { cache: 'no-store' });
+    res = await fetch('/api/portfolio?full=1', { cache: 'no-store', credentials: 'same-origin' });
   } catch {
     return { ok: false, error: 'Network error — could not reach the server.', needsAuth: false };
   }
@@ -45,6 +45,7 @@ export async function saveHostedDoc(draftRaw: string): Promise<HostedSaveResult>
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: draftRaw,
+      credentials: 'same-origin',
     });
   } catch {
     return { ok: false, error: 'Network error — could not reach the server.', needsAuth: false };

@@ -35,7 +35,7 @@ export function useAuth() {
 
   useEffect(() => {
     let active = true;
-    fetch('/api/auth/status')
+    fetch('/api/auth/status', { credentials: 'same-origin' })
       .then((res) => res.json())
       .then((data: { enabled?: unknown; allowEdit?: unknown; hosted?: unknown }) => {
         if (!active) return;
@@ -47,7 +47,7 @@ export function useAuth() {
       .catch(() => {
         if (active) setHostedLoaded(true);
       });
-    fetch('/api/auth/session')
+    fetch('/api/auth/session', { credentials: 'same-origin' })
       .then((res) => res.json())
       .then((data: { authenticated?: unknown; uid?: unknown }) => {
         if (!active) return;
@@ -71,7 +71,7 @@ export function useAuth() {
   const login = useCallback(
     async (password: string, remember: boolean): Promise<LoginResult> => {
       try {
-        const res = await fetch('/api/auth/verify', {
+        const res = await fetch('/api/auth/verify', { credentials: 'same-origin',
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password }),
@@ -103,6 +103,7 @@ export function useAuth() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
+        credentials: 'same-origin',
       });
       const data: { ok?: unknown; error?: unknown } = await res.json().catch(() => ({}));
       if (res.ok && data.ok === true) {
@@ -119,7 +120,7 @@ export function useAuth() {
     clearStoredSession();
     setBAuthenticated(false);
     try {
-      const res = await fetch('/api/auth/session', { method: 'DELETE' });
+      const res = await fetch('/api/auth/session', { method: 'DELETE', credentials: 'same-origin' });
       // Reflect only after the server confirms (the rule this hook cites).
       if (res.ok) {
         setFirebaseAuthenticated(false);

@@ -233,7 +233,7 @@ export default function DashboardView() {
     let active = true;
     async function loadShowcase() {
       try {
-        const res = await fetch('/api/portfolio/showcase');
+        const res = await fetch('/api/portfolio/showcase', { credentials: 'same-origin' });
         if (!active) return;
         const page = res.ok ? parseShowcasePage(await res.json()) : null;
         if (!active) return;
@@ -268,7 +268,7 @@ export default function DashboardView() {
     setLoadingMore(true);
     setShowcaseError(null);
     try {
-      const res = await fetch(`/api/portfolio/showcase?page=${targetPage}`);
+      const res = await fetch(`/api/portfolio/showcase?page=${targetPage}`, { credentials: 'same-origin' });
       const page = res.ok ? parseShowcasePage(await res.json()) : null;
       if (epoch !== feedEpochRef.current) return;
       if (page === null) {
@@ -406,7 +406,7 @@ export default function DashboardView() {
       // Write model (5e-f): fetch a FRESH doc — never PATCH a stale
       // mount-time one — apply the pure patch, PUT, reflect only the
       // confirmed result.
-      const freshRes = await fetch('/api/portfolio?full=1');
+      const freshRes = await fetch('/api/portfolio?full=1', { credentials: 'same-origin' });
       if (!freshRes.ok) {
         setSaveError('Could not save settings — try again.');
         return;
@@ -430,7 +430,7 @@ export default function DashboardView() {
         setSaveError('That link is not valid — pick another one.');
         return;
       }
-      const res = await fetch('/api/portfolio', {
+      const res = await fetch('/api/portfolio', { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patched),
@@ -489,7 +489,7 @@ export default function DashboardView() {
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch('/api/portfolio', { method: 'DELETE' });
+      const res = await fetch('/api/portfolio', { credentials: 'same-origin', method: 'DELETE' });
       if (!res.ok) {
         setDeleteError(
           res.status === 401
@@ -528,7 +528,7 @@ export default function DashboardView() {
     setExporting(true);
     setContentError(null);
     try {
-      const res = await fetch('/api/portfolio?full=1');
+      const res = await fetch('/api/portfolio?full=1', { credentials: 'same-origin' });
       if (!res.ok) {
         setContentError('Export failed — try again.');
         return;
@@ -584,7 +584,7 @@ export default function DashboardView() {
     setImporting(true);
     setContentError(null);
     try {
-      const res = await fetch('/api/portfolio/import', {
+      const res = await fetch('/api/portfolio/import', { credentials: 'same-origin',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(importStash.doc),

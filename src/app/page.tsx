@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import PortfolioView from '@/components/PortfolioView';
 import { isHosted } from '@/lib/hosted/isHosted';
@@ -19,7 +20,13 @@ export default async function Home({
 }) {
   if (isHosted()) {
     const params = await searchParams;
-    if (params.edit !== 'true') redirect('/dashboard');
+    const urlWantsEdit = params.edit === 'true';
+    // Persisted edit intent (client sets `portfolio-edit-mode=1` on entering edit;
+    // server reads it so a reload at `/` after `?edit=true` doesn't bounce to
+    // dashboard before the client can restore `?edit=true` from sessionStorage).
+    // Product B never sets this cookie, so no effect there.
+    const cookieWantsEdit = (await cookies()).get('portfolio-edit-mode')?.value === '1';
+    if (!urlWantsEdit && !cookieWantsEdit) redirect('/dashboard');
   }
 
   return (
