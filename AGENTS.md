@@ -688,6 +688,7 @@ Build Phase 6 in a FRESH session (this run's lesson).
   PER ROW only; the user wants a globally fixed/equal card height
   option across all rows for a cleaner look. Applies to single-column
   entry lists too.
+- **Design DRY — blog/grid copy-paste (noted 2026-09-02):** 4 designs per block (default/cutie/editorial/riso) still duplicate `postHref`/`openPostHandler` wiring and card/blog markup across `designs/blog/*` + `designs/grid/*` (the `?post=` hosted shareable change touched 8 files). Refactor to shared skeleton + per-design decoration layer like `MarqueeHalves` — one skeleton, 4 thin skins. Deferred: works, just noisy to maintain.
 - **Accessibility:** editor UI audit (screen reader labels; the motion
   system is already a11y-aware), broader keyboard navigation.
 - **UI/UX polish:** popover enter/exit animations (IconPicker),
