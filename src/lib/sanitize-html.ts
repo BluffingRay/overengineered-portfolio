@@ -123,6 +123,15 @@ function filterStyleValue(attrValue: string, policy: StylePolicy): string | null
     const value = decl.slice(idx + 1).trim();
     if (policy === 'rich' && !ALLOWED_STYLE_PROPERTIES.has(prop)) continue;
     if (!value || DANGEROUS_CSS_VALUE.test(value)) continue;
+    // Hosted multi-tenant: custom_html is still user-controlled, so block
+    // viewport-escaping overlays even though the author is scoped.
+    if (policy === 'custom') {
+      if (prop === 'position' && /\bfixed\b/i.test(value)) continue;
+      if (prop === 'z-index') {
+        const zi = parseInt(value, 10);
+        if (!isNaN(zi) && zi > 100) continue;
+      }
+    }
     kept.push(decl); // raw text — no reformatting
   }
   if (kept.length === 0) return null; // drop the attribute entirely
@@ -284,6 +293,43 @@ function scopeSelectorList(selector: string, scope: string): string {
     .join(', ');
 }
 
+function filterCustomBlockDeclarations(decls: string): string {
+  // Filter position:fixed and z-index > 100 for hosted multi-tenant
+  // Keep comments intact, drop only the declaration.
+  // Split by ';' but keep comments separate — comments contain no ':'
+  const parts = decls.split(';');
+  const kept: string[] = [];
+  for (const raw of parts) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      // Could be whitespace or comment-only chunk — keep comments
+      if (raw.includes('/*')) kept.push(raw);
+      continue;
+    }
+    // If it's a comment, keep it
+    if (trimmed.startsWith('/*')) {
+      kept.push(raw);
+      continue;
+    }
+    const idx = raw.indexOf(':');
+    if (idx < 1) {
+      // Malformed or not a declaration — keep conservatively
+      kept.push(raw);
+      continue;
+    }
+    const prop = raw.slice(0, idx).trim().toLowerCase();
+    const value = raw.slice(idx + 1).trim();
+    if (prop === 'position' && /\bfixed\b/i.test(value)) continue;
+    if (prop === 'z-index') {
+      const zi = parseInt(value, 10);
+      if (!isNaN(zi) && zi > 100) continue;
+    }
+    if (DANGEROUS_CSS_VALUE.test(value)) continue;
+    kept.push(raw);
+  }
+  return kept.join(';');
+}
+
 export function scopeCss(css: string, scope: string): string {
   let result = '';
   let i = 0;
@@ -356,6 +402,7 @@ export function scopeCss(css: string, scope: string): string {
         result += before + '{' + inner + '}';
       } else {
         const scoped = scopeSelectorList(trimmedWithoutComments, scope);
+        const filteredInner = filterCustomBlockDeclarations(inner);
         // Preserve leading ws + comments, then scoped selector
         const leadingWs = before.match(/^\s*/)?.[0] ?? '';
         const commentsPart = comments.length ? comments.join(' ') + ' ' : '';
@@ -366,11 +413,11 @@ export function scopeCss(css: string, scope: string): string {
         // If there were comments, they already occupy the space before the selector,
         // so we reconstruct as: leadingWs + commentsPart + scoped + trailingWs
         if (comments.length) {
-          result += leadingWs + commentsPart + scoped + trailingWs + '{' + inner + '}';
+          result += leadingWs + commentsPart + scoped + trailingWs + '{' + filteredInner + '}';
         } else {
           const wsBefore = before.slice(0, before.indexOf(trimmed));
           const wsAfter = before.slice(wsBefore.length + trimmed.length);
-          result += wsBefore + scoped + wsAfter + '{' + inner + '}';
+          result += wsBefore + scoped + wsAfter + '{' + filteredInner + '}';
         }
       }
     }

@@ -46,7 +46,7 @@ export default function CustomHtmlBlock({ block }: Props) {
   return (
     <section
       id={`custom-html-${block.id}`}
-      className={`${WIDTH_CLASSES[block.width ?? 'narrow']} space-y-4 [&_a]:underline [&_strong]:font-semibold`}
+      className={`${WIDTH_CLASSES[block.width ?? 'narrow']} relative isolate space-y-4 [&_a]:underline [&_strong]:font-semibold`}
       onClick={handleClick}
       dangerouslySetInnerHTML={{ __html: html }}
     />
