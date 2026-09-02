@@ -25,13 +25,18 @@ import type { PortfolioData } from '@/types/schema';
  *                colspan/rowspan)
  * - Text align:  text-align inside style on headings/paragraphs
  *
+ * custom_html is the exception: it allows native <style> blocks and any
+ * inline CSS property (still blocking url()/expression()/@import etc.) so
+ * authors can ship their own CSS. Rich text posts keep the strict
+ * property allowlist and forbid <style> entirely.
+ *
  * DOMPurify does NOT filter CSS properties itself (a raw `style` attr
  * would let `position:fixed` through), so a module-level
- * `uponSanitizeAttribute` hook filters `style` declarations to the
- * properties TipTap emits and rejects `url()`/`expression()` values.
- * The hook is idempotent for concurrent sanitize calls (it only
- * rewrites the pending attribute payload), and this module is the
- * single place that configures DOMPurify — do not add hooks elsewhere.
+ * `uponSanitizeAttribute` hook filters `style` declarations per policy
+ * (rich = allowlist, custom = any prop but dangerous values blocked) and
+ * a `uponSanitizeElement` hook drops custom <style> blocks containing
+ * dangerous CSS. The hooks are idempotent and this module is the single
+ * place that configures DOMPurify — do not add hooks elsewhere.
  *
  * Product B (localStorage) intentionally does NOT sanitize on save —
  * own browser, own doc — but hosted reads (`GET /api/portfolio`,
@@ -151,6 +156,7 @@ const CUSTOM_EXTRA_TAGS = [
   'details', 'summary', 'dialog',
   'video', 'audio',
   'iframe',
+  'style',
   'caption',
   'font',
   'center',
@@ -190,12 +196,13 @@ function isAllowedEmbedUrl(raw: string): boolean {
 const CUSTOM_CONFIG: Config = {
   ...CONFIG,
   ALLOWED_TAGS: [...RICH_TEXT_TAGS, ...CUSTOM_EXTRA_TAGS],
-  // iframe moves from FORBID to ALLOWED here — but ONLY embed-host srcs
-  // survive (element hook). FORBID_TAGS wins over ALLOWED_TAGS, so the
+  // iframe + style move from FORBID to ALLOWED here — but ONLY embed-host srcs
+  // survive for iframe (element hook) and style content is still scanned for
+  // dangerous CSS values. FORBID_TAGS wins over ALLOWED_TAGS, so the
   // base list must be filtered, not just appended to.
-  FORBID_TAGS: CONFIG.FORBID_TAGS!.filter((tag) => tag !== 'iframe'),
+  FORBID_TAGS: CONFIG.FORBID_TAGS!.filter((tag) => tag !== 'iframe' && tag !== 'style'),
   // `class` survives for Tailwind utilities — classes can't execute
-  // (JIT ships only compiled utilities) and style tags are FORBIDden.
+  // (JIT ships only compiled utilities).
   ALLOWED_ATTR: [...RICH_TEXT_ATTRS, 'class', 'id', ...CUSTOM_EXTRA_ATTRS],
 };
 
@@ -212,13 +219,23 @@ function installHooks(): void {
       data.attrValue = filtered;
     }
   });
-  // Video-embed iframe scoping (custom_html only — rich text doesn't
-  // allow the iframe tag at all, so this hook is a no-op there).
-  // An iframe src outside the embed hosts gets the WHOLE element
-  // dropped via the documented hook-detach pattern (node.remove()):
-  // keeping a src-less iframe renders a dead box.
+  // custom_html element scoping (rich text doesn't allow these tags
+  // at all, so hooks are no-ops there):
+  // - iframe: ONLY embed-host srcs survive (else the whole element is dropped
+  //   via node.remove() — keeping a src-less iframe renders a dead box).
+  // - style: native CSS is allowed inside custom_html so authors can ship
+  //   their own <style> blocks, but dangerous CSS values (url()/expression/
+  //   @import etc.) still drop the whole block — inline `style=""` attrs are
+  //   already filtered declaration-by-declaration in the attribute hook.
   DOMPurify.addHook('uponSanitizeElement', (node, data) => {
     if (currentStylePolicy !== 'custom') return;
+    if (data.tagName === 'style') {
+      const css = (node as Element).textContent ?? '';
+      if (DANGEROUS_CSS_VALUE.test(css)) {
+        (node as Element).remove();
+      }
+      return;
+    }
     if (data.tagName !== 'iframe') return;
     const el = node as Element;
     const src = el.getAttribute('src') ?? '';
@@ -252,6 +269,11 @@ export function sanitizeRichHtml(html: string | undefined | null): string {
  * Sanitize custom_html blocks. Same allowlist as rich text — the block
  * exists to paste arbitrary *markup*, not to smuggle scripts. Scripts
  * pasted here today are silently dropped on save (and at hosted reads).
+ *
+ * Custom HTML is the ONE place where native CSS is first-class: authors
+ * can ship their own <style> blocks and richer inline styles (any property,
+ * still blocking url()/expression()/@import). <style> is forbidden in rich
+ * text but allowed here — with its content scanned for dangerous values.
  */
 export function sanitizeCustomHtml(html: string | undefined | null): string {
   installHooks();
@@ -259,7 +281,16 @@ export function sanitizeCustomHtml(html: string | undefined | null): string {
   // Wider CSS policy: any property, but url()/expression()/@import values
   // still blocked — pasted markup legitimately uses rich CSS.
   currentStylePolicy = 'custom';
-  const clean = DOMPurify.sanitize(html, CUSTOM_CONFIG) as unknown as string;
+  // DOMPurify's HTML-fragment parser drops a leading <style> (treated as
+  // <head> content). Wrapping in a div forces body-context parsing so the
+  // style block survives — we unwrap afterwards via the fragment DOM.
+  const wrapped = `<div>${html}</div>`;
+  const fragment = DOMPurify.sanitize(wrapped, {
+    ...CUSTOM_CONFIG,
+    RETURN_DOM_FRAGMENT: true,
+  } as unknown as Config) as unknown as DocumentFragment;
+  const wrapper = fragment.querySelector('div');
+  const clean = wrapper ? wrapper.innerHTML : '';
   currentStylePolicy = 'rich';
   return clean;
 }
