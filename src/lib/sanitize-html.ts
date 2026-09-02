@@ -251,6 +251,117 @@ export function isSafeUrl(value: string): boolean {
   return SAFE_URL.test(value.trim());
 }
 
+// ---------------------------------------------------------------------------
+// custom_html auto-scoping — keeps AI-generated <style> blocks from leaking
+// globally. Each custom_html block renders inside <div id="custom-html-…">
+// and its <style> selectors are prefixed with that id at sanitize + render
+// time, so `.card{}` becomes `#custom-html-abc .card{}`.
+// ---------------------------------------------------------------------------
+
+function scopeSelectorList(selector: string, scope: string): string {
+  return selector
+    .split(',')
+    .map((part) => {
+      const s = part.trim();
+      if (!s) return s;
+      if (s.startsWith(scope)) return s;
+      if (/^(from|to)$/i.test(s) || /^\d+%$/.test(s)) return s;
+      if (/^(html|body|:root)$/i.test(s)) return scope;
+      if (/^(html|body|:root)\b/i.test(s)) {
+        return s.replace(/^(html|body|:root)\b/i, scope);
+      }
+      return `${scope} ${s}`;
+    })
+    .join(', ');
+}
+
+export function scopeCss(css: string, scope: string): string {
+  let result = '';
+  let i = 0;
+  const len = css.length;
+  while (i < len) {
+    if (css.startsWith('/*', i)) {
+      const end = css.indexOf('*/', i + 2);
+      if (end === -1) {
+        result += css.slice(i);
+        break;
+      }
+      result += css.slice(i, end + 2);
+      i = end + 2;
+      continue;
+    }
+    const open = css.indexOf('{', i);
+    if (open === -1) {
+      result += css.slice(i);
+      break;
+    }
+    const before = css.slice(i, open);
+    const trimmed = before.trim();
+    let depth = 1;
+    let close = open + 1;
+    while (close < len && depth > 0) {
+      if (css.startsWith('/*', close)) {
+        const ce = css.indexOf('*/', close + 2);
+        if (ce === -1) break;
+        close = ce + 2;
+        continue;
+      }
+      const ch = css[close];
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+      close++;
+    }
+    const inner = css.slice(open + 1, close - 1);
+    if (!trimmed) {
+      result += before + '{' + inner + '}';
+    } else if (trimmed.startsWith('@')) {
+      const atName = trimmed.match(/^@([a-z-]+)/i)?.[1]?.toLowerCase() ?? '';
+      if (
+        atName === 'media' ||
+        atName === 'supports' ||
+        atName === 'container' ||
+        atName === 'layer'
+      ) {
+        const scopedInner = scopeCss(inner, scope);
+        result += before + '{' + scopedInner + '}';
+      } else if (
+        atName === 'keyframes' ||
+        atName === '-webkit-keyframes' ||
+        atName === '-moz-keyframes'
+      ) {
+        result += before + '{' + inner + '}';
+      } else if (['font-face', 'import', 'charset', 'namespace'].includes(atName)) {
+        result += before + '{' + inner + '}';
+      } else {
+        const scopedInner = scopeCss(inner, scope);
+        result += before + '{' + scopedInner + '}';
+      }
+    } else {
+      const scoped = scopeSelectorList(trimmed, scope);
+      const wsBefore = before.slice(0, before.indexOf(trimmed));
+      // const wsAfter = before.slice(before.indexOf(trimmed) + trimmed.length);
+      // Preserve original whitespace around selector by keeping wsBefore and anything after trimmed (usually ws)
+      const wsAfter = before.slice(wsBefore.length + trimmed.length);
+      result += wsBefore + scoped + wsAfter + '{' + inner + '}';
+    }
+    i = close;
+  }
+  return result;
+}
+
+export function scopeCustomHtml(html: string, blockId: string): string {
+  if (!blockId) return html;
+  const scope = `#custom-html-${blockId}`;
+  // Already scoped? Avoid double-prefix.
+  // We check if the HTML already contains the scope string — cheap idempotency guard.
+  // A full CSS parse would be overkill; the sanitizer path is single-pass.
+  return html.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, css) => {
+    if (css.includes(scope)) return match;
+    const scoped = scopeCss(css, scope);
+    return `<style${attrs}>${scoped}</style>`;
+  });
+}
+
 /**
  * Sanitize editor-authored rich HTML (rich_text.content, posts[].content).
  * Returns the cleaned HTML, or '<p></p>' for empty input so every
@@ -274,8 +385,14 @@ export function sanitizeRichHtml(html: string | undefined | null): string {
  * can ship their own <style> blocks and richer inline styles (any property,
  * still blocking url()/expression()/@import). <style> is forbidden in rich
  * text but allowed here — with its content scanned for dangerous values.
+ * When a blockId is supplied, <style> selectors are auto-scoped to
+ * `#custom-html-${blockId}` so AI-generated generic CSS (e.g. `.card{}`)
+ * never leaks globally.
  */
-export function sanitizeCustomHtml(html: string | undefined | null): string {
+export function sanitizeCustomHtml(
+  html: string | undefined | null,
+  blockId?: string,
+): string {
   installHooks();
   if (typeof html !== 'string' || html.trim() === '') return '';
   // Wider CSS policy: any property, but url()/expression()/@import values
@@ -290,8 +407,9 @@ export function sanitizeCustomHtml(html: string | undefined | null): string {
     RETURN_DOM_FRAGMENT: true,
   } as unknown as Config) as unknown as DocumentFragment;
   const wrapper = fragment.querySelector('div');
-  const clean = wrapper ? wrapper.innerHTML : '';
+  let clean = wrapper ? wrapper.innerHTML : '';
   currentStylePolicy = 'rich';
+  if (blockId) clean = scopeCustomHtml(clean, blockId);
   return clean;
 }
 
@@ -308,7 +426,7 @@ export function sanitizePortfolioDocument(doc: PortfolioData): PortfolioData {
       if (block.type === 'rich_text') {
         block.content = sanitizeRichHtml(block.content);
       } else if (block.type === 'custom_html') {
-        block.html = sanitizeCustomHtml(block.html);
+        block.html = sanitizeCustomHtml(block.html, block.id);
       } else if (block.type === 'featured_hero') {
         // ctaHref is required by the schema but renderers treat '' as
         // "no CTA" — neutralize unsafe values to '' instead of deleting.
