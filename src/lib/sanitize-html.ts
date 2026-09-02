@@ -157,15 +157,21 @@ const CUSTOM_EXTRA_TAGS = [
   'video', 'audio',
   'iframe',
   'style',
+  'button',
   'caption',
   'font',
   'center',
 ];
 
-/** Presentation attrs for native video/audio/source + iframe geometry. */
+/** Presentation attrs for native video/audio/source + iframe geometry + harmless interactivity. */
 const CUSTOM_EXTRA_ATTRS = [
   'controls', 'poster', 'preload', 'autoplay', 'muted', 'loop', 'playsinline',
   'allow', 'allowfullscreen', 'referrerpolicy',
+  // CSS-only interactivity (checkbox hack, details, a11y) — never `on*`
+  'for', 'tabindex', 'role', 'open', 'hidden', 'name', 'value', 'placeholder',
+  'aria-hidden', 'aria-label', 'aria-expanded', 'aria-controls',
+  // declarative copy hook (our JS handles `[data-copy]`, no inline JS)
+  'data-copy', 'data-orig',
 ];
 
 /**
@@ -201,9 +207,12 @@ const CUSTOM_CONFIG: Config = {
   // dangerous CSS values. FORBID_TAGS wins over ALLOWED_TAGS, so the
   // base list must be filtered, not just appended to.
   FORBID_TAGS: CONFIG.FORBID_TAGS!.filter((tag) => tag !== 'iframe' && tag !== 'style'),
-  // `class` survives for Tailwind utilities — classes can't execute
-  // (JIT ships only compiled utilities).
+  // `class`/`id` survive for Tailwind / scoping; `for` etc. for CSS-only flip.
   ALLOWED_ATTR: [...RICH_TEXT_ATTRS, 'class', 'id', ...CUSTOM_EXTRA_ATTRS],
+  // custom_html is the fun one — allow any data-* / aria-* for declarative
+  // hooks (e.g. data-copy) without allowing on* handlers.
+  ALLOW_DATA_ATTR: true,
+  ALLOW_ARIA_ATTR: true,
 };
 
 let hooksInstalled = false;
@@ -337,12 +346,33 @@ export function scopeCss(css: string, scope: string): string {
         result += before + '{' + scopedInner + '}';
       }
     } else {
-      const scoped = scopeSelectorList(trimmed, scope);
-      const wsBefore = before.slice(0, before.indexOf(trimmed));
-      // const wsAfter = before.slice(before.indexOf(trimmed) + trimmed.length);
-      // Preserve original whitespace around selector by keeping wsBefore and anything after trimmed (usually ws)
-      const wsAfter = before.slice(wsBefore.length + trimmed.length);
-      result += wsBefore + scoped + wsAfter + '{' + inner + '}';
+      // `before` may be "  /* comment */\n  .card " — trim includes the comment.
+      // Strip comments for selector detection, keep them verbatim in output.
+      const comments = before.match(/\/\*[\s\S]*?\*\//g) || [];
+      const beforeWithoutComments = before.replace(/\/\*[\s\S]*?\*\//g, '');
+      const trimmedWithoutComments = beforeWithoutComments.trim();
+      if (!trimmedWithoutComments) {
+        // Only comments/whitespace before the brace — keep as-is
+        result += before + '{' + inner + '}';
+      } else {
+        const scoped = scopeSelectorList(trimmedWithoutComments, scope);
+        // Preserve leading ws + comments, then scoped selector
+        const leadingWs = before.match(/^\s*/)?.[0] ?? '';
+        const commentsPart = comments.length ? comments.join(' ') + ' ' : '';
+        // Keep trailing whitespace that was after the selector in `before`
+        const trailingWs = beforeWithoutComments.slice(
+          beforeWithoutComments.indexOf(trimmedWithoutComments) + trimmedWithoutComments.length,
+        );
+        // If there were comments, they already occupy the space before the selector,
+        // so we reconstruct as: leadingWs + commentsPart + scoped + trailingWs
+        if (comments.length) {
+          result += leadingWs + commentsPart + scoped + trailingWs + '{' + inner + '}';
+        } else {
+          const wsBefore = before.slice(0, before.indexOf(trimmed));
+          const wsAfter = before.slice(wsBefore.length + trimmed.length);
+          result += wsBefore + scoped + wsAfter + '{' + inner + '}';
+        }
+      }
     }
     i = close;
   }
