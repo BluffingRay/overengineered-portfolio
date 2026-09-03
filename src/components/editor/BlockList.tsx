@@ -23,7 +23,6 @@ import { useBlockMutations } from '@/hooks/useBlockMutations';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import {
   BLOCK_LABELS,
-  BlockWidthPicker,
   SPACING_GLYPHS,
   SPACING_LABELS,
   createDefaultApp,
@@ -38,6 +37,7 @@ import MarqueeForm from './blocks/MarqueeForm';
 import EntryListForm from './blocks/EntryListForm';
 import BlogForm from './blocks/BlogForm';
 import RichTextForm from './RichTextForm';
+import CustomHtmlForm from './blocks/CustomHtmlForm';
 
 interface Props {
   activeTabId: string;
@@ -141,22 +141,10 @@ export default function BlockList({ activeTabId }: Props) {
         );
       case 'custom_html':
         return (
-          <div className="space-y-1.5">
-            <BlockWidthPicker
-              value={block.width}
-              onChange={(width) => updateBlock(block.id, { width })}
-            />
-            <textarea
-              value={block.html}
-              onChange={(event) =>
-                updateBlock(block.id, { html: event.target.value })
-              }
-              rows={4}
-              spellCheck={false}
-              aria-label="Custom HTML source"
-              className="w-full resize-y rounded-skin border border-[var(--border)] bg-background px-2 py-1 font-mono text-xs leading-relaxed"
-            />
-          </div>
+          <CustomHtmlForm
+            block={block}
+            patch={(p) => updateBlock(block.id, p)}
+          />
         );
     }
   }
