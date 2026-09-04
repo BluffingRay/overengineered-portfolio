@@ -1,13 +1,19 @@
 import type { StatusColor } from '@/types/schema';
-import SocialIcon from '@/components/ui/SocialIcon';
+import ManagedImage from '@/components/ui/ManagedImage';
 import {
   MEDIA_FRAME_CLASSES,
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
-  HeroPlaceholder,
   useHeroLayout,
   heroMediaPlacementClass,
+  BrowserDots,
+  HeroPrimaryCta,
+  HeroSecondaryCta,
+  HeroSocials,
+  shouldShowSocials,
+  heroMediaNode,
+  splitGridClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 
@@ -72,15 +78,12 @@ function CutieMedia({
             aria-hidden="true"
             className="flex items-center gap-1.5 border-b border-[var(--border)] bg-surface px-3 py-1.5"
           >
-            <span className="h-2 w-2 rounded-full bg-red-400" />
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
-            <span className="h-2 w-2 rounded-full bg-green-400" />
+            <BrowserDots />
           </div>
         )}
-        <img
+        <ManagedImage
           src={block.thumbnail}
-          alt=""
-          decoding="async"
+          loading="eager"
           fetchPriority="high"
           className="min-h-0 w-full flex-1 object-cover"
         />
@@ -100,30 +103,19 @@ export default function CutieHero({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
+  const { effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
     useHeroLayout(block);
-  const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
+  const showSocials = shouldShowSocials(block.showSocials, socials);
   const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
-  const media =
-    effectiveLayout === 'banner' ? (
-      block.thumbnail ? (
-        <img
-          src={block.thumbnail}
-          alt=""
-          decoding="async"
-          fetchPriority="high"
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
-        />
-      ) : null
-    ) : block.thumbnail ? (
-      <CutieMedia block={block} className={placementClass} />
-    ) : showMediaPlaceholder ? (
-      <HeroPlaceholder
-        size={block.mediaSize ?? 'md'}
-        ratio={block.mediaRatio ?? 'square'}
-        className={placementClass}
-      />
-    ) : null;
+  const media = heroMediaNode({
+    block,
+    isBanner: effectiveLayout === 'banner',
+    placementClass,
+    showPlaceholder: showMediaPlaceholder,
+    renderMedia: (placement) => <CutieMedia block={block} className={placement} />,
+    placeholderSize: block.mediaSize ?? 'md',
+    placeholderRatio: block.mediaRatio ?? 'square',
+  });
 
   const isCentered = effectiveLayout === 'centered';
   const isSplit = effectiveLayout === 'split';
@@ -133,7 +125,7 @@ export default function CutieHero({
     <section
       className={`dsn-cutie relative isolate ${
         isSplit
-          ? `grid items-center gap-6 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`
+          ? `grid items-center gap-6 ${splitGridClass(splitLeft)} md:gap-10`
           : isBanner
             ? 'relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-skin'
             : 'mx-auto flex max-w-2xl flex-col items-center py-8 text-center'
@@ -245,59 +237,26 @@ export default function CutieHero({
         <div
           className={`flex flex-wrap items-center gap-3 ${isCentered || isBanner ? 'justify-center' : ''} ${isSplit ? 'justify-start' : ''} pt-2`}
         >
-          <a
+          <HeroPrimaryCta
             href={block.ctaHref}
-            onClick={(event) => {
-              if (onNavigate?.(block.ctaHref)) event.preventDefault();
-            }}
+            onNavigate={onNavigate}
             className="cutie-btn rounded-full bg-accent px-6 py-2 text-sm font-bold text-background"
           >
             {block.ctaLabel} ♡
-          </a>
-          {secondary && secondary.label && (
-            <a
-              href={secondary.url}
-              target={secondary.target === '_blank' ? '_blank' : undefined}
-              rel={
-                secondary.target === '_blank' ? 'noreferrer noopener' : undefined
-              }
-              onClick={(event) => {
-                if (
-                  secondary.target !== '_blank' &&
-                  onNavigate?.(secondary.url)
-                ) {
-                  event.preventDefault();
-                }
-              }}
-              className="cutie-btn rounded-full border-2 border-accent/40 px-5 py-1.5 text-sm font-semibold text-accent"
-            >
-              {secondary.label}
-            </a>
-          )}
+          </HeroPrimaryCta>
+          <HeroSecondaryCta
+            action={secondary ?? undefined}
+            onNavigate={onNavigate}
+            className="cutie-btn rounded-full border-2 border-accent/40 px-5 py-1.5 text-sm font-semibold text-accent"
+          />
         </div>
 
         {showSocials && (
-          <ul
-            className={`flex flex-wrap items-center gap-2 pt-2 ${isCentered || isBanner ? 'justify-center' : ''}`}
-            aria-label="Social links"
-          >
-            {socials!.map((link) => (
-              <li key={link.id}>
-                <a
-                  href={link.url}
-                  title={link.label ?? link.platform}
-                  aria-label={link.label ?? link.platform}
-                  target={
-                    link.url.startsWith('mailto:') ? undefined : '_blank'
-                  }
-                  rel="noreferrer noopener"
-                  className="cutie-btn flex h-9 w-9 items-center justify-center rounded-full border border-current/15 bg-surface p-2 text-current opacity-70 hover:text-accent hover:opacity-100"
-                >
-                  <SocialIcon link={link} />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <HeroSocials
+            socials={socials!}
+            ulClassName={`flex flex-wrap items-center gap-2 pt-2 ${isCentered || isBanner ? 'justify-center' : ''}`}
+            linkClassName="cutie-btn flex h-9 w-9 items-center justify-center rounded-full border border-current/15 bg-surface p-2 text-current opacity-70 hover:text-accent hover:opacity-100"
+          />
         )}
       </div>
 

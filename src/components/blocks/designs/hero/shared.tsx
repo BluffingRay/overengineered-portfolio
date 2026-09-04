@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import type { ReactNode } from 'react';
 import ManagedImage from '@/components/ui/ManagedImage';
+import SocialIcon from '@/components/ui/SocialIcon';
 import { useIsDesktopWidth } from '@/hooks/useIsDesktopWidth';
 import type {
   FeaturedHeroBlock as FeaturedHeroBlockData,
@@ -9,8 +11,10 @@ import type {
   HeroMediaRadius,
   HeroMediaRatio,
   HeroMediaSize,
+  HeroSecondaryAction,
   ImageAlignment,
   HeroLayout,
+  SocialLink,
   StatusColor,
 } from '@/types/schema';
 
@@ -62,6 +66,7 @@ export function HeroPlaceholder({
     <div
       className={`relative flex flex-col overflow-hidden ${MEDIA_SIZE_CLASSES[size]} ${MEDIA_RATIO_CLASSES[ratio]} rounded-skin ${className ?? ''}`}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/placeholder.svg"
         alt="No image"
@@ -120,6 +125,8 @@ export function HeroMedia({
       frameClass={frameClass}
       className={className}
       placeholderLabel="No image"
+      loading="eager"
+      fetchPriority="high"
     />
   );
 }
@@ -280,7 +287,6 @@ export function TypewriterRoles({ roles }: { roles: string[] }) {
 }
 
 export const NAME_MIN_PX = 26;
-
 /**
  * Shrinks the name until it occupies exactly one line, re-fitting on
  * container resizes. Font-agnostic (serif/geist/whatever the skin uses)
@@ -319,4 +325,196 @@ export function useFitOneLine(
       el.style.fontSize = '';
     };
   }, [ref, text, enabled]);
+}
+
+/* Hero primitives — logic-identical parts extracted from the 4 designs
+   (see docs/specs/hero-skeleton.md). Classes/markup stay per-design;
+   these own ONLY the shared behavior so a new hero gets it for free.
+   Additive only — every existing export above is untouched. */
+
+/** Banner backdrop image. Default hides on error; others don't (preserved via prop). */
+export function HeroBannerBackdrop({
+  src,
+  hideOnError,
+}: {
+  src: string;
+  hideOnError?: boolean;
+}) {
+  return (
+    // Raw img: custom error-hide behavior (ManagedImage shows a
+    // fallback instead) + eager LCP. next/image can't take over:
+    // CMS thumbnails are arbitrary remote URLs.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      decoding="async"
+      fetchPriority="high"
+      className="absolute inset-0 -z-10 h-full w-full object-cover"
+      onError={
+        hideOnError
+          ? (e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+/** Primary CTA — tab-navigation intercept is identical in all 4 heroes. */
+export function HeroPrimaryCta({
+  href,
+  onNavigate,
+  className,
+  children,
+}: {
+  href: string;
+  onNavigate?: (href: string) => boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        if (onNavigate?.(href)) event.preventDefault();
+      }}
+      className={className}
+    >
+      {children}
+    </a>
+  );
+}
+
+/** Secondary action — renders nothing without a label; `_blank` never intercepts. */
+export function HeroSecondaryCta({
+  action,
+  onNavigate,
+  className,
+  children,
+}: {
+  action?: HeroSecondaryAction;
+  onNavigate?: (href: string) => boolean;
+  className?: string;
+  children?: ReactNode;
+}) {
+  if (!action?.label) return null;
+  return (
+    <a
+      href={action.url}
+      target={action.target === '_blank' ? '_blank' : undefined}
+      rel={action.target === '_blank' ? 'noreferrer noopener' : undefined}
+      onClick={(event) => {
+        if (action.target !== '_blank' && onNavigate?.(action.url)) {
+          event.preventDefault();
+        }
+      }}
+      className={className}
+    >
+      {children ?? action.label}
+    </a>
+  );
+}
+
+export function shouldShowSocials(
+  showSocials: boolean | undefined,
+  socials?: SocialLink[],
+): boolean {
+  return showSocials === true && (socials?.length ?? 0) > 0;
+}
+
+/**
+ * Socials row — mailto/target/rel/title wiring identical everywhere.
+ * Content differs by design: icon (default/cutie/riso) vs text (editorial).
+ */
+export function HeroSocials({
+  socials,
+  ulClassName,
+  linkClassName,
+  renderContent,
+}: {
+  socials: SocialLink[];
+  ulClassName?: string;
+  linkClassName?: string;
+  renderContent?: (link: SocialLink) => ReactNode;
+}) {
+  return (
+    <ul className={ulClassName} aria-label="Social links">
+      {socials.map((link) => (
+        <li key={link.id}>
+          <a
+            href={link.url}
+            title={link.label ?? link.platform}
+            aria-label={link.label ?? link.platform}
+            target={link.url.startsWith('mailto:') ? undefined : '_blank'}
+            rel="noreferrer noopener"
+            className={linkClassName}
+          >
+            {renderContent ? renderContent(link) : <SocialIcon link={link} />}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The 3-dot window-chrome dots; callers keep their own bar wrapper. */
+export function BrowserDots() {
+  return (
+    <>
+      <span className="h-2 w-2 rounded-full bg-red-400" />
+      <span className="h-2 w-2 rounded-full bg-amber-400" />
+      <span className="h-2 w-2 rounded-full bg-green-400" />
+    </>
+  );
+}
+
+/** Split-grid column pair — same strings in all 4 heroes. */
+export function splitGridClass(splitLeft: boolean): string {
+  return splitLeft
+    ? 'md:grid-cols-[auto_minmax(0,1fr)]'
+    : 'md:grid-cols-[minmax(0,1fr)_auto]';
+}
+
+/**
+ * The media branch shape shared by all heroes:
+ * banner ? backdrop : thumbnail ? DesignMedia : placeholder ? slot : null.
+ * Per-design media defaults ride along as args (they intentionally differ).
+ */
+export function heroMediaNode({
+  block,
+  isBanner,
+  placementClass,
+  showPlaceholder,
+  renderMedia,
+  placeholderSize = 'md',
+  placeholderRatio = 'square',
+  bannerHideOnError,
+}: {
+  block: FeaturedHeroBlockData;
+  isBanner: boolean;
+  placementClass?: string;
+  showPlaceholder?: boolean;
+  renderMedia: (placement?: string) => ReactNode;
+  placeholderSize?: HeroMediaSize;
+  placeholderRatio?: HeroMediaRatio;
+  bannerHideOnError?: boolean;
+}): ReactNode {
+  if (isBanner) {
+    return block.thumbnail ? (
+      <HeroBannerBackdrop src={block.thumbnail} hideOnError={bannerHideOnError} />
+    ) : null;
+  }
+  if (block.thumbnail) return <>{renderMedia(placementClass)}</>;
+  if (showPlaceholder) {
+    return (
+      <HeroPlaceholder
+        size={placeholderSize}
+        ratio={placeholderRatio}
+        className={placementClass}
+      />
+    );
+  }
+  return null;
 }

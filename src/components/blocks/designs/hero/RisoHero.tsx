@@ -1,13 +1,19 @@
 import type { StatusColor } from '@/types/schema';
-import SocialIcon from '@/components/ui/SocialIcon';
+import ManagedImage from '@/components/ui/ManagedImage';
 import {
   MEDIA_FRAME_CLASSES,
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
-  HeroPlaceholder,
   useHeroLayout,
   heroMediaPlacementClass,
+  BrowserDots,
+  HeroPrimaryCta,
+  HeroSecondaryCta,
+  HeroSocials,
+  shouldShowSocials,
+  heroMediaNode,
+  splitGridClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 
@@ -57,16 +63,13 @@ function RisoMedia({
           aria-hidden="true"
           className="mb-2 flex items-center gap-1.5 border-b-2 border-current bg-surface px-3 py-1.5"
         >
-          <span className="h-2 w-2 rounded-full bg-red-400" />
-          <span className="h-2 w-2 rounded-full bg-amber-400" />
-          <span className="h-2 w-2 rounded-full bg-green-400" />
+          <BrowserDots />
         </div>
       )}
       <div className={`relative overflow-hidden ${MEDIA_RATIO_CLASSES[ratio]} ${effectiveRadius}`}>
-        <img
+        <ManagedImage
           src={block.thumbnail}
-          alt=""
-          decoding="async"
+          loading="eager"
           fetchPriority="high"
           className="riso-duotone h-full w-full object-cover"
         />
@@ -87,33 +90,22 @@ function RisoMedia({
  * to a side, banner as a veil behind the ink.
  */
 export default function RisoHero({ block, socials, onNavigate, showMediaPlaceholder }: HeroDesignProps) {
-  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, isBanner, isSplit, isCentered, badge, roles, secondary } =
+  const { effectiveLayout, mobileMediaAtTop, splitLeft, isBanner, isSplit, isCentered, badge, roles, secondary } =
     useHeroLayout(block);
-  const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
+  const showSocials = shouldShowSocials(block.showSocials, socials);
   const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
   // Riso centered ignores mobileMediaAtTop (always mx-auto) but keep variable for isCentered branch
   const risoPlacement = isCentered ? 'mx-auto' : placementClass;
 
-  const media =
-    isBanner ? (
-      block.thumbnail ? (
-        <img
-          src={block.thumbnail}
-          alt=""
-          decoding="async"
-          fetchPriority="high"
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
-        />
-      ) : null
-    ) : block.thumbnail ? (
-      <RisoMedia block={block} className={risoPlacement} />
-    ) : showMediaPlaceholder ? (
-      <HeroPlaceholder
-        size={block.mediaSize ?? 'md'}
-        ratio={block.mediaRatio ?? 'landscape'}
-        className={risoPlacement}
-      />
-    ) : null;
+  const media = heroMediaNode({
+    block,
+    isBanner,
+    placementClass: risoPlacement,
+    showPlaceholder: showMediaPlaceholder,
+    renderMedia: (placement) => <RisoMedia block={block} className={placement} />,
+    placeholderSize: block.mediaSize ?? 'md',
+    placeholderRatio: block.mediaRatio ?? 'landscape',
+  });
 
   const copy = (
     <div className={isBanner ? 'relative z-10' : undefined}>
@@ -154,47 +146,26 @@ export default function RisoHero({ block, socials, onNavigate, showMediaPlacehol
       <p className="mt-3 max-w-lg font-mono text-sm leading-relaxed opacity-70">{block.subheading}</p>
 
       <div className="mt-7 flex flex-wrap items-center gap-4">
-        <a
+        <HeroPrimaryCta
           href={block.ctaHref}
-          onClick={(e) => {
-            if (onNavigate?.(block.ctaHref)) e.preventDefault();
-          }}
+          onNavigate={onNavigate}
           className="border-2 border-current bg-accent px-5 py-2 font-mono text-sm font-bold uppercase text-background shadow-[4px_4px_0_0_currentColor] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_currentColor] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
         >
           {block.ctaLabel} →
-        </a>
-        {secondary && secondary.label && (
-          <a
-            href={secondary.url}
-            target={secondary.target === '_blank' ? '_blank' : undefined}
-            rel={secondary.target === '_blank' ? 'noreferrer noopener' : undefined}
-            onClick={(e) => {
-              if (secondary.target !== '_blank' && onNavigate?.(secondary.url)) e.preventDefault();
-            }}
-            className="border-2 border-current px-4 py-[6px] font-mono text-sm font-bold uppercase shadow-[3px_3px_0_0_currentColor] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_currentColor] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-          >
-            {secondary.label}
-          </a>
-        )}
+        </HeroPrimaryCta>
+        <HeroSecondaryCta
+          action={secondary ?? undefined}
+          onNavigate={onNavigate}
+          className="border-2 border-current px-4 py-[6px] font-mono text-sm font-bold uppercase shadow-[3px_3px_0_0_currentColor] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_currentColor] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+        />
       </div>
 
       {showSocials && (
-        <ul className="mt-6 flex flex-wrap items-center gap-2" aria-label="Social links">
-          {socials!.map((link) => (
-            <li key={link.id}>
-              <a
-                href={link.url}
-                title={link.label ?? link.platform}
-                aria-label={link.label ?? link.platform}
-                target={link.url.startsWith('mailto:') ? undefined : '_blank'}
-                rel="noreferrer noopener"
-                className="flex h-8 w-8 items-center justify-center border-2 border-current bg-background p-1.5 shadow-[2px_2px_0_0_currentColor] hover:bg-accent hover:text-background active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-              >
-                <SocialIcon link={link} />
-              </a>
-            </li>
-          ))}
-        </ul>
+        <HeroSocials
+          socials={socials!}
+          ulClassName="mt-6 flex flex-wrap items-center gap-2"
+          linkClassName="flex h-8 w-8 items-center justify-center border-2 border-current bg-background p-1.5 shadow-[2px_2px_0_0_currentColor] hover:bg-accent hover:text-background active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+        />
       )}
     </div>
   );
@@ -214,7 +185,7 @@ export default function RisoHero({ block, socials, onNavigate, showMediaPlacehol
   if (isSplit) {
     return (
       <section
-        className={`dsn-riso relative isolate grid items-center gap-6 border-2 border-current p-6 sm:p-8 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:gap-10`}
+        className={`dsn-riso relative isolate grid items-center gap-6 border-2 border-current p-6 sm:p-8 ${splitGridClass(splitLeft)} md:gap-10`}
       >
         <div aria-hidden="true" className="riso-halftone pointer-events-none absolute -right-12 -top-12 h-64 w-64" />
         <div aria-hidden="true" className="riso-grain pointer-events-none absolute inset-0" />

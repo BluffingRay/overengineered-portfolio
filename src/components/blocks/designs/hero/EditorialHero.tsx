@@ -1,13 +1,19 @@
-import type { SocialLink } from '@/types/schema';
+import ManagedImage from '@/components/ui/ManagedImage';
 import {
   MEDIA_FRAME_CLASSES,
   MEDIA_RATIO_CLASSES,
   MEDIA_RADIUS_CLASSES,
   MEDIA_SIZE_CLASSES,
-  HeroPlaceholder,
   STATUS_STYLES,
   useHeroLayout,
   heroMediaPlacementClass,
+  BrowserDots,
+  HeroPrimaryCta,
+  HeroSecondaryCta,
+  HeroSocials,
+  shouldShowSocials,
+  heroMediaNode,
+  splitGridClass,
 } from './shared';
 import type { HeroDesignProps } from '../types';
 function EditorialMedia({
@@ -35,15 +41,12 @@ function EditorialMedia({
           aria-hidden="true"
           className="flex items-center gap-1.5 border-b border-[var(--border)] bg-surface px-3 py-1.5"
         >
-          <span className="h-2 w-2 rounded-full bg-red-400" />
-          <span className="h-2 w-2 rounded-full bg-amber-400" />
-          <span className="h-2 w-2 rounded-full bg-green-400" />
+          <BrowserDots />
         </div>
       )}
-      <img
+      <ManagedImage
         src={block.thumbnail}
-        alt=""
-        decoding="async"
+        loading="eager"
         fetchPriority="high"
         className="min-h-0 w-full flex-1 object-cover"
       />
@@ -63,32 +66,21 @@ export default function EditorialHero({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const { isDesktop, effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
+  const { effectiveLayout, mobileMediaAtTop, splitLeft, badge, roles, secondary } =
     useHeroLayout(block);
-  const showSocials = block.showSocials === true && (socials?.length ?? 0) > 0;
+  const showSocials = shouldShowSocials(block.showSocials, socials);
   const statusDot = STATUS_STYLES[badge?.color ?? 'green'].dot;
   const placementClass = heroMediaPlacementClass(effectiveLayout, mobileMediaAtTop, splitLeft);
 
-  const media =
-    effectiveLayout === 'banner' ? (
-      block.thumbnail ? (
-        <img
-          src={block.thumbnail}
-          alt=""
-          decoding="async"
-          fetchPriority="high"
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
-        />
-      ) : null
-    ) : block.thumbnail ? (
-      <EditorialMedia block={block} className={placementClass} />
-    ) : showMediaPlaceholder ? (
-      <HeroPlaceholder
-        size={block.mediaSize ?? 'md'}
-        ratio={block.mediaRatio ?? 'portrait'}
-        className={placementClass}
-      />
-    ) : null;
+  const media = heroMediaNode({
+    block,
+    isBanner: effectiveLayout === 'banner',
+    placementClass,
+    showPlaceholder: showMediaPlaceholder,
+    renderMedia: (placement) => <EditorialMedia block={block} className={placement} />,
+    placeholderSize: block.mediaSize ?? 'md',
+    placeholderRatio: block.mediaRatio ?? 'portrait',
+  });
 
   const isSplit = effectiveLayout === 'split';
   const isBanner = effectiveLayout === 'banner';
@@ -138,47 +130,27 @@ export default function EditorialHero({
             {block.subheading}
           </p>
           <nav className="mt-6 flex flex-wrap items-center gap-5" aria-label="Primary">
-            <a
+            <HeroPrimaryCta
               href={block.ctaHref}
-              onClick={(e) => {
-                if (onNavigate?.(block.ctaHref)) e.preventDefault();
-              }}
+              onNavigate={onNavigate}
               className="ed-serif inline-flex items-baseline gap-1.5 border-b border-accent pb-0.5 text-base italic hover:opacity-70"
             >
               {block.ctaLabel}
               <span aria-hidden="true">→</span>
-            </a>
-            {secondary && secondary.label && (
-              <a
-                href={secondary.url}
-                target={secondary.target === '_blank' ? '_blank' : undefined}
-                rel={secondary.target === '_blank' ? 'noreferrer noopener' : undefined}
-                onClick={(e) => {
-                  if (secondary.target !== '_blank' && onNavigate?.(secondary.url)) e.preventDefault();
-                }}
-                className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
-              >
-                {secondary.label}
-              </a>
-            )}
+            </HeroPrimaryCta>
+            <HeroSecondaryCta
+              action={secondary ?? undefined}
+              onNavigate={onNavigate}
+              className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
+            />
           </nav>
           {showSocials && (
-            <ul className="mt-6 flex flex-wrap gap-4 text-[11px] uppercase tracking-[0.2em]" aria-label="Social links">
-              {socials!.map((link: SocialLink) => (
-                <li key={link.id}>
-                  <a
-                    href={link.url}
-                    title={link.label ?? link.platform}
-                    aria-label={link.label ?? link.platform}
-                    target={link.url.startsWith('mailto:') ? undefined : '_blank'}
-                    rel="noreferrer noopener"
-                    className="opacity-50 hover:text-accent hover:opacity-100"
-                  >
-                    {link.label ?? link.platform}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <HeroSocials
+              socials={socials!}
+              ulClassName="mt-6 flex flex-wrap gap-4 text-[11px] uppercase tracking-[0.2em]"
+              linkClassName="opacity-50 hover:text-accent hover:opacity-100"
+              renderContent={(link) => link.label ?? link.platform}
+            />
           )}
         </header>
       </section>
@@ -188,7 +160,7 @@ export default function EditorialHero({
   if (isSplit) {
     return (
       <section
-        className={`dsn-editorial grid gap-10 ${splitLeft ? 'md:grid-cols-[auto_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'} md:items-end`}
+        className={`dsn-editorial grid gap-10 ${splitGridClass(splitLeft)} md:items-end`}
       >
         {/* copy */}
         <header className={`border-t-2 border-current pt-6 ${splitLeft ? 'md:order-1' : ''}`}>
@@ -224,47 +196,27 @@ export default function EditorialHero({
             {block.subheading}
           </p>
           <nav className="mt-7 flex flex-wrap items-center gap-5" aria-label="Primary">
-            <a
+            <HeroPrimaryCta
               href={block.ctaHref}
-              onClick={(e) => {
-                if (onNavigate?.(block.ctaHref)) e.preventDefault();
-              }}
+              onNavigate={onNavigate}
               className="ed-serif inline-flex items-baseline gap-1.5 border-b border-accent pb-0.5 text-base italic hover:opacity-70"
             >
               {block.ctaLabel}
               <span aria-hidden="true">→</span>
-            </a>
-            {secondary && secondary.label && (
-              <a
-                href={secondary.url}
-                target={secondary.target === '_blank' ? '_blank' : undefined}
-                rel={secondary.target === '_blank' ? 'noreferrer noopener' : undefined}
-                onClick={(e) => {
-                  if (secondary.target !== '_blank' && onNavigate?.(secondary.url)) e.preventDefault();
-                }}
-                className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
-              >
-                {secondary.label}
-              </a>
-            )}
+            </HeroPrimaryCta>
+            <HeroSecondaryCta
+              action={secondary ?? undefined}
+              onNavigate={onNavigate}
+              className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
+            />
           </nav>
           {showSocials && (
-            <ul className="mt-6 flex flex-wrap gap-4 text-[11px] uppercase tracking-[0.2em]" aria-label="Social links">
-              {socials!.map((link: SocialLink) => (
-                <li key={link.id}>
-                  <a
-                    href={link.url}
-                    title={link.label ?? link.platform}
-                    aria-label={link.label ?? link.platform}
-                    target={link.url.startsWith('mailto:') ? undefined : '_blank'}
-                    rel="noreferrer noopener"
-                    className="opacity-50 hover:text-accent hover:opacity-100"
-                  >
-                    {link.label ?? link.platform}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <HeroSocials
+              socials={socials!}
+              ulClassName="mt-6 flex flex-wrap gap-4 text-[11px] uppercase tracking-[0.2em]"
+              linkClassName="opacity-50 hover:text-accent hover:opacity-100"
+              renderContent={(link) => link.label ?? link.platform}
+            />
           )}
         </header>
         {media}
@@ -308,47 +260,27 @@ export default function EditorialHero({
           {block.subheading}
         </p>
         <nav className="mt-7 flex flex-wrap items-center justify-center gap-5" aria-label="Primary">
-          <a
+          <HeroPrimaryCta
             href={block.ctaHref}
-            onClick={(e) => {
-              if (onNavigate?.(block.ctaHref)) e.preventDefault();
-            }}
+            onNavigate={onNavigate}
             className="ed-serif inline-flex items-baseline gap-1.5 border-b border-accent pb-0.5 text-base italic hover:opacity-70"
           >
             {block.ctaLabel}
             <span aria-hidden="true">→</span>
-          </a>
-          {secondary && secondary.label && (
-            <a
-              href={secondary.url}
-              target={secondary.target === '_blank' ? '_blank' : undefined}
-              rel={secondary.target === '_blank' ? 'noreferrer noopener' : undefined}
-              onClick={(e) => {
-                if (secondary.target !== '_blank' && onNavigate?.(secondary.url)) e.preventDefault();
-              }}
-              className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
-            >
-              {secondary.label}
-            </a>
-          )}
+          </HeroPrimaryCta>
+          <HeroSecondaryCta
+            action={secondary ?? undefined}
+            onNavigate={onNavigate}
+            className="text-sm underline decoration-current/30 underline-offset-4 hover:text-accent"
+          />
         </nav>
         {showSocials && (
-          <ul className="mt-6 flex flex-wrap justify-center gap-4 text-[11px] uppercase tracking-[0.2em]" aria-label="Social links">
-            {socials!.map((link: SocialLink) => (
-              <li key={link.id}>
-                <a
-                  href={link.url}
-                  title={link.label ?? link.platform}
-                  aria-label={link.label ?? link.platform}
-                  target={link.url.startsWith('mailto:') ? undefined : '_blank'}
-                  rel="noreferrer noopener"
-                  className="opacity-50 hover:text-accent hover:opacity-100"
-                >
-                  {link.label ?? link.platform}
-                </a>
-              </li>
-            ))}
-          </ul>
+          <HeroSocials
+            socials={socials!}
+            ulClassName="mt-6 flex flex-wrap justify-center gap-4 text-[11px] uppercase tracking-[0.2em]"
+            linkClassName="opacity-50 hover:text-accent hover:opacity-100"
+            renderContent={(link) => link.label ?? link.platform}
+          />
         )}
       </header>
       {media}
