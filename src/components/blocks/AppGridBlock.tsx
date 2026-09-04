@@ -9,10 +9,10 @@ import EditorialGrid from './designs/grid/EditorialGrid';
 import RisoGrid from './designs/grid/RisoGrid';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
+ * Design registry — opt-in per family (see FeaturedHeroBlock): unlisted
+ * designs fall back to DefaultGrid.
  */
-const GRID_DESIGNS: Record<BlockDesign, ComponentType<GridDesignProps>> = {
+const GRID_DESIGNS: Partial<Record<BlockDesign, ComponentType<GridDesignProps>>> = {
   default: DefaultGrid,
   cutie: CutieGrid,
   editorial: EditorialGrid,
@@ -20,6 +20,6 @@ const GRID_DESIGNS: Record<BlockDesign, ComponentType<GridDesignProps>> = {
 };
 
 export default function AppGridBlock(props: GridDesignProps) {
-  const Design = GRID_DESIGNS[props.block.design ?? 'default'];
+  const Design = GRID_DESIGNS[props.block.design ?? 'default'] ?? DefaultGrid;
   return <Design {...props} />;
 }

@@ -1,6 +1,8 @@
-import type { MouseEvent } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
+import Link from 'next/link';
 import ManagedImage from '@/components/ui/ManagedImage';
-import type { Post } from '@/types/schema';
+import Reveal from '../../Reveal';
+import type { BlogBlock, Post } from '@/types/schema';
 
 /* Atoms shared by blog designs: the published feed + its slicing rule,
    the cover art, and the floating-reader link interception. Nothing
@@ -66,4 +68,114 @@ export function openPostHandler(
       onOpenPost(id);
     }
   };
+}
+
+/* Blog primitives — logic-identical parts extracted from the 4 blog
+   designs (see docs/specs/design-skeletons.md). Covers, dates, and
+   excerpts stay per-design; the feed/branch/reveal/link wiring is
+   shared. Additive only. */
+
+/** Untitled fallback — identical in every card and row. */
+export function postTitle(post: Post): string {
+  return post.title || 'Untitled';
+}
+
+/** Published feed + latest/all slice for one block. */
+export function useBlogFeed(
+  block: BlogBlock,
+  posts?: Post[],
+): { visible: Post[]; isAll: boolean } {
+  const isAll = block.variant === 'all';
+  return { visible: selectVisible(selectPublished(posts), isAll), isAll };
+}
+
+/** Post link — href + floating-reader interception in one place. */
+export function BlogPostLink({
+  id,
+  slug,
+  onOpenPost,
+  className,
+  children,
+}: {
+  id: string;
+  slug?: string;
+  onOpenPost?: (id: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={postHref(id, slug)}
+      className={className}
+      onClick={openPostHandler(id, onOpenPost)}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * The blog skeleton: title + empty state + latest/all branch + Reveal
+ * stagger live here. `allTag` picks the list wrapper: 'ul' wraps each
+ * row in an `<li>` (default/cutie/editorial), 'div' renders bare
+ * Reveals (riso). Row/card fns return inner content only.
+ */
+export function BlogShell({
+  block,
+  posts,
+  sectionClassName,
+  titleClassName,
+  allTag = 'ul',
+  allClassName,
+  allItemClassName,
+  latestClassName,
+  renderRow,
+  renderCard,
+}: {
+  block: BlogBlock;
+  posts?: Post[];
+  sectionClassName?: string;
+  titleClassName?: string;
+  allTag?: 'ul' | 'div';
+  allClassName?: string;
+  allItemClassName?: string;
+  latestClassName?: string;
+  renderRow: (post: Post, index: number) => ReactNode;
+  renderCard: (post: Post, index: number) => ReactNode;
+}) {
+  const { visible, isAll } = useBlogFeed(block, posts);
+  const AllTag = allTag;
+  return (
+    <section className={sectionClassName}>
+      <h2 className={titleClassName}>{block.title}</h2>
+
+      {visible.length === 0 ? (
+        <EmptyFeed />
+      ) : isAll ? (
+        <AllTag className={allClassName}>
+          {visible.map((post, index) =>
+            allTag === 'ul' ? (
+              <li key={post.id} className={allItemClassName}>
+                <Reveal delay={Math.min(index * 40, 200)}>
+                  {renderRow(post, index)}
+                </Reveal>
+              </li>
+            ) : (
+              <Reveal key={post.id} delay={Math.min(index * 40, 200)}>
+                {renderRow(post, index)}
+              </Reveal>
+            ),
+          )}
+        </AllTag>
+      ) : (
+        <div className={latestClassName}>
+          {visible.map((post, index) => (
+            <Reveal key={post.id} delay={Math.min(index * 60, 300)}>
+              {renderCard(post, index)}
+            </Reveal>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }

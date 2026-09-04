@@ -9,10 +9,10 @@ import EditorialBlog from './designs/blog/EditorialBlog';
 import RisoBlog from './designs/blog/RisoBlog';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
+ * Design registry — opt-in per family (see FeaturedHeroBlock): unlisted
+ * designs fall back to DefaultBlog.
  */
-const BLOG_DESIGNS: Record<BlockDesign, ComponentType<BlogDesignProps>> = {
+const BLOG_DESIGNS: Partial<Record<BlockDesign, ComponentType<BlogDesignProps>>> = {
   default: DefaultBlog,
   cutie: CutieBlog,
   editorial: EditorialBlog,
@@ -20,6 +20,6 @@ const BLOG_DESIGNS: Record<BlockDesign, ComponentType<BlogDesignProps>> = {
 };
 
 export default function BlogBlock(props: BlogDesignProps) {
-  const Design = BLOG_DESIGNS[props.block.design ?? 'default'];
+  const Design = BLOG_DESIGNS[props.block.design ?? 'default'] ?? DefaultBlog;
   return <Design {...props} />;
 }

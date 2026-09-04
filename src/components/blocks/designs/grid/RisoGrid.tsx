@@ -1,7 +1,11 @@
-import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
-import { hasExtraLinks, resolveCardLinks } from './shared';
-import { postHref } from '../blog/shared';
+import {
+  CardCoverImage,
+  CardExtraLinks,
+  CardTagList,
+  CardTitleLink,
+  resolveCardLinks,
+} from './shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -35,11 +39,8 @@ export default function RisoGrid({
                 <figure className="border-b-2 border-current">
                   <div className="relative aspect-video overflow-hidden">
                     {app.coverImage ? (
-                      <img
+                      <CardCoverImage
                         src={app.coverImage}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
                         className="riso-duotone h-full w-full object-cover"
                       />
                     ) : (
@@ -67,23 +68,19 @@ export default function RisoGrid({
                 <div className="flex flex-1 flex-col p-4">
                   <ProjectIcon icon={app.icon} appName={app.name} />
 
-                  {app.tags && app.tags.length > 0 && (
-                    <div className="mt-2.5 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase opacity-70">
-                      {app.tags.map((tag) => (
-                        <span key={tag}>[{tag}]</span>
-                      ))}
-                    </div>
-                  )}
+                  <CardTagList
+                    tags={app.tags}
+                    listClassName="mt-2.5 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase opacity-70"
+                    renderTag={(tag) => <>[{tag}]</>}
+                  />
 
                   <h3 className="riso-misprint mt-3 font-black uppercase leading-tight">
-                    <a
+                    <CardTitleLink
                       href={primaryHref}
-                      target="_blank"
-                      rel="noreferrer"
                       className="hover:text-accent after:absolute after:inset-0"
                     >
                       {app.name}
-                    </a>
+                    </CardTitleLink>
                   </h3>
                   <ExpandableDescription
                     text={app.description}
@@ -91,53 +88,14 @@ export default function RisoGrid({
                     textClass="mt-1.5 font-mono text-xs leading-relaxed opacity-70"
                   />
 
-                  {hasExtraLinks(app, linkedPost) && (
-                    <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 font-mono text-xs font-bold uppercase">
-                      {app.demoUrl && (
-                        <a
-                          href={app.demoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          Demo ↗
-                        </a>
-                      )}
-                      {app.githubUrl && (
-                        <a
-                          href={app.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          GitHub ↗
-                        </a>
-                      )}
-                      {linkedPost ? (
-                        <Link
-                          href={postHref(linkedPost.id, slug)}
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                          onClick={(event) => {
-                            if (onOpenPost) {
-                              event.preventDefault();
-                              onOpenPost(linkedPost.id);
-                            }
-                          }}
-                        >
-                          {app.customLabel ?? 'Read'} →
-                        </Link>
-                      ) : app.customUrl ? (
-                        <a
-                          href={app.customUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          {app.customLabel || 'Open'} ↗
-                        </a>
-                      ) : null}
-                    </div>
-                  )}
+                  <CardExtraLinks
+                    app={app}
+                    linkedPost={linkedPost}
+                    slug={slug}
+                    onOpenPost={onOpenPost}
+                    className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 font-mono text-xs font-bold uppercase"
+                    linkClassName="underline-offset-4 hover:text-accent hover:underline"
+                  />
                 </div>
               </article>
             );

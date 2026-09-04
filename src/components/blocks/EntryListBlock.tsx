@@ -7,14 +7,13 @@ import EditorialEntryList from './designs/entry-list/EditorialEntryList';
 import RisoEntryList from './designs/entry-list/RisoEntryList';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
- * Server-safe like BlockRenderer itself: the skins are pure markup, no
- * hooks or event handlers, so no client boundary is needed here.
+ * Design registry — opt-in per family (see FeaturedHeroBlock): unlisted
+ * designs fall back to DefaultEntryList. Server-safe like BlockRenderer
+ * itself: the skins are pure markup, no hooks or event handlers, so no
+ * client boundary is needed here.
  */
-const ENTRY_LIST_DESIGNS: Record<
-  BlockDesign,
-  ComponentType<EntryListDesignProps>
+const ENTRY_LIST_DESIGNS: Partial<
+  Record<BlockDesign, ComponentType<EntryListDesignProps>>
 > = {
   default: DefaultEntryList,
   cutie: CutieEntryList,
@@ -23,6 +22,6 @@ const ENTRY_LIST_DESIGNS: Record<
 };
 
 export default function EntryListBlock(props: EntryListDesignProps) {
-  const Design = ENTRY_LIST_DESIGNS[props.block.design ?? 'default'];
+  const Design = ENTRY_LIST_DESIGNS[props.block.design ?? 'default'] ?? DefaultEntryList;
   return <Design {...props} />;
 }

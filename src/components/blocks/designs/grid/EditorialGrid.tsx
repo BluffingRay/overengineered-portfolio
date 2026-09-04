@@ -1,6 +1,9 @@
-import Link from 'next/link';
-import { hasExtraLinks, resolveCardLinks } from './shared';
-import { postHref } from '../blog/shared';
+import {
+  CardCoverImage,
+  CardExtraLinks,
+  CardTitleLink,
+  resolveCardLinks,
+} from './shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -42,25 +45,17 @@ export default function EditorialGrid({
 
                   <div className="flex min-w-0 flex-1 items-start gap-4">
                     {app.coverImage && (
-                      <img
+                      <CardCoverImage
                         src={app.coverImage}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
                         className="h-14 w-14 shrink-0 border border-current/15 object-cover"
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <a
-                        href={primaryHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="after:absolute after:inset-0"
-                      >
+                      <CardTitleLink href={primaryHref} className="after:absolute after:inset-0">
                         <h3 className="ed-serif text-xl italic leading-snug group-hover:text-accent">
                           {app.name}
                         </h3>
-                      </a>
+                      </CardTitleLink>
                       <ExpandableDescription
                         text={app.description}
                         collapsedClass="line-clamp-1"
@@ -70,60 +65,21 @@ export default function EditorialGrid({
                     </div>
                   </div>
 
-                  <span className="relative z-10 shrink-0 pt-1 text-right">
+                  <div className="relative z-10 shrink-0 pt-1 text-right">
                     {meta && (
                       <span className="block text-[11px] uppercase tracking-[0.2em] opacity-50">
                         {meta}
                       </span>
                     )}
-                    {hasExtraLinks(app, linkedPost) && (
-                      <span className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-[11px] uppercase tracking-[0.2em]">
-                        {app.demoUrl && (
-                          <a
-                            href={app.demoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="opacity-50 hover:text-accent hover:opacity-100"
-                          >
-                            Demo ↗
-                          </a>
-                        )}
-                        {app.githubUrl && (
-                          <a
-                            href={app.githubUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="opacity-50 hover:text-accent hover:opacity-100"
-                          >
-                            GitHub ↗
-                          </a>
-                        )}
-                        {linkedPost ? (
-                          <Link
-                            href={postHref(linkedPost.id, slug)}
-                            className="opacity-50 hover:text-accent hover:opacity-100"
-                            onClick={(event) => {
-                              if (onOpenPost) {
-                                event.preventDefault();
-                                onOpenPost(linkedPost.id);
-                              }
-                            }}
-                          >
-                            {app.customLabel ?? 'Read'} →
-                          </Link>
-                        ) : app.customUrl ? (
-                          <a
-                            href={app.customUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="opacity-50 hover:text-accent hover:opacity-100"
-                          >
-                            {app.customLabel || 'Open'} ↗
-                          </a>
-                        ) : null}
-                      </span>
-                    )}
-                  </span>
+                    <CardExtraLinks
+                      app={app}
+                      linkedPost={linkedPost}
+                      slug={slug}
+                      onOpenPost={onOpenPost}
+                      className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-[11px] uppercase tracking-[0.2em]"
+                      linkClassName="opacity-50 hover:text-accent hover:opacity-100"
+                    />
+                  </div>
                 </div>
               </li>
             );

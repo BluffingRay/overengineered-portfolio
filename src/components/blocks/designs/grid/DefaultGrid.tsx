@@ -1,8 +1,11 @@
-import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
-import Reveal from '../../Reveal';
-import { resolveCardLinks } from './shared';
-import { postHref } from '../blog/shared';
+import {
+  CardCoverImage,
+  CardExtraLinks,
+  CardTagList,
+  CardTitleLink,
+  resolveCardLinks,
+} from './shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -23,7 +26,7 @@ export default function CoderGrid({
     <section className="space-y-6">
       <h2 className="text-2xl font-semibold tracking-tight">{block.title}</h2>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
-                <GridShell cards={cards} cardIds={block.apps} renderCard={(app, index) => {
+                <GridShell cards={cards} cardIds={block.apps} renderCard={(app) => {
           const { primaryHref, linkedPost } = resolveCardLinks(app, posts);
           return (
               <article className="lift relative flex h-full flex-col overflow-hidden rounded-skin border border-current/15 hover:border-current/40">
@@ -31,13 +34,7 @@ export default function CoderGrid({
                     image or not — rows stop stretching to the tallest sibling. */}
                 <div className="relative aspect-video w-full overflow-hidden bg-current/[0.04]">
                   {app.coverImage ? (
-                    <img
-                      src={app.coverImage}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                    />
+                    <CardCoverImage src={app.coverImage} />
                   ) : (
                     <span
                       aria-hidden="true"
@@ -58,28 +55,19 @@ export default function CoderGrid({
                     )}
                   </div>
 
-                  {app.tags && app.tags.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {app.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-current/10 px-2 py-0.5 text-[10px] opacity-80"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <CardTagList
+                    tags={app.tags}
+                    listClassName="mt-3 flex flex-wrap gap-1"
+                    tagClassName="rounded-full bg-current/10 px-2 py-0.5 text-[10px] opacity-80"
+                  />
 
                   <h3 className="mt-4 font-medium">
-                    <a
+                    <CardTitleLink
                       href={primaryHref}
-                      target="_blank"
-                      rel="noreferrer"
                       className="text-accent after:absolute after:inset-0 after:rounded-skin"
                     >
                       {app.name}
-                    </a>
+                    </CardTitleLink>
                   </h3>
                   <ExpandableDescription
                     text={app.description}
@@ -87,53 +75,14 @@ export default function CoderGrid({
                     textClass="mt-1 text-sm opacity-60"
                   />
 
-                  {(app.demoUrl || app.githubUrl || linkedPost || app.customUrl) && (
-                    <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-sm">
-                      {app.demoUrl && (
-                        <a
-                          href={app.demoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          Demo ↗
-                        </a>
-                      )}
-                      {app.githubUrl && (
-                        <a
-                          href={app.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          GitHub ↗
-                        </a>
-                      )}
-                      {linkedPost ? (
-                        <Link
-                          href={postHref(linkedPost.id, slug)}
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                          onClick={(event) => {
-                            if (onOpenPost) {
-                              event.preventDefault();
-                              onOpenPost(linkedPost.id);
-                            }
-                          }}
-                        >
-                          {app.customLabel ?? 'Read'} →
-                        </Link>
-                      ) : app.customUrl ? (
-                        <a
-                          href={app.customUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          {app.customLabel || 'Open'} ↗
-                        </a>
-                      ) : null}
-                    </div>
-                  )}
+                  <CardExtraLinks
+                    app={app}
+                    linkedPost={linkedPost}
+                    slug={slug}
+                    onOpenPost={onOpenPost}
+                    className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-sm"
+                    linkClassName="underline-offset-4 hover:text-accent hover:underline"
+                  />
                 </div>
               </article>
           );

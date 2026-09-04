@@ -9,12 +9,11 @@ import EditorialMarquee from './designs/marquee/EditorialMarquee';
 import RisoMarquee from './designs/marquee/RisoMarquee';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
+ * Design registry — opt-in per family (see FeaturedHeroBlock): unlisted
+ * designs fall back to DefaultMarquee.
  */
-const MARQUEE_DESIGNS: Record<
-  BlockDesign,
-  ComponentType<MarqueeDesignProps>
+const MARQUEE_DESIGNS: Partial<
+  Record<BlockDesign, ComponentType<MarqueeDesignProps>>
 > = {
   default: DefaultMarquee,
   cutie: CutieMarquee,
@@ -23,6 +22,6 @@ const MARQUEE_DESIGNS: Record<
 };
 
 export default function MarqueeBlock(props: MarqueeDesignProps) {
-  const Design = MARQUEE_DESIGNS[props.block.design ?? 'default'];
+  const Design = MARQUEE_DESIGNS[props.block.design ?? 'default'] ?? DefaultMarquee;
   return <Design {...props} />;
 }

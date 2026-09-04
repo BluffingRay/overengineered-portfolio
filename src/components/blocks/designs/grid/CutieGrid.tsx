@@ -1,8 +1,11 @@
-import Link from 'next/link';
 import ProjectIcon from '@/components/ui/ProjectIcon';
-import Reveal from '../../Reveal';
-import { hasExtraLinks, resolveCardLinks } from './shared';
-import { postHref } from '../blog/shared';
+import {
+  CardCoverImage,
+  CardExtraLinks,
+  CardTagList,
+  CardTitleLink,
+  resolveCardLinks,
+} from './shared';
 import GridShell from './GridShell';
 import ExpandableDescription from './ExpandableDescription';
 import type { GridDesignProps } from '../types';
@@ -59,13 +62,7 @@ export default function CutieGrid({
                 {/* The print itself: square, softly rounded corners */}
                 <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-current/[0.05]">
                   {app.coverImage ? (
-                    <img
-                      src={app.coverImage}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                    />
+                    <CardCoverImage src={app.coverImage} />
                   ) : (
                     <span
                       aria-hidden="true"
@@ -86,30 +83,24 @@ export default function CutieGrid({
                     )}
                   </div>
 
-                  {app.tags && app.tags.length > 0 && (
-                    <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      {app.tags.map((tag, tagIndex) => (
-                        <span
-                          key={tag}
-                          className={`rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent ${
-                            tagIndex % 2 ? 'rotate-[1.5deg]' : '-rotate-[1.5deg]'
-                          }`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <CardTagList
+                    tags={app.tags}
+                    listClassName="mt-2.5 flex flex-wrap gap-1.5"
+                    renderTag={(tag, tagIndex) => (
+                      <span
+                        className={`rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent ${
+                          tagIndex % 2 ? 'rotate-[1.5deg]' : '-rotate-[1.5deg]'
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    )}
+                  />
 
                   <h3 className="mt-3 font-extrabold">
-                    <a
-                      href={primaryHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="after:absolute after:inset-0"
-                    >
+                    <CardTitleLink href={primaryHref} className="after:absolute after:inset-0">
                       {app.name}
-                    </a>
+                    </CardTitleLink>
                   </h3>
                   <ExpandableDescription
                     text={app.description}
@@ -117,53 +108,18 @@ export default function CutieGrid({
                     textClass="mt-1 text-sm opacity-60"
                   />
 
-                  {hasExtraLinks(app, linkedPost) && (
-                    <div className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-sm font-semibold">
-                      {app.demoUrl && (
-                        <a
-                          href={app.demoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="cutie-btn text-accent"
-                        >
-                          Demo ♡
-                        </a>
-                      )}
-                      {app.githubUrl && (
-                        <a
-                          href={app.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="cutie-btn text-accent"
-                        >
-                          GitHub ✿
-                        </a>
-                      )}
-                      {linkedPost ? (
-                        <Link
-                          href={postHref(linkedPost.id, slug)}
-                          className="cutie-btn text-accent"
-                          onClick={(event) => {
-                            if (onOpenPost) {
-                              event.preventDefault();
-                              onOpenPost(linkedPost.id);
-                            }
-                          }}
-                        >
-                          {app.customLabel ?? 'Read'} ♡
-                        </Link>
-                      ) : app.customUrl ? (
-                        <a
-                          href={app.customUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="cutie-btn text-accent"
-                        >
-                          {app.customLabel || 'Open'} ✿
-                        </a>
-                      ) : null}
-                    </div>
-                  )}
+                  <CardExtraLinks
+                    app={app}
+                    linkedPost={linkedPost}
+                    slug={slug}
+                    onOpenPost={onOpenPost}
+                    className="relative z-10 mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-sm font-semibold"
+                    linkClassName="cutie-btn text-accent"
+                    demoSuffix=" ♡"
+                    githubSuffix=" ✿"
+                    readSuffix=" ♡"
+                    openSuffix=" ✿"
+                  />
                 </div>
               </article>
           );

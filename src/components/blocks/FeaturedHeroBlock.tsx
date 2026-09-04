@@ -9,10 +9,12 @@ import EditorialHero from './designs/hero/EditorialHero';
 import RisoHero from './designs/hero/RisoHero';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
+ * Design registry — opt-in per family: a new BlockDesign renders here
+ * ONLY when listed; every other design falls back to DefaultHero. So a
+ * hero-only design touches this file + one module, never all 6
+ * dispatchers (see docs/specs/design-skeletons.md).
  */
-const HERO_DESIGNS: Record<BlockDesign, ComponentType<HeroDesignProps>> = {
+const HERO_DESIGNS: Partial<Record<BlockDesign, ComponentType<HeroDesignProps>>> = {
   default: DefaultHero,
   cutie: CutieHero,
   editorial: EditorialHero,
@@ -25,7 +27,7 @@ export default function FeaturedHeroBlock({
   onNavigate,
   showMediaPlaceholder,
 }: HeroDesignProps) {
-  const Design = HERO_DESIGNS[block.design ?? 'default'];
+  const Design = HERO_DESIGNS[block.design ?? 'default'] ?? DefaultHero;
   return (
     <Design
       block={block}

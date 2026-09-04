@@ -17,6 +17,15 @@ export default function ExpandableDescription({
   const pRef = useRef<HTMLParagraphElement>(null);
   const [showToggle, setShowToggle] = useState(text.length > threshold);
 
+  // Render-phase adjustment (house pattern — UtilityBar precedent):
+  // refresh the SSR length guess when the text prop changes. No
+  // setState-in-effect; the ResizeObserver below corrects after paint.
+  const [seenText, setSeenText] = useState(text);
+  if (seenText !== text) {
+    setSeenText(text);
+    setShowToggle(text.length > threshold);
+  }
+
   useEffect(() => {
     const el = pRef.current;
     if (!el) return;
@@ -34,11 +43,6 @@ export default function ExpandableDescription({
       window.removeEventListener('resize', update);
     };
   }, [text, expanded, collapsedClass, threshold]);
-
-  // Also re-check when text crosses threshold initially (SSR guess)
-  useEffect(() => {
-    setShowToggle(text.length > threshold);
-  }, [text, threshold]);
 
   if (!showToggle && !expanded) {
     return (

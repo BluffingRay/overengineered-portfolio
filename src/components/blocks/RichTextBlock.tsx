@@ -9,10 +9,10 @@ import EditorialRichText from './designs/rich/EditorialRichText';
 import RisoRichText from './designs/rich/RisoRichText';
 
 /**
- * Design registry — exhaustive on purpose: adding a BlockDesign breaks
- * this record until a renderer exists (same tripwire as BLOCK_LABELS).
+ * Design registry — opt-in per family (see FeaturedHeroBlock): unlisted
+ * designs fall back to DefaultRichText.
  */
-const RICH_TEXT_DESIGNS: Record<BlockDesign, ComponentType<RichDesignProps>> = {
+const RICH_TEXT_DESIGNS: Partial<Record<BlockDesign, ComponentType<RichDesignProps>>> = {
   default: DefaultRichText,
   cutie: CutieRichText,
   editorial: EditorialRichText,
@@ -20,6 +20,6 @@ const RICH_TEXT_DESIGNS: Record<BlockDesign, ComponentType<RichDesignProps>> = {
 };
 
 export default function RichTextBlock(props: RichDesignProps) {
-  const Design = RICH_TEXT_DESIGNS[props.block.design ?? 'default'];
+  const Design = RICH_TEXT_DESIGNS[props.block.design ?? 'default'] ?? DefaultRichText;
   return <Design {...props} />;
 }
