@@ -19,7 +19,10 @@ export default function EditorialEntryList({ block }: EntryListDesignProps) {
         title: 'ed-serif mt-1.5 text-xl leading-snug',
         link: 'decoration-current/30 underline-offset-4 hover:underline',
         subtitle: 'mt-1 text-sm italic opacity-60',
+        location: 'mt-0.5 text-[11px] uppercase tracking-[0.2em] opacity-50',
+        honors: 'ed-serif mt-1 text-base italic text-accent',
         description: 'mt-2 text-sm leading-relaxed opacity-70',
+        credential: 'mt-2 font-mono text-[11px] opacity-50',
       }}
     />
   );

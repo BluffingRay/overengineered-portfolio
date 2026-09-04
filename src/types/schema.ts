@@ -206,7 +206,7 @@ export interface BlogBlock extends BlockBase {
   variant?: BlogVariant;
 }
 
-export const ENTRY_LIST_PRESETS = ['experience', 'education', 'certifications'] as const;
+export const ENTRY_LIST_PRESETS = ['experience', 'education', 'certifications', 'affiliations'] as const;
 
 export type EntryListPreset = (typeof ENTRY_LIST_PRESETS)[number];
 
@@ -220,13 +220,22 @@ export interface EntryListItem {
   subtitle?: string;
   /** Period line, e.g. "2024 — Now". */
   meta?: string;
+  /** City / Remote / campus / chapter — fine print by the subtitle. */
+  location?: string;
+  /** GPA / latin honors / awards (education). */
+  honors?: string;
+  /** Cert expiry — renders on the meta line as "· Expires X". */
+  expiry?: string;
+  /** Credential / license ID (certifications) — mono fine print. */
+  credentialId?: string;
   description?: string;
   /** Rendered on the title as an external anchor; https or root-relative. */
   link?: string;
 }
 
 /**
- * Experience / Education / Certifications — one block, three label sets.
+ * Experience / Education / Certifications / Affiliations — one block,
+ * four label sets.
  * The preset restores the FORM's field labels only; the renderer never
  * reads it. `title` (section heading) is the one addition beyond the
  * locked entry shape: sibling blocks all carry a title and a headingless

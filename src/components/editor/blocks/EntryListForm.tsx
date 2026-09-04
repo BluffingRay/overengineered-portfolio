@@ -2,18 +2,13 @@
 
 import {
   DndContext,
-  KeyboardSensor,
-  PointerSensor,
   closestCenter,
-  useSensor,
-  useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -25,6 +20,7 @@ import {
   BlockDesignPicker,
   DRAG_HANDLE,
   ENTRY_LIST_FIELD_LABELS,
+  ENTRY_LIST_LINK_LABEL_FALLBACK,
   ENTRY_LIST_PRESET_LABELS,
   Field,
   INPUT,
@@ -74,6 +70,18 @@ function SortableEntry({
     onPatch({ subtitle: next }),
   );
   const meta = useTrimmedCommit(entry.meta, (next) => onPatch({ meta: next }));
+  const location = useTrimmedCommit(entry.location, (next) =>
+    onPatch({ location: next }),
+  );
+  const honors = useTrimmedCommit(entry.honors, (next) =>
+    onPatch({ honors: next }),
+  );
+  const expiry = useTrimmedCommit(entry.expiry, (next) =>
+    onPatch({ expiry: next }),
+  );
+  const credentialId = useTrimmedCommit(entry.credentialId, (next) =>
+    onPatch({ credentialId: next }),
+  );
   const description = useTrimmedCommit(entry.description, (next) =>
     onPatch({ description: next }),
   );
@@ -150,6 +158,53 @@ function SortableEntry({
             />
           </Field>
         </div>
+        {(labels.location || labels.expiry) && (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {labels.location && (
+              <Field label={labels.location}>
+                <input
+                  value={location.draft}
+                  onChange={(e) => location.onChange(e.target.value)}
+                  onBlur={location.onBlur}
+                  placeholder="Remote"
+                  className={INPUT}
+                />
+              </Field>
+            )}
+            {labels.expiry && (
+              <Field label={labels.expiry}>
+                <input
+                  value={expiry.draft}
+                  onChange={(e) => expiry.onChange(e.target.value)}
+                  onBlur={expiry.onBlur}
+                  placeholder="2027 / Never"
+                  className={INPUT}
+                />
+              </Field>
+            )}
+          </div>
+        )}
+        {labels.honors && (
+          <Field label={labels.honors}>
+            <input
+              value={honors.draft}
+              onChange={(e) => honors.onChange(e.target.value)}
+              onBlur={honors.onBlur}
+              placeholder="Magna cum laude, 3.8/4.0"
+              className={INPUT}
+            />
+          </Field>
+        )}
+        {labels.credentialId && (
+          <Field label={labels.credentialId}>
+            <input
+              value={credentialId.draft}
+              onChange={(e) => credentialId.onChange(e.target.value)}
+              onBlur={credentialId.onBlur}
+              className={`${INPUT} font-mono text-xs`}
+            />
+          </Field>
+        )}
         <Field label={labels.description}>
           <textarea
             value={description.draft}
@@ -159,7 +214,7 @@ function SortableEntry({
             className={`${INPUT} resize-y leading-relaxed`}
           />
         </Field>
-        <Field label="Link (optional — opens on the title)">
+        <Field label={labels.link ?? ENTRY_LIST_LINK_LABEL_FALLBACK}>
           <input
             value={link.draft}
             onChange={(e) => link.onChange(e.target.value)}

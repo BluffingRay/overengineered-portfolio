@@ -26,7 +26,10 @@ export default function RisoEntryList({ block }: EntryListDesignProps) {
         title: 'riso-misprint mt-1 text-lg font-black uppercase leading-tight',
         link: 'hover:text-accent',
         subtitle: 'mt-0.5 font-mono text-xs opacity-70',
+        location: 'mt-0.5 font-mono text-[11px] uppercase opacity-60',
+        honors: 'mt-1 font-mono text-xs font-bold uppercase text-accent',
         description: 'mt-1.5 font-mono text-xs leading-relaxed opacity-70',
+        credential: 'mt-1.5 font-mono text-[11px] opacity-60',
       }}
     />
   );

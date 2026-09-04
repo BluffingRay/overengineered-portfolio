@@ -20,7 +20,10 @@ export default function DefaultEntryList({ block }: EntryListDesignProps) {
         title: 'mt-1 text-base font-medium',
         link: 'underline-offset-2 hover:text-accent',
         subtitle: 'mt-0.5 text-sm opacity-60',
+        location: 'mt-0.5 text-xs opacity-50',
+        honors: 'mt-1 text-sm font-medium text-accent',
         description: 'mt-2 text-sm leading-relaxed opacity-70',
+        credential: 'mt-2 font-mono text-[11px] opacity-50',
       }}
     />
   );

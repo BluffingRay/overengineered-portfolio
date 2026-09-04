@@ -43,6 +43,7 @@ export const ENTRY_LIST_PRESET_LABELS: Record<EntryListPreset, string> = {
   experience: 'Experience',
   education: 'Education',
   certifications: 'Certifications',
+  affiliations: 'Affiliations',
 };
 
 export interface EntryListFieldLabels {
@@ -50,11 +51,22 @@ export interface EntryListFieldLabels {
   subtitle: string;
   meta: string;
   description: string;
+  /** Shown only when defined — this is how presets own different fields. */
+  location?: string;
+  honors?: string;
+  expiry?: string;
+  credentialId?: string;
+  link?: string;
 }
+
+/** Fallback when a preset defines no custom link label. */
+export const ENTRY_LIST_LINK_LABEL_FALLBACK =
+  'Link (optional — opens on the title)';
 
 /**
  * Per-preset field labels for the entry-list form — cosmetic only; the
- * schema (and the renderer) never reads the preset.
+ * schema (and the renderer) never reads the preset. A missing optional
+ * label hides that input for the preset entirely.
  */
 export const ENTRY_LIST_FIELD_LABELS: Record<EntryListPreset, EntryListFieldLabels> = {
   experience: {
@@ -62,18 +74,31 @@ export const ENTRY_LIST_FIELD_LABELS: Record<EntryListPreset, EntryListFieldLabe
     subtitle: 'Company',
     meta: 'Period',
     description: 'What you did',
+    location: 'Location / Remote',
   },
   education: {
     title: 'Degree',
     subtitle: 'School',
     meta: 'Years',
-    description: 'Highlights',
+    description: 'Coursework / thesis',
+    location: 'Campus location',
+    honors: 'Honors / GPA',
   },
   certifications: {
     title: 'Certificate',
     subtitle: 'Issuer',
     meta: 'Issued',
-    description: 'Details',
+    description: 'Status note (only if not active)',
+    expiry: 'Expires (if applicable)',
+    credentialId: 'Credential ID',
+    link: 'Credential URL (verifies the certificate)',
+  },
+  affiliations: {
+    title: 'Organization',
+    subtitle: 'Role / level',
+    meta: 'Period',
+    description: 'Contribution (1–2 lines, optional)',
+    location: 'Chapter / location',
   },
 };
 

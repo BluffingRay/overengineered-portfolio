@@ -243,6 +243,10 @@ function sanitizeEntryListItem(raw: unknown): EntryListItem | null {
 
   const subtitle = text(item.subtitle);
   const meta = text(item.meta);
+  const location = text(item.location)?.slice(0, 120);
+  const honors = text(item.honors)?.slice(0, 200);
+  const expiry = text(item.expiry)?.slice(0, 64);
+  const credentialId = text(item.credentialId)?.slice(0, 128);
   const description = text(item.description);
   const link = text(item.link);
 
@@ -251,6 +255,10 @@ function sanitizeEntryListItem(raw: unknown): EntryListItem | null {
     title: item.title,
     ...(subtitle !== undefined ? { subtitle } : {}),
     ...(meta !== undefined ? { meta } : {}),
+    ...(location !== undefined ? { location } : {}),
+    ...(honors !== undefined ? { honors } : {}),
+    ...(expiry !== undefined ? { expiry } : {}),
+    ...(credentialId !== undefined ? { credentialId } : {}),
     ...(description !== undefined
       ? { description: description.slice(0, MAX_ENTRY_DESCRIPTION) }
       : {}),

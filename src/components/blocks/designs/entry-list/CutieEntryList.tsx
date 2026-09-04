@@ -21,7 +21,11 @@ export default function CutieEntryList({ block }: EntryListDesignProps) {
         title: 'mt-0.5 text-base font-bold',
         link: 'hover:underline',
         subtitle: 'mt-0.5 text-sm opacity-60',
+        location: 'mt-0.5 text-xs opacity-50',
+        honors:
+          'mt-1.5 inline-block rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent',
         description: 'mt-1.5 text-sm leading-relaxed opacity-70',
+        credential: 'mt-1.5 font-mono text-[11px] opacity-50',
       }}
     />
   );

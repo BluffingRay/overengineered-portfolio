@@ -16,7 +16,10 @@ export interface EntryListPartClasses {
   /** The anchor when the entry has a link; plain text otherwise. */
   link?: string;
   subtitle?: string;
+  location?: string;
+  honors?: string;
   description?: string;
+  credential?: string;
 }
 
 export interface EntryListSkeletonProps {
@@ -34,16 +37,16 @@ export function EntryListSkeleton({ block, classes, number }: EntryListSkeletonP
 
   // Multi-column: a responsive card grid — grid items stretch, so every
   // card in a row is uniform regardless of missing/extra content
-  // (2 → two-up, 3 → two-up then three-up, matching the app grid);
-  // one column: the design's own stack, but each card gets the same
-  // fixed height (user-locked: uniform look in every mode; globally
-  // row-based stretching across grids is a future plan).
+  // (2 → two-up, 3 → two-up then three-up, matching the app grid).
+  // One column: a plain stack at natural heights — each card as tall as
+  // its content (a forced equal height would need a fixed height, which
+  // is what caused the scrollbar bug; see entry-list-fields.md).
   const listClass =
     block.columns === 2
       ? `${classes.list} grid grid-cols-2 gap-3`
       : block.columns === 3
         ? `${classes.list} grid grid-cols-2 gap-3 lg:grid-cols-3`
-        : `${classes.list} space-y-3 [&_>li]:h-40 [&_>li]:overflow-y-auto`;
+        : `${classes.list} space-y-3`;
 
   return (
     <section className={classes.section}>
@@ -54,7 +57,7 @@ export function EntryListSkeleton({ block, classes, number }: EntryListSkeletonP
 
           return (
             <li key={entry.id} className={classes.item}>
-              {(num !== undefined || entry.meta) && (
+              {(num !== undefined || entry.meta || entry.expiry) && (
                 <p className={classes.metaLine}>
                   {num !== undefined && (
                     <span aria-hidden="true" className={number?.className}>
@@ -62,6 +65,12 @@ export function EntryListSkeleton({ block, classes, number }: EntryListSkeletonP
                     </span>
                   )}
                   {entry.meta}
+                  {entry.expiry && (
+                    <span>
+                      {entry.meta ? ' · ' : ''}
+                      Expires {entry.expiry}
+                    </span>
+                  )}
                 </p>
               )}
               <h3 className={classes.title}>
@@ -79,8 +88,15 @@ export function EntryListSkeleton({ block, classes, number }: EntryListSkeletonP
                 )}
               </h3>
               {entry.subtitle && <p className={classes.subtitle}>{entry.subtitle}</p>}
+              {entry.location && <p className={classes.location}>{entry.location}</p>}
+              {entry.honors && <p className={classes.honors}>{entry.honors}</p>}
               {entry.description && (
                 <p className={classes.description}>{entry.description}</p>
+              )}
+              {entry.credentialId && (
+                <p className={classes.credential}>
+                  Credential ID: {entry.credentialId}
+                </p>
               )}
             </li>
           );
