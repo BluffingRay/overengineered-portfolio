@@ -241,7 +241,7 @@
           "type": "rich_text",
           "design": "default",
           "spacing": "normal",
-          "content": "<h2>Everything is a block</h2><p>Hero, marquee, card grid, entry list, rich text, blog, custom HTML, your portfolio is a stack of blocks. Press <strong>Ctrl/Cmd + Shift + E</strong> and this hidden command can be changed later too. Press Edit and add one with the <strong>+ buttons</strong> in the editor, drag them by the ⠿ handle, delete fearlessly: <strong>Ctrl/Cmd + Z</strong> undoes everything. This tab is just blocks, one after another.</p><p>~ the vault rule: pick from the <strong>Library</strong> or paste an image URL — skip the <strong>Upload</strong> button. Uploads live on this machine only and never survive the export bridge; Library URLs travel with the document. ▌</p>"
+          "content": "<h2>Everything is a block</h2><p>Hero, marquee, card grid, entry list, rich text, blog, custom HTML, your portfolio is a stack of blocks. Press <strong>Ctrl/Cmd + Shift + E</strong> and this hidden command can be changed later too. Press Edit and add one with the <strong>+ buttons</strong> in the editor, drag them by the ⠿ handle, delete fearlessly: <strong>Ctrl/Cmd + Z</strong> undoes everything. This tab is just blocks, one after another.</p><p>~ the vault rule: pick from the <strong>Library</strong>, paste an image URL, or hit <strong>Upload</strong> — uploads live in this tab's memory only and evaporate on refresh, so break things freely. ▌</p>"
         },
         {
           "id": "pg-b-024",

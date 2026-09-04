@@ -32,6 +32,13 @@ export interface PortfolioStore {
   reset: () => void;
   undo: () => void;
   redo: () => void;
+  /**
+   * True only for the playground's memory store. Consumers that reach
+   * outside the document (network, storage keys) must degrade: the
+   * playground evaporates on refresh, so server inventory + real
+   * uploads are replaced with session-local behavior (see MediaPicker).
+   */
+  sandbox?: boolean;
 }
 
 const globalStore: PortfolioStore = {

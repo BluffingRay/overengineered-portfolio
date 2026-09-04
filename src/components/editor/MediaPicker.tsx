@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import ManagedImage from '@/components/ui/ManagedImage';
-import { usePortfolioData } from '@/hooks/usePortfolioData';
+import { usePortfolioData, usePortfolioStore } from '@/hooks/usePortfolioData';
+
+/** Session blob URLs minted by sandbox uploads — revoked on remove;
+ * the whole set evaporates on refresh (the playground contract). */
+const sandboxBlobs = new Set<string>();
+
+const SANDBOX_MAX_BYTES = 8 * 1024 * 1024;
 
 export default function MediaPicker({
   open,
@@ -16,6 +22,10 @@ export default function MediaPicker({
   onSelect: (url: string) => void;
 }) {
   const { data, mutate } = usePortfolioData();
+  // Sandbox (playground): no server inventory, no real uploads — files
+  // become session-memory blob: URLs that die on refresh. Nothing here
+  // may read another document's library or persist a byte.
+  const sandbox = usePortfolioStore().sandbox === true;
   const [urlDraft, setUrlDraft] = useState('');
   const [uploading, setUploading] = useState(false);
   const [reloading, setReloading] = useState(false);
@@ -41,8 +51,9 @@ export default function MediaPicker({
   }
 
   const reload = useCallback(() => {
+    if (sandbox) return; // sandbox library = doc assets only, nothing to fetch
     fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => setError('Reload failed')).finally(() => setReloading(false));
-  }, []);
+  }, [sandbox]);
 
   const pick = useCallback((url: string) => {
     if (url && url !== '/images/placeholder.svg' && !(data.assets ?? []).some((a) => a.url === url)) {
@@ -79,6 +90,31 @@ export default function MediaPicker({
   const handleFiles = useCallback(async (files: File[]) => {
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
+    if (sandbox) {
+      // Session-local upload: blob: URLs live in memory, die on refresh.
+      // Same shape as the server path below (single → pick, multi →
+      // attach all + select first) so the flow teaches the real thing.
+      const oversized = imageFiles.find((f) => f.size > SANDBOX_MAX_BYTES);
+      if (oversized) {
+        setError(`${oversized.name} is over 8MB — pick a smaller file.`);
+        return;
+      }
+      setError(null);
+      const urls = imageFiles.map((f) => {
+        const url = URL.createObjectURL(f);
+        sandboxBlobs.add(url);
+        return { url, name: f.name };
+      });
+      mutate((current) => ({
+        ...current,
+        assets: [...urls.map(({ url, name }) => ({ id: crypto.randomUUID(), url, name })), ...(current.assets ?? [])].slice(0, 200),
+      }));
+      if (urls[0]) {
+        onSelect(urls[0].url);
+        onClose();
+      }
+      return;
+    }
     if (imageFiles.length === 1) {
       await handleUpload(imageFiles[0]!);
       return;
@@ -112,7 +148,7 @@ export default function MediaPicker({
     } finally {
       setUploading(false);
     }
-  }, [handleUpload, mutate, onSelect, onClose]);
+  }, [handleUpload, mutate, onSelect, onClose, sandbox]);
 
   useEffect(() => {
     if (!open) return;
@@ -177,11 +213,17 @@ export default function MediaPicker({
     const url = isStorage ? id.slice(8) : isRef ? id.slice(4) : (data.assets ?? []).find((a) => a.id === id)?.url;
     if (!url) return;
     const key = (storageFiles ?? []).find((f) => f.url === url)?.key ?? (() => { try { return new URL(url, 'http://x').pathname.replace(/^\//, ''); } catch { return null; } })();
-    if (!window.confirm(`Delete ${url.split('/').pop() ?? url}? ${isRef ? 'Remove from doc — file stays in bucket if it exists.' : 'Delete file (R2 + local) and clear doc refs?'}`)) return;
-    const doDelete = isRef ? Promise.resolve({ ok: true } as Response) : fetch(`/api/upload?${key ? `key=${encodeURIComponent(key)}` : `url=${encodeURIComponent(url)}`}`, { method: 'DELETE', credentials: 'same-origin' });
+    if (!window.confirm(`Delete ${url.split('/').pop() ?? url}? ${sandbox ? 'Remove from playground (session-only).' : isRef ? 'Remove from doc — file stays in bucket if it exists.' : 'Delete file (R2 + local) and clear doc refs?'}`)) return;
+    // Sandbox: revoke the session blob (if any) and clear doc refs only —
+    // never touch the network; there is no server file to delete.
+    if (sandbox && sandboxBlobs.has(url)) {
+      URL.revokeObjectURL(url);
+      sandboxBlobs.delete(url);
+    }
+    const doDelete = sandbox || isRef ? Promise.resolve({ ok: true } as Response) : fetch(`/api/upload?${key ? `key=${encodeURIComponent(key)}` : `url=${encodeURIComponent(url)}`}`, { method: 'DELETE', credentials: 'same-origin' });
     doDelete.then(async (r) => {
       if (!r.ok) { const j = await (r as Response).json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? 'Delete failed'); }
-      setStorageFiles((prev) => (prev ?? []).filter((f) => f.url !== url));
+      if (!sandbox) setStorageFiles((prev) => (prev ?? []).filter((f) => f.url !== url));
       mutate((cur) => {
         const clearContent = (html: string) => html.replace(new RegExp(`<img[^>]*src=["']${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'g'), '');
         return {
@@ -210,7 +252,9 @@ export default function MediaPicker({
     const list: { id: string; url: string; name?: string }[] = [];
     const push = (id: string, url: string) => { if (!url || url === '/images/placeholder.svg' || seen.has(url)) return; seen.add(url); list.push({ id, url, name: url.split('/').pop() }); };
     for (const a of data.assets ?? []) push(a.id, a.url);
-    for (const f of storageFiles ?? []) push(`storage:${f.url}`, f.url);
+    // Sandbox never lists server files (another document's library
+    // spilling in is exactly the bug this flag exists to prevent).
+    if (!sandbox) for (const f of storageFiles ?? []) push(`storage:${f.url}`, f.url);
     const addRef = (u?: string | null) => { if (!u || seen.has(u) || u === '/images/placeholder.svg') return; if (u.startsWith('/') || u.startsWith('http')) push(`ref:${u}`, u); };
     for (const tab of data.tabs ?? []) for (const b of tab.blocks as unknown as Record<string, unknown>[]) {
       addRef(b.thumbnail as string);
@@ -258,7 +302,9 @@ export default function MediaPicker({
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">Media library</p>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={reload} disabled={reloading} aria-label="Reload library" title="Reload from R2 + local (bypass cache)" className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:opacity-50">{reloading ? '…' : '↻ Reload'}</button>
+            {!sandbox && (
+              <button type="button" onClick={reload} disabled={reloading} aria-label="Reload library" title="Reload from R2 + local (bypass cache)" className="rounded-skin border border-[var(--border)] px-2 py-1 text-xs font-medium disabled:opacity-50">{reloading ? '…' : '↻ Reload'}</button>
+            )}
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-skin border border-accent/60 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-background">
               <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
               {uploading ? 'Uploading…' : 'Upload'}
@@ -268,8 +314,14 @@ export default function MediaPicker({
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] leading-none">
           <span className="opacity-50">Storage:</span>
-          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-700">● Hosted (R2 + uploads/)</span>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 opacity-50">Custom API — Coming soon</span>
+          {sandbox ? (
+            <span className="rounded-full bg-accent/15 px-2.5 py-1 font-medium text-accent">● Sandbox (session-only — evaporates on refresh)</span>
+          ) : (
+            <>
+              <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-700">● Hosted (R2 + uploads/)</span>
+              <span className="rounded-full bg-zinc-100 px-2.5 py-1 opacity-50">Custom API — Coming soon</span>
+            </>
+          )}
         </div>
             {dragOver && <p className="mt-2 rounded-skin bg-accent/10 px-2 py-1 text-center text-xs font-medium text-accent">Drop image to upload</p>}
             {uploading && <p className="mt-2 text-center text-xs opacity-60">Uploading…</p>}
@@ -281,7 +333,7 @@ export default function MediaPicker({
                     <button type="button" title={asset.name ?? asset.url} onClick={() => pick(asset.url)} className="block aspect-video w-full overflow-hidden rounded-skin border border-[var(--border)] hover:border-accent bg-black/[0.03]">
                       <ManagedImage src={asset.url} className="h-full w-full object-cover" />
                     </button>
-                    <button type="button" aria-label={`Remove ${asset.name ?? 'asset'}`} title={asset.id.startsWith('ref:') ? 'Remove from doc (clear thumbnail/cover)' : 'Delete file (R2 + local) and clear doc refs'} onClick={() => removeAsset(asset.id)} className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-current/20 bg-background text-red-500 group-hover:flex">
+                    <button type="button" aria-label={`Remove ${asset.name ?? 'asset'}`} title={sandbox ? 'Remove from playground (session-only)' : asset.id.startsWith('ref:') ? 'Remove from doc (clear thumbnail/cover)' : 'Delete file (R2 + local) and clear doc refs'} onClick={() => removeAsset(asset.id)} className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-current/20 bg-background text-red-500 group-hover:flex">
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </li>

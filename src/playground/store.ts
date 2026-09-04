@@ -38,6 +38,7 @@ export function createPlaygroundStore(): PortfolioStore & { stats: () => { mutat
   };
 
   return {
+    sandbox: true,
     getSnapshot: () => doc,
     getServerSnapshot: () => initialPlaygroundDoc,
     subscribe: (listener) => {
