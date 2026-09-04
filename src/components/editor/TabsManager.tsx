@@ -3,18 +3,13 @@
 import { useState } from 'react';
 import {
   DndContext,
-  KeyboardSensor,
-  PointerSensor,
   closestCenter,
-  useSensor,
-  useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';

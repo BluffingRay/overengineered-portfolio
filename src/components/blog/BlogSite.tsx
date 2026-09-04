@@ -2,7 +2,6 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import type { Post } from '@/types/schema';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 import { goBackOrHome } from '@/lib/navigation';

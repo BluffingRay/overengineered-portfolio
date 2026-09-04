@@ -256,6 +256,7 @@ export default function WriteView({
                     <img
                       src={post.coverImage}
                       alt=""
+                      loading="lazy"
                       decoding="async"
                       className="h-7 w-7 rounded-skin object-cover"
                     />
@@ -344,6 +345,7 @@ export default function WriteView({
               <img
                 src={post.coverImage}
                 alt=""
+                loading="lazy"
                 decoding="async"
                 className="mt-6 aspect-video w-full rounded-skin object-cover"
               />

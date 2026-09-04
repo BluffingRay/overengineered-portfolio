@@ -32,7 +32,23 @@ import FirebaseLoginCard from '@/components/auth/FirebaseLoginCard';
 export default function PortfolioView() {
   const { data, undo, redo } = usePortfolioData();
   const searchParams = useSearchParams();
-  const [isEditMode, setIsEditMode] = useState(searchParams.get('edit') === 'true');
+  // Edit intent seeds from `?edit=true`, restored from persisted storage
+  // (covers reload at `/` after the URL lost it). Lazy init instead of
+  // a mount effect (no setState-in-effect): the `ready` gate renders a
+  // splash on server + hydration, so reading storage here never
+  // mismatches — the real UI first paints post-mount.
+  const [isEditMode, setIsEditMode] = useState(() => {
+    if (searchParams.get('edit') === 'true') return true;
+    if (typeof window === 'undefined') return false;
+    try {
+      return (
+        window.sessionStorage.getItem('portfolio-edit-mode') === '1' ||
+        document.cookie.includes('portfolio-edit-mode=1')
+      );
+    } catch {
+      return false;
+    }
+  });
   const auth = useAuth();
   const gated = auth.gated;
   const isAuthed = auth.authenticated;
@@ -125,17 +141,6 @@ export default function PortfolioView() {
     () => false,
   );
   const isDesktop = useIsDesktopWidth();
-
-  // Restore edit intent from persisted storage (covers reload at `/` after `?edit=true` was set
-  // but the URL lost it before the server could see it). Runs once on mount.
-  useEffect(() => {
-    if (isEditMode) return;
-    try {
-      if (window.sessionStorage.getItem('portfolio-edit-mode') === '1' || document.cookie.includes('portfolio-edit-mode=1')) {
-        setIsEditMode(true);
-      }
-    } catch {}
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     try {

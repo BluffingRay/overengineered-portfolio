@@ -125,11 +125,6 @@ const NAME_FIT_PILLS = NAME_FITS.map((value) => ({
   label: NAME_FIT_LABELS[value],
 }));
 
-const PILLS =
-  'flex rounded-skin border border-[var(--border)] p-0.5';
-const PILL =
-  'rounded-[calc(var(--radius)-0.15rem)] px-2 py-0.5 text-[10px]';
-
 function Segmented<T extends string>(props: { options: Array<{ value: T; label: string }>; value: T; onChange: (next: T) => void; ariaLabel: string }) {
   return <SegmentedControl value={props.value} options={props.options} onChange={props.onChange} ariaLabel={props.ariaLabel} />;
 }
@@ -138,29 +133,6 @@ interface Props {
   block: FeaturedHeroBlock;
   tabs: Tab[];
   patch: (p: Record<string, unknown>) => void;
-}
-
-/** Matches a `#`-prefixed href against known tabs (id, id-without-`tab-`
-    prefix, or label slug). Returns null for custom/external URLs. */
-function resolveTab(
-  tabs: Array<Pick<Tab, 'id' | 'label'>>,
-  href: string,
-): Pick<Tab, 'id' | 'label'> | null {
-  if (!href.trim().startsWith('#')) return null;
-  const raw = href.trim().toLowerCase().replace(/^#/, '');
-  if (!raw) return null;
-
-  const slug = raw.replace(/^tab-/, '');
-  return (
-    tabs.find((tab) => {
-      const id = tab.id.toLowerCase();
-      return id === raw || id.replace(/^tab-/, '') === slug;
-    }) ??
-    tabs.find(
-      (tab) => tab.label.toLowerCase().replace(/\s+/g, '-') === slug,
-    ) ??
-    null
-  );
 }
 
 /** Link control that offers existing tabs as one-click choices and only

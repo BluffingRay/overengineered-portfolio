@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImagePlus, Trash2 } from 'lucide-react';
+import ManagedImage from '@/components/ui/ManagedImage';
 import { usePortfolioData } from '@/hooks/usePortfolioData';
 
 export default function MediaPicker({
@@ -23,16 +24,100 @@ export default function MediaPicker({
   const [dragOver, setDragOver] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const reload = () => {
-    setReloading(true);
-    setError(null);
+  // Stable callbacks (defined before the early return — hooks can't run
+  // after it). useCallback keeps effect deps honest AND fixes a real
+  // stale-closure bug: the paste listener used to capture the
+  // first-render onSelect/onClose forever.
+  // Render-phase adjustment (house pattern): opening the dialog
+  // resets the spinner + error during render, so the fetch effect below
+  // performs no synchronous setState (compiler lint contract).
+  const [seenOpen, setSeenOpen] = useState(open);
+  if (seenOpen !== open) {
+    setSeenOpen(open);
+    if (open) {
+      setReloading(true);
+      setError(null);
+    }
+  }
+
+  const reload = useCallback(() => {
     fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => setError('Reload failed')).finally(() => setReloading(false));
-  };
+  }, []);
+
+  const pick = useCallback((url: string) => {
+    if (url && url !== '/images/placeholder.svg' && !(data.assets ?? []).some((a) => a.url === url)) {
+      mutate((current) => ({
+        ...current,
+        assets: [{ id: crypto.randomUUID(), url, name: url.split('/').pop() }, ...(current.assets ?? [])].slice(0, 200),
+      }));
+    }
+    onSelect(url);
+    onClose();
+  }, [data.assets, mutate, onSelect, onClose]);
+
+  const handleUpload = useCallback(async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
+      const json = (await res.json()) as { url?: string; name?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
+      mutate((current) => ({
+        ...current,
+        assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+      }));
+      pick(json.url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }, [mutate, pick]);
+
+  const handleFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+    if (imageFiles.length === 1) {
+      await handleUpload(imageFiles[0]!);
+      return;
+    }
+    setError(null);
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of imageFiles) {
+        const body = new FormData();
+        body.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
+        const json = (await res.json()) as { url?: string; name?: string; error?: string };
+        if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed for ${file.name}`);
+        urls.push(json.url);
+        mutate((current) => ({
+          ...current,
+          assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
+        }));
+      }
+      // Keep the library open so the user sees all uploads; auto-select the first for convenience
+      if (urls[0]) {
+        // Add silently already done; now select first without re-adding
+        onSelect(urls[0]);
+        onClose();
+      }
+      // Refresh the R2 inventory so newly uploaded keys show immediately
+      fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => {});
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }, [handleUpload, mutate, onSelect, onClose]);
 
   useEffect(() => {
     if (!open) return;
     reload();
-  }, [open, data.assets]);
+  }, [open, data.assets, reload]);
 
   useEffect(() => {
     if (!open) return;
@@ -82,79 +167,9 @@ export default function MediaPicker({
     }
     document.addEventListener('paste', onPaste as unknown as EventListener);
     return () => document.removeEventListener('paste', onPaste as unknown as EventListener);
-  }, [open]);
+  }, [open, handleFiles]);
 
   if (!open) return null;
-
-  function pick(url: string) {
-    if (url && url !== '/images/placeholder.svg' && !(data.assets ?? []).some((a) => a.url === url)) {
-      mutate((current) => ({
-        ...current,
-        assets: [{ id: crypto.randomUUID(), url, name: url.split('/').pop() }, ...(current.assets ?? [])].slice(0, 200),
-      }));
-    }
-    onSelect(url);
-    onClose();
-  }
-
-  async function handleUpload(file: File) {
-    setError(null);
-    setUploading(true);
-    try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
-      const json = (await res.json()) as { url?: string; name?: string; error?: string };
-      if (!res.ok || !json.url) throw new Error(json.error ?? 'Upload failed');
-      mutate((current) => ({
-        ...current,
-        assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
-      }));
-      pick(json.url);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleFiles(files: File[]) {
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-    if (imageFiles.length === 0) return;
-    if (imageFiles.length === 1) {
-      await handleUpload(imageFiles[0]!);
-      return;
-    }
-    setError(null);
-    setUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const file of imageFiles) {
-        const body = new FormData();
-        body.append('file', file);
-        const res = await fetch('/api/upload', { method: 'POST', body, credentials: 'same-origin' });
-        const json = (await res.json()) as { url?: string; name?: string; error?: string };
-        if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed for ${file.name}`);
-        urls.push(json.url);
-        mutate((current) => ({
-          ...current,
-          assets: [{ id: crypto.randomUUID(), url: json.url!, name: json.name }, ...(current.assets ?? [])].slice(0, 200),
-        }));
-      }
-      // Keep the library open so the user sees all uploads; auto-select the first for convenience
-      if (urls[0]) {
-        // Add silently already done; now select first without re-adding
-        onSelect(urls[0]);
-        onClose();
-      }
-      // Refresh the R2 inventory so newly uploaded keys show immediately
-      fetch('/api/upload?list=1', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.json()).then((j: { files?: typeof storageFiles }) => setStorageFiles(j.files ?? [])).catch(() => {});
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  }
 
   function removeAsset(id: string) {
     const isStorage = id.startsWith('storage:');
@@ -264,7 +279,7 @@ export default function MediaPicker({
                 {inventory.map((asset) => (
                   <li key={asset.id} className="group relative">
                     <button type="button" title={asset.name ?? asset.url} onClick={() => pick(asset.url)} className="block aspect-video w-full overflow-hidden rounded-skin border border-[var(--border)] hover:border-accent bg-black/[0.03]">
-                      <img src={asset.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/placeholder.svg'; (e.currentTarget as HTMLImageElement).style.opacity = '0.6'; }} />
+                      <ManagedImage src={asset.url} className="h-full w-full object-cover" />
                     </button>
                     <button type="button" aria-label={`Remove ${asset.name ?? 'asset'}`} title={asset.id.startsWith('ref:') ? 'Remove from doc (clear thumbnail/cover)' : 'Delete file (R2 + local) and clear doc refs'} onClick={() => removeAsset(asset.id)} className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-current/20 bg-background text-red-500 group-hover:flex">
                       <Trash2 className="h-3 w-3" aria-hidden="true" />

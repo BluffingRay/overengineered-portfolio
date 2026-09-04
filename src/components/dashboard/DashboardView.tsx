@@ -76,13 +76,6 @@ import NoPortfolioCard from './NoPortfolioCard';
  * empty-state copy differs.
  */
 
-interface PortfolioMeta {
-  exists: boolean;
-  slug: string | null;
-  visibility: 'private' | 'public';
-  showcase: boolean;
-}
-
 /** Client shape of GET /api/portfolio/showcase items (updatedAt is server-side ordering; not displayed). */
 interface ShowcaseCard {
   slug: string;
@@ -120,9 +113,6 @@ function parseShowcasePage(data: unknown): ShowcasePage | null {
   return { entries: cards, hasMore: rec.hasMore === true };
 }
 
-
-  'rounded-skin border border-[var(--border)] bg-background px-3 py-1.5 text-sm font-medium';
-
 /** 5f-b — import size guard: rejected client-side, before any read or request. */
 const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -139,7 +129,7 @@ type SlugStatus =
 export default function DashboardView() {
   const auth = useAuth();
 
-  const { meta, setMeta, metaError, setMetaError, heroTitle, setHeroTitle, heroTitleReady, setHeroTitleReady, extractDocTitle } =
+  const { meta, setMeta, metaError, heroTitle, setHeroTitle, heroTitleReady, setHeroTitleReady, extractDocTitle } =
     useDashboardMeta(auth.authReady, auth.authenticated);
   const [showcase, setShowcase] = useState<ShowcaseCard[] | null>(null);
   const [showcaseError, setShowcaseError] = useState<string | null>(null);

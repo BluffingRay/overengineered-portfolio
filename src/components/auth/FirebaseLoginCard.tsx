@@ -30,7 +30,7 @@ function SignInNotConfigured() {
   return (
     <div className="mx-auto w-full max-w-xs pt-10">
       <div className="rounded-skin border border-[var(--border)] bg-surface p-5 text-center">
-        <p className="text-sm font-medium">Sign-in isn't set up on this site</p>
+        <p className="text-sm font-medium">Sign-in isn&apos;t set up on this site</p>
         <p className="mt-1 text-xs opacity-60">The site owner needs to connect an account provider first.</p>
       </div>
     </div>

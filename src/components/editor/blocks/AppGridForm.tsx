@@ -1,21 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCommittedValue } from '@/hooks/useCommittedValue';
 import MediaPicker from '@/components/editor/MediaPicker';
 import {
   DndContext,
-  KeyboardSensor,
-  PointerSensor,
   closestCenter,
-  useSensor,
-  useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { useEditorSensors } from '@/hooks/useEditorSensors';
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';

@@ -23,7 +23,7 @@ interface LinkTargetPickerProps {
   blogs?: Array<{ id: string; title: string }>;
 }
 
-export default function LinkTargetPicker({ tabs, value, onChange, placeholder = '/cv.pdf or https://…', blogs, showBlogs }: LinkTargetPickerProps) {
+export default function LinkTargetPicker({ tabs, value, onChange, placeholder = '/cv.pdf or https://…', showBlogs }: LinkTargetPickerProps) {
   const hasTabs = tabs && tabs.length > 0;
   const matched = hasTabs ? resolveTab(tabs!, value) : null;
 

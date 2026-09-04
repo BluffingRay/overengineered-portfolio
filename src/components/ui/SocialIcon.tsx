@@ -7,6 +7,7 @@ import {
   Mail,
   MessagesSquare,
 } from 'lucide-react';
+import ManagedImage from './ManagedImage';
 import type { SocialLink, SocialPlatform } from '@/types/schema';
 import { isImageSource, resolveAppIcon } from '@/components/blocks/iconMap';
 
@@ -30,20 +31,20 @@ export default function SocialIcon({ link, className }: Props) {
 
   if (custom && isImageSource(custom)) {
     return (
-      <img
+      <ManagedImage
         src={custom}
-        alt=""
-        loading="lazy"
-        decoding="async"
         className={`h-full w-full object-contain ${className ?? ''}`}
       />
     );
   }
 
+  // Same contract as ProjectIcon: resolveAppIcon returns stable
+  // module-level references only (see REGISTRY invariant).
   const CustomLucide = resolveAppIcon(custom);
   const Icon = CustomLucide ?? Fallback;
 
   return (
+    // eslint-disable-next-line react-hooks/static-components
     <Icon
       aria-hidden="true"
       className={`h-full w-full ${className ?? ''}`}

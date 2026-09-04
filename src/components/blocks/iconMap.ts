@@ -48,6 +48,11 @@ import {
 } from 'lucide-react';
 
 const REGISTRY: Record<string, LucideIcon> = {
+  // INVARIANT (lint contract): values must be module-level component
+  // references only — never inline arrows or call results. ProjectIcon
+  // and SocialIcon render registry hits as <Icon/> under a targeted
+  // static-components suppression that depends on this stability
+  // (a fresh reference per render would remount + reset state).
   terminal: Terminal,
   'book-open': BookOpen,
   sparkles: Sparkles,

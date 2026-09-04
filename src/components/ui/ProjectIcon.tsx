@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { isImageSource, resolveAppIcon } from '@/components/blocks/iconMap';
+import ManagedImage from './ManagedImage';
 
 interface Props {
   icon?: string;
@@ -13,17 +14,22 @@ export default function ProjectIcon({ icon, appName }: Props) {
 
   if (isImageSource(icon)) {
     content = (
-      <img
+      <ManagedImage
         src={icon}
-        alt=""
         className="h-5 w-5 object-contain"
         draggable={false}
       />
     );
   } else {
+    // Intentional dynamic dispatch: resolveAppIcon returns stable
+    // module-level Lucide references (see REGISTRY invariant), so the
+    // identity is stable per icon string and nothing remounts. The
+    // static-components rule can't verify registry stability —
+    // keep REGISTRY free of inline components.
     const Icon: LucideIcon | null = resolveAppIcon(icon);
 
     content = Icon ? (
+      // eslint-disable-next-line react-hooks/static-components
       <Icon className="h-5 w-5" aria-hidden="true" />
     ) : (
       <span className="text-sm font-semibold">
