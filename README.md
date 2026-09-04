@@ -106,6 +106,7 @@ On hosted deploys, new users who sign up get the **onboarding** flow (pick a des
 - **Vercel's ephemeral filesystem doesn't persist `public/uploads/`.** Runtime uploads vanish on the next deploy; use R2 on hosted deploys (or a long-lived Node host for local uploads, or commit images to `public/images/`).
 - **Draft model: last-save-wins.** `localStorage['portfolio-data']` is the draft store; hosted saves PUT the whole document — two devices editing means the last Save wins (no merge). A fresh browser with an unsaved draft gets the amber load-offer banner rather than silently clobbering the hosted doc.
 - **jsdom is pinned at 26.1.0 — do not bump past it.** jsdom ships *external* (Next's default `serverExternalPackages`), so the deployed Lambda `require()`s its whole dependency tree at request time, and from jsdom 27.4 up that tree contains ESM-only packages that crash the function with `ERR_REQUIRE_ESM` (locally fine — Node 24 supports require(esm)). The `package.json` `overrides` (jsdom 26.1.0, parse5 7.2.1, jose, html-encoding-sniffer) are load-bearing. Full story + the tarball-audit method: [`docs/specs/esm-require-nightmare-postmortem.md`](docs/specs/esm-require-nightmare-postmortem.md).
+- **`/` and `?edit=true` reload quirk (known, not yet fixed).** Navigating to `/` or toggling `?edit=true` can trigger a full reload / remount instead of a soft client navigation — may be back after recent routing/auth changes, or may be a stale cache. Listing here until verified and fixed; no code push for this entry.
 
 ## Limitations
 

@@ -674,6 +674,15 @@ seed is authored after the block exists:
   clean, dashboard 200.
 Build Phase 6 in a FRESH session (this run's lesson).
 
+**Session 2026-09-04 — design skeletons + lint-zero + playground v2 (all DONE ✅, specs in docs/specs/):**
+- `hero-skeleton.md`: 7 logic-identical primitives in `hero/shared.tsx` (CTA pair, socials, banner backdrop, dots, split-grid, media branch); 4 heroes are thin skins now. Siblings-not-skins preserved (badge/roles/media stay per-design).
+- `design-skeletons.md`: `Card*` primitives (grid), `BlogShell`+`BlogPostLink`+`postTitle` (blog), `useRichImageFallback` (rich); all 6 dispatchers `Record` → opt-in `Partial` + default fallback (new design = 1 line + 1 file). Marquee/entry-list/custom_html untouched by design. Recipes for new design/element in the spec.
+- `entry-list-fields.md`: entries go real-world — additive `location?/honors?/expiry?/credentialId?` (no version bump, renderer preset-blind) + `affiliations` preset + per-preset form fields (research subagent tables in task result). Single-column fixed `h-40` removed → natural heights (equal-height 1-col REQUIRES fixed height = the scrollbar bug; user-directed).
+- `img-lazy-and-expandable-fix.md`: lazy on all 19 img sites (eager kept for LCP heroes/reader cover); ExpandableDescription set-state error fixed via render-phase adjustment.
+- `zero-lint.md`: `eslint src/components/` → 0 problems (was 50/5/45). Real fixes (PortfolioView lazy init, MediaPicker useCallback chain + stale-closure fix, dead code) + honest suppressions (static-components usage sites with REGISTRY invariant in iconMap; raw-img where next/image is wrong for CMS URLs). `useMemo` does NOT satisfy static-components (traced through — verified empirically).
+- `playground-v2.md`: research + builder subagents (strict allowlist, orchestrator-verified). Seed covers all features (banner hero, kitchen-sink rich, reverse marquee, education/affiliations entries, card-linking, cutie/riso blogs, draft post, vault assets); TourChecklist (13 dares, state-only); banner Reset + mutation counter; `ephemeralTheme: true` + memory-only shortcut (fixed 2 theme/storage leaks INTO the real site). tsc/eslint/verify-script/SSR/build all clean.
+- Pending user eyeballs (reported, not blocking): MediaPicker upload flow, expandable descriptions, icons, grid/blog tabs, playground tour.
+
 ## Future plans (was original Phase 6 — polish & cross-product)
 
 - **Mobile pass (user, 2026-08-30, warning-shipped):** mobile view is
@@ -683,12 +692,8 @@ Build Phase 6 in a FRESH session (this run's lesson).
   work, user-directed to ship the warning instead of the fix.
 - **Demo showcase opt-out — MOOT (6-e pivot 2026-08-31):** the seeded
   /u/demo showcase seat is gone entirely; nothing to opt out.
-- **Globally uniform card heights (row-based stretching):** all card
-  grids (app grid, blog, entry-list columns) currently equalize heights
-  PER ROW only; the user wants a globally fixed/equal card height
-  option across all rows for a cleaner look. Applies to single-column
-  entry lists too.
-- **Design DRY — blog/grid copy-paste (noted 2026-09-02):** 4 designs per block (default/cutie/editorial/riso) still duplicate `postHref`/`openPostHandler` wiring and card/blog markup across `designs/blog/*` + `designs/grid/*` (the `?post=` hosted shareable change touched 8 files). Refactor to shared skeleton + per-design decoration layer like `MarqueeHalves` — one skeleton, 4 thin skins. Deferred: works, just noisy to maintain.
+- **Globally uniform card heights (row-based stretching):** grids/blogs/multi-col entry lists equalize heights PER ROW only; a globally fixed option across all rows is still future. Single-column entry lists are RESOLVED (2026-09-04, user-directed): natural heights — equal-height 1-col would require a fixed height, which was the scrollbar bug.
+- **Design DRY — blog/grid copy-paste — DONE ✅ (2026-09-04):** hero/card/blog/rich all run on shared primitives + thin skins now (see session entry above); dispatchers are opt-in per family. New-design cost is ~1 file + 1 line.
 - **Blog post crawlability (parked 2026-09-02, cool):** `.../u/[slug]?post=ID` is shareable (OG via `src/app/(a-shell)/u/[slug]/page.tsx:58`, float on `HostedPortfolioView.tsx:62`) but body is client `FloatingPage` (`createPortal` `src/components/FloatingPage.tsx:55` returns null on SSR) so `curl`/Gemini sees portfolio shell, not article. Parked fix: SSR the post body when `?post=` is present + add `...?post=` URLs to `sitemap.xml` `src/app/sitemap.ts:35` for public posts. Not worth now — blog is `budget-Medium` browsed inside tabs.
 - **Accessibility:** editor UI audit (screen reader labels; the motion
   system is already a11y-aware), broader keyboard navigation.
@@ -700,6 +705,8 @@ Build Phase 6 in a FRESH session (this run's lesson).
   localStorage; on-brand for the "overengineered" identity).
 - **Analytics:** self-hosted Plausible/Umami (privacy-friendly).
 - **Design theme export:** shareable skin + font + accent bundles.
+- **Builtin messaging (proposed 2026-09-02, MWAHAHAHA):** visitors message the portfolio owner directly on-site (no email expose). Inbox in dashboard/onboarding, per-portfolio contact block (`contact_messages?: {id, from, email, body, at}[]` additive, no version bump), KV-backed, rate-limited, spam-filtered, email notification optional. Not yet specced — see chat 2026-09-02 for trade-offs.
+- **Custom HTML editor too small (reported 2026-09-02; simple slice shipped 2026-09-03):** was an inline `rows=4` textarea writing the store per keystroke — now extracted `CustomHtmlForm.tsx` (`rows=15`, `min-h-240px`, local draft + verbatim commit on blur, so typing is smooth and undo stays one entry). Still parked: resizable + fullscreen CodeMirror/Monaco (syn highlights, line nos, prettify).
 
 ## Historical — Phase 3 Direction (original scope)
 
