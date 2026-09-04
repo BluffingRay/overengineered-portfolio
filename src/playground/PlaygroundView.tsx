@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useSearchParams } from 'next/navigation';
 import BlockRenderer from '@/components/blocks/BlockRenderer';
 import SkinSwitcher from '@/components/SkinSwitcher';
@@ -14,21 +14,39 @@ import GlobalSettings from '@/components/editor/GlobalSettings';
 import SiteFooter from '@/components/ui/SiteFooter';
 import EditorPanel from '@/components/editor/EditorPanel';
 import {
-  readStoredShortcut,
+  DEFAULT_SHORTCUT,
   shortcutMatches,
   type EditShortcut,
 } from '@/lib/editShortcut';
 import {
   PortfolioStoreProvider,
   usePortfolioData,
+  usePortfolioStore,
 } from '@/hooks/usePortfolioData';
 import { usePortfolioShell } from '@/hooks/usePortfolioShell';
 import PortfolioChrome from '@/components/PortfolioChrome';
 import { createPlaygroundStore } from './store';
+import TourChecklist, { type TourChecklistItem } from './TourChecklist';
 import { useIsDesktopWidth } from '@/hooks/useIsDesktopWidth';
 
+const TOUR_ITEMS: TourChecklistItem[] = [
+  { id: 'tour-edit', tabId: 'tab-start', label: '$ press Ctrl/Cmd+Shift+E and rewrite this very sentence' },
+  { id: 'tour-skip', tabId: 'tab-start', label: '~ hit “Skip to the toys →” — feel the banner jump' },
+  { id: 'tour-add', tabId: 'tab-blocks', label: '$ add a block with +, then undo it (Ctrl/Cmd+Z)' },
+  { id: 'tour-drag', tabId: 'tab-blocks', label: '~ drag “Drag me” under “Reorder me” via the ⠿ handle' },
+  { id: 'tour-vault', tabId: 'tab-blocks', label: '▌ paste a Library URL instead of reaching for Upload' },
+  { id: 'tour-designs', tabId: 'tab-designs', label: '$ flip one block through all four designs' },
+  { id: 'tour-split', tabId: 'tab-designs', label: '~ give the split hero a longer name and a new role' },
+  { id: 'tour-publish', tabId: 'tab-blog', label: '$ flip the draft post to published — watch the blog blocks' },
+  { id: 'tour-skin', tabId: 'tab-blog', label: '~ flip the skin top-right — the whole tour re-skins' },
+  { id: 'tour-export', tabId: 'tab-ship', label: '$ Export the JSON — that file IS the publish' },
+  { id: 'tour-reset', tabId: 'tab-ship', label: '~ hit Reset: ~0 mutations, pristine demo' },
+  { id: 'tour-reuse', tabId: 'tab-showcase', label: '$ rename a card — watch it cascade across ×4 grids' },
+  { id: 'tour-detach', tabId: 'tab-showcase', label: '~ detach one card, then duplicate-as-independent' },
+];
+
 function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel: string }) {
-  const { data, undo, redo } = usePortfolioData();
+  const { data, undo, redo, reset } = usePortfolioData();
   const searchParams = useSearchParams();
   const [isEditMode, setIsEditMode] = useState(
     searchParams.get('edit') === 'true',
@@ -50,11 +68,23 @@ function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel:
     initialActiveTabId: data.tabs[0]?.id ?? '',
     adminTabIds: ['admin:posts', 'admin:site'],
     posts: data.posts,
+    ephemeralTheme: true,
   });
 
-  const [editShortcut, setEditShortcut] = useState<EditShortcut>(() =>
-    readStoredShortcut(),
-  );
+  // Local-only remap: the shortcut preference never touches storage here,
+  // so a remap dies on refresh with the rest of the playground.
+  const [editShortcut, setEditShortcut] = useState<EditShortcut>(DEFAULT_SHORTCUT);
+
+  // First-visit edit nudge + tour checklist — React state only, no storage.
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [tourDone, setTourDone] = useState<string[]>([]);
+
+  const store = usePortfolioStore();
+  // Guarded stats access: the global store has no `stats`, so this reads 0
+  // there and the live count on the playground store. (The cast sits on the
+  // callee, not the call result: `unknown` narrows to `Function` under the
+  // typeof guard, and `Function` has no call signatures under strict TS.)
+  const mutations = 'stats' in store && typeof store.stats === 'function' ? ((store.stats as () => {mutations:number})()).mutations : 0;
 
   const isDesktop = useIsDesktopWidth();
 
@@ -209,14 +239,8 @@ function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel:
 
   return (
     <main
-      style={
-        {
-          ...(data.theme.accentColor
-            ? { '--accent': data.theme.accentColor }
-            : {}),
-          ...(data.theme.fontFamily ? { '--font': data.theme.fontFamily } : {}),
-        } as React.CSSProperties
-      }
+      data-skin={shell.appliedSkin}
+      style={{ ...(shell.themeStyle as CSSProperties), minHeight: shell.wrapperMinHeight } as CSSProperties}
       className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground"
     >
       <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 border-b border-current/15 bg-background/95 px-4 py-2 text-xs backdrop-blur">
@@ -224,12 +248,60 @@ function PlaygroundInner({ backHref, backLabel }: { backHref: string; backLabel:
           Playground — nothing you do here is saved. A refresh (or Reset)
           restores the pristine demo.
         </span>
+        <span aria-live="polite" className="font-mono opacity-60">
+          ~{mutations} mutations
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                'Reset the playground to the pristine demo? Your edits will be lost.',
+              )
+            )
+              reset();
+          }}
+          className="font-medium opacity-60 hover:opacity-100"
+        >
+          Reset
+        </button>
         <a href={backHref} className="font-medium opacity-60 hover:opacity-100">
           {backLabel}
         </a>
       </div>
 
+      {!isEditMode && !nudgeDismissed && (
+        <div className="flex items-center justify-center gap-3 border-b border-current/10 px-4 py-1.5 text-xs">
+          <span className="font-mono opacity-70">
+            `Ctrl/Cmd+Shift+E` opens the real editor — everything below is
+            editable.
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setNudgeDismissed(true)}
+            className="opacity-50 hover:opacity-100"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pt-6 pb-16">
+        <TourChecklist
+          items={TOUR_ITEMS}
+          doneIds={tourDone}
+          onToggle={(id) =>
+            setTourDone((prev) =>
+              prev.includes(id)
+                ? prev.filter((doneId) => doneId !== id)
+                : [...prev, id],
+            )
+          }
+          onJump={(tabId) => shell.setActiveId(tabId)}
+          totalLabel={`${tourDone.length}/${TOUR_ITEMS.length}`}
+        />
+
         <PortfolioChrome
           tabs={tabs}
           activeIndex={activeIndex}

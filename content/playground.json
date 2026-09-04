@@ -44,7 +44,10 @@
       "icon": "image",
       "coverImage": "https://api.dicebear.com/9.x/lorelei/svg?seed=media&width=400&height=400",
       "tags": ["images"],
-      "category": "Editor"
+      "category": "Editor",
+      "demoUrl": "https://example.com/vault-demo",
+      "githubUrl": "https://github.com/BluffingRay/overengineered-portfolio",
+      "primaryAction": "demo"
     },
     {
       "id": "card-dnd",
@@ -105,6 +108,29 @@
       "coverImage": "https://api.dicebear.com/9.x/big-smile/svg?seed=calm&width=400&height=400",
       "tags": ["design", "calm"],
       "category": "Designs"
+    },
+    {
+      "id": "card-blogbound",
+      "name": "Bound to the blog",
+      "description": "This card is bound to a real blog post — click it and you land inside the writing, no URL typed anywhere.",
+      "href": "https://example.com/blogbound",
+      "icon": "book-open",
+      "coverImage": "https://api.dicebear.com/9.x/lorelei/svg?seed=blogbound&width=400&height=400",
+      "tags": ["writing"],
+      "category": "Editor",
+      "customPostId": "post-how-to-build"
+    },
+    {
+      "id": "card-extralink",
+      "name": "Lives elsewhere",
+      "description": "A card with an extra free-form link — papers, specs, slide decks, the stuff that is neither demo nor repo.",
+      "href": "https://github.com/BluffingRay/overengineered-portfolio",
+      "icon": "globe",
+      "coverImage": "https://api.dicebear.com/9.x/bottts/svg?seed=extralink&width=400&height=400",
+      "tags": ["links"],
+      "category": "Editor",
+      "customLabel": "Read the spec",
+      "customUrl": "https://example.com/spec"
     }
   ],
   "tabs": [
@@ -119,7 +145,7 @@
           "eyebrow": "~/playground tour",
           "name": "Playground",
           "heading": "Welcome. This is your portfolio's first draft.",
-          "subheading": "You are inside the real editor with a demo document. Edit anything, break anything. Nothing is saved, and a refresh resets it all. Five short steps and you will know the whole machine.",
+          "subheading": "You are inside the real editor with a demo document. Edit anything, break anything. Nothing is saved, and a refresh resets it all. Six short stops and you will know the whole machine.",
           "ctaLabel": "Begin the tour →",
           "ctaHref": "#tab-blocks",
           "thumbnail": "/tilde.svg",
@@ -168,18 +194,41 @@
           "type": "rich_text",
           "design": "cutie",
           "spacing": "normal",
-          "content": "<h2>How this tour works</h2><p>Five tabs across the top, one idea each. You are on <strong>1 · Start</strong>. The big button at the bottom of every step jumps you to the next, or click the tabs yourself. And remember: <strong>everything is editable right now</strong>. Press <strong>Ctrl/Cmd + Shift + E</strong>, open the editor, and poke the very words you are reading.</p>"
+          "content": "<h2>How this tour works</h2><p>Six tabs across the top, one idea each. You are on <strong>1 · Start</strong>. The big button at the bottom of every step jumps you to the next, or click the tabs yourself. And remember: <strong>everything is editable right now</strong>. Press <strong>Ctrl/Cmd + Shift + E</strong>, open the editor, and poke the very words you are reading.</p>"
         },
         {
           "id": "pg-b-004",
           "type": "featured_hero",
           "design": "default",
-          "eyebrow": "the tour, step 1 of 5",
+          "eyebrow": "the tour, step 1 of 6",
           "heading": "Done here?",
-          "subheading": "That was step 1 of 5. Next up: blocks.",
+          "subheading": "That was step 1 of 6. Next up: blocks.",
           "ctaLabel": "Next: Blocks →",
           "ctaHref": "#tab-blocks",
           "layout": "centered"
+        },
+        {
+          "id": "pg-b-banner",
+          "type": "featured_hero",
+          "design": "editorial",
+          "layout": "banner",
+          "eyebrow": "$ one more layout",
+          "heading": "Wait — the hero does banners too.",
+          "subheading": "~ same hero, new clothes: full-bleed backdrop, badge, buttons, socials, all riding along. ▌",
+          "ctaLabel": "Next: Blocks →",
+          "ctaHref": "#tab-blocks",
+          "thumbnail": "https://api.dicebear.com/9.x/bottts/svg?seed=banner&width=400&height=400",
+          "statusBadge": {
+            "enabled": true,
+            "text": "v3 · banner layout",
+            "color": "purple"
+          },
+          "secondaryAction": {
+            "label": "Skip to the toys →",
+            "url": "#tab-showcase",
+            "target": "_self"
+          },
+          "showSocials": true
         }
       ]
     },
@@ -192,7 +241,15 @@
           "type": "rich_text",
           "design": "default",
           "spacing": "normal",
-          "content": "<h2>Everything is a block</h2><p>Hero, marquee, card grid, entry list, rich text, blog, custom HTML, your portfolio is a stack of blocks. Press <strong>Ctrl/Cmd + Shift + E</strong> and this hidden command can be changed later too. Press Edit and add one with the <strong>+ buttons</strong> in the editor, drag them by the ⠿ handle, delete fearlessly: <strong>Ctrl/Cmd + Z</strong> undoes everything. This tab is just blocks, one after another.</p>"
+          "content": "<h2>Everything is a block</h2><p>Hero, marquee, card grid, entry list, rich text, blog, custom HTML, your portfolio is a stack of blocks. Press <strong>Ctrl/Cmd + Shift + E</strong> and this hidden command can be changed later too. Press Edit and add one with the <strong>+ buttons</strong> in the editor, drag them by the ⠿ handle, delete fearlessly: <strong>Ctrl/Cmd + Z</strong> undoes everything. This tab is just blocks, one after another.</p><p>~ the vault rule: pick from the <strong>Library</strong> or paste an image URL — skip the <strong>Upload</strong> button. Uploads live on this machine only and never survive the export bridge; Library URLs travel with the document. ▌</p>"
+        },
+        {
+          "id": "pg-b-024",
+          "type": "rich_text",
+          "design": "riso",
+          "width": "wide",
+          "spacing": "spacious",
+          "content": "<h2>$ the kitchen sink</h2><p>~ one rich-text block, every trick at once. Quote it, link it, table it, check it off — then flip this block through all four designs and watch the same HTML wear four outfits. ▌</p><blockquote><p>“Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.”</p></blockquote><p>Every <a href=\"https://example.com/kitchen-sink\">rule has an exception with its own docs page</a>, including this one.</p><table><tbody><tr><th><p>take</p></th><th><p>leave</p></th></tr><tr><td><p>two tricks</p></td><td><p>the rest</p></td></tr></tbody></table><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"true\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>ship the sink</p></div></li><li data-type=\"taskItem\" data-checked=\"false\"><label><input type=\"checkbox\"><span></span></label><div><p>polish it later</p></div></li></ul><p style=\"text-align: center\">~ centered, because we can ▌</p>"
         },
         {
           "id": "pg-b-006",
@@ -210,6 +267,21 @@
           ],
           "separator": "·",
           "speed": "normal"
+        },
+        {
+          "id": "pg-b-025",
+          "type": "marquee",
+          "design": "cutie",
+          "spacing": "none",
+          "items": [
+            "washi tape",
+            "polaroid frames",
+            "candy tags",
+            "sticker sheets"
+          ],
+          "separator": "♡",
+          "speed": "fast",
+          "reverse": true
         },
         {
           "id": "el-try",
@@ -264,6 +336,60 @@
           ]
         },
         {
+          "id": "pg-el-edu",
+          "type": "entry_list",
+          "design": "cutie",
+          "preset": "education",
+          "title": "$ schooled, twice",
+          "columns": 2,
+          "entries": [
+            {
+              "id": "pg-edu-1",
+              "title": "B.S., Delightful Overengineering",
+              "subtitle": "Academy of Too Much",
+              "meta": "2022 — 2026",
+              "location": "Remote",
+              "honors": "Summa cum coffee",
+              "link": "https://example.com/diploma"
+            },
+            {
+              "id": "pg-edu-2",
+              "title": "M.F.A., Shipping It",
+              "subtitle": "Institute of Just Enough",
+              "meta": "2026 — 2027",
+              "location": "Somewhere with wifi",
+              "honors": "Dean's list, twice",
+              "link": "https://example.com/thesis"
+            }
+          ]
+        },
+        {
+          "id": "pg-el-affil",
+          "type": "entry_list",
+          "design": "default",
+          "preset": "affiliations",
+          "title": "~ affiliated, loosely",
+          "columns": 2,
+          "entries": [
+            {
+              "id": "pg-aff-1",
+              "title": "Terminal Enthusiasts Club",
+              "subtitle": "Founding lurker",
+              "meta": "2024 — now",
+              "location": "Everywhere",
+              "link": "https://example.com/terminal-club"
+            },
+            {
+              "id": "pg-aff-2",
+              "title": "Society for Spare Pixels",
+              "subtitle": "Pixel keeper",
+              "meta": "2025 — now",
+              "location": "Remote",
+              "link": "https://example.com/spare-pixels"
+            }
+          ]
+        },
+        {
           "id": "grid-editor",
           "type": "app_grid",
           "design": "default",
@@ -272,6 +398,17 @@
             "card-media",
             "card-dnd",
             "card-blogcard"
+          ]
+        },
+        {
+          "id": "grid-spotlight",
+          "type": "app_grid",
+          "design": "editorial",
+          "title": "$ fresh off the library shelf",
+          "apps": [
+            "card-blogbound",
+            "card-extralink",
+            "card-media"
           ]
         },
         {
@@ -288,12 +425,26 @@
           "variant": "latest"
         },
         {
+          "id": "pg-b-latest-cutie",
+          "type": "blog",
+          "design": "cutie",
+          "title": "~ latest posts, cutie edition",
+          "variant": "latest"
+        },
+        {
+          "id": "pg-b-all-riso",
+          "type": "blog",
+          "design": "riso",
+          "title": "~ every post, riso edition",
+          "variant": "all"
+        },
+        {
           "id": "pg-b-009",
           "type": "featured_hero",
           "design": "default",
-          "eyebrow": "the tour, step 2 of 5",
+          "eyebrow": "the tour, step 2 of 6",
           "heading": "Done here?",
-          "subheading": "That was step 2 of 5. Next up: designs.",
+          "subheading": "That was step 2 of 6. Next up: designs.",
           "ctaLabel": "Next: Designs →",
           "ctaHref": "#tab-designs",
           "layout": "centered"
@@ -368,6 +519,32 @@
           "mediaSide": "right"
         },
         {
+          "id": "pg-b-hero-split",
+          "type": "featured_hero",
+          "design": "default",
+          "layout": "split",
+          "mediaSide": "left",
+          "mediaRatio": "circle",
+          "mediaFrame": "window",
+          "nameFit": "compact",
+          "name": "The Distinguished Doctor of Doing Too Much",
+          "roles": [
+            "overthinks portfolios",
+            "ships at 2am",
+            "reads every diff twice"
+          ],
+          "heading": "Same hero, split down the middle.",
+          "subheading": "~ media left, copy right, portrait cropped to a circle in a little window frame. The long name wraps compact instead of shrinking. ▌",
+          "ctaLabel": "Flip my design ↓",
+          "ctaHref": "#tab-designs",
+          "thumbnail": "https://api.dicebear.com/9.x/lorelei/svg?seed=split&width=400&height=400",
+          "statusBadge": {
+            "enabled": true,
+            "text": "$ split · circle · window",
+            "color": "blue"
+          }
+        },
+        {
           "id": "pg-el-cert",
           "type": "entry_list",
           "design": "riso",
@@ -379,19 +556,28 @@
               "id": "pg-c-1",
               "title": "Certified block flipper",
               "subtitle": "Design picker",
-              "meta": "step 3"
+              "meta": "step 3",
+              "expiry": "2027-01",
+              "credentialId": "CBF-0001",
+              "link": "https://example.com/creds/block-flipper"
             },
             {
               "id": "pg-c-2",
               "title": "Skin switcher",
               "subtitle": "Top-right menu",
-              "meta": "also try it"
+              "meta": "also try it",
+              "expiry": "2026-12",
+              "credentialId": "SS-0042",
+              "link": "https://example.com/creds/skin-switcher"
             },
             {
               "id": "pg-c-3",
               "title": "Accent owner",
               "subtitle": "Editor toolbar",
-              "meta": "one click"
+              "meta": "one click",
+              "expiry": "2028-06",
+              "credentialId": "AO-0133",
+              "link": "https://example.com/creds/accent-owner"
             }
           ]
         },
@@ -399,9 +585,9 @@
           "id": "pg-b-016",
           "type": "featured_hero",
           "design": "default",
-          "eyebrow": "the tour, step 3 of 5",
+          "eyebrow": "the tour, step 3 of 6",
           "heading": "Done here?",
-          "subheading": "That was step 3 of 5. Next up: blog and site settings.",
+          "subheading": "That was step 3 of 6. Next up: blog and site settings.",
           "ctaLabel": "Next: Blog & Site →",
           "ctaHref": "#tab-blog",
           "layout": "centered"
@@ -417,7 +603,7 @@
           "type": "rich_text",
           "design": "default",
           "spacing": "normal",
-          "content": "<h2>Write like you mean it</h2><p>The <strong>Posts</strong> button (top right, while editing) opens the post manager; every post opens in the full-screen writer at <strong>/write</strong>, with a borderless title, live formatting, and an editable publish date. Published posts flow into the blog block you saw in step 2. Drafts stay private until you flip them.</p>"
+          "content": "<h2>Write like you mean it</h2><p>The <strong>Posts</strong> button (top right, while editing) opens the post manager; every post opens in the full-screen writer at <strong>/write</strong>, with a borderless title, live formatting, and an editable publish date. Published posts flow into the blog block you saw in step 2. Drafts stay private until you flip them.</p><p>~ the loop in one breath: write as a <strong>draft</strong>, flip to <strong>published</strong>, watch it land in every blog block — flip it back and it vanishes. The hidden draft on this tour (go find it in Posts) is your practice dummy. ▌</p>"
         },
         {
           "id": "pg-b-018",
@@ -437,9 +623,9 @@
           "id": "pg-b-020",
           "type": "featured_hero",
           "design": "default",
-          "eyebrow": "the tour, step 4 of 5",
+          "eyebrow": "the tour, step 4 of 6",
           "heading": "Done here?",
-          "subheading": "That was step 4 of 5. Next up: shipping.",
+          "subheading": "That was step 4 of 6. Next up: shipping.",
           "ctaLabel": "Next: Ship it →",
           "ctaHref": "#tab-ship",
           "layout": "centered"
@@ -455,7 +641,7 @@
           "type": "rich_text",
           "design": "default",
           "spacing": "normal",
-          "content": "<h2>Make it real</h2><p>Two doors out of the playground, both starting from what you just learned:</p><ul><li><strong>The fork (Product B).</strong> Fork the repo, run it, and edit for real. Then publish by exporting the JSON and pasting it over <em>content/portfolio.json</em> in your fork. Git push, rebuild, live.</li><li><strong>The hosted account (Product A).</strong> Sign up from the hub, onboard in two minutes, press <strong>Save</strong>. Your portfolio is at <em>/u/your-name</em> instantly, no rebuilds ever.</li></ul><p>Both speak the same JSON, so you can jump between them whenever you like.</p>"
+          "content": "<h2>Make it real</h2><p>Two doors out of the playground, both starting from what you just learned:</p><ul><li><strong>The fork (Product B).</strong> Fork the repo, run it, and edit for real. Then publish by exporting the JSON and pasting it over <em>content/portfolio.json</em> in your fork. Git push, rebuild, live.</li><li><strong>The hosted account (Product A).</strong> Sign up from the hub, onboard in two minutes, press <strong>Save</strong>. Your portfolio is at <em>/u/your-name</em> instantly, no rebuilds ever.</li></ul><p>Both speak the same JSON, so you can jump between them whenever you like.</p><p>$ semantics that never change: <strong>Export</strong> downloads the whole document; <strong>Import</strong> replaces it (content only — image bytes never travel, so re-upload after, or better, use Library URLs); <strong>Reset</strong> restores the seed. Nothing phones home; while you play, a refresh is a reset. ▌</p>"
         },
         {
           "id": "pg-recap",
@@ -512,7 +698,7 @@
           "type": "rich_text",
           "design": "default",
           "spacing": "normal",
-          "content": "<h2>Same data, four skins</h2><p>This tab is the missing piece: the same card library rendered through every art direction, plus the socials hub, the iframe embed, and a banner hero you have not seen yet. The card library is the playground's biggest flex: one edit propagates across all four grids below. Open the editor and rename a card. Then come back here and watch the change cascade.</p>"
+          "content": "<h2>Same data, four skins</h2><p>This tab is the missing piece: the same card library rendered through every art direction, plus the socials hub and the iframe embed — the banner hero now opens the tour on step 1. The card library is the playground's biggest flex: one edit propagates across all four grids below. Open the editor and rename a card. Then come back here and watch the change cascade.</p><p>$ card reuse, precisely: grids hold library references — a shared card wears a <strong>linked ×N</strong> badge in the editor. Attach more via <strong>From library…</strong>, fork one with <strong>duplicate-as-independent</strong> (⧉), or <strong>detach</strong> (✕) to unlink without deleting. ▌</p>"
         },
         {
           "id": "pg-sc-002",
@@ -566,7 +752,8 @@
           "id": "pg-sc-006",
           "type": "custom_html",
           "design": "default",
-          "html": "<section style=\"border:2px dashed currentColor;padding:24px;border-radius:12px;\"><h2 style=\"margin:0 0 8px;font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;\">Custom HTML with an iframe</h2><p style=\"margin:0 0 16px;opacity:0.75;\">The custom_html block allows embeds on allowlisted hosts. The carousel <em>is</em> a classic. You have seen it before.</p><iframe src=\"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ\" title=\"Embed host approved\" allow=\"accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen=\"\" style=\"width:100%;aspect-ratio:16/9;border:0;border-radius:8px;\"></iframe></section>"
+          "html": "<section style=\"border:2px dashed currentColor;padding:24px;border-radius:12px;\"><h2 style=\"margin:0 0 8px;font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;\">Custom HTML with an iframe</h2><p style=\"margin:0 0 16px;opacity:0.75;\">The custom_html block allows embeds on allowlisted hosts. The carousel <em>is</em> a classic. You have seen it before.</p><iframe src=\"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ\" title=\"Embed host approved\" allow=\"accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen=\"\" style=\"width:100%;aspect-ratio:16/9;border:0;border-radius:8px;\"></iframe></section>",
+          "width": "full"
         },
         {
           "id": "pg-sc-007",
@@ -666,6 +853,25 @@
       "status": "published",
       "publishedAt": "2026-08-27",
       "coverImage": "https://api.dicebear.com/9.x/big-smile/svg?seed=local&width=1200&height=800"
+    },
+    {
+      "id": "post-publish-flow",
+      "title": "$ drafts → published: flip me",
+      "content": "<p>~ you found the hidden lesson. This post is a <strong>draft</strong>: it lives in the Posts manager, opens in <strong>/write</strong>, and appears in NO blog block.</p><h2>The loop</h2><ol><li>Flip the status pill to <strong>published</strong> — the publish date stamps itself (and stays editable).</li><li>Come back: this post now leads every <strong>latest</strong> block and rows up in every <strong>all</strong> block.</li><li>Flip it back to draft and it vanishes again. Nothing rebuilds, nothing deploys. ▌</li></ol>",
+      "status": "draft",
+      "coverImage": "https://api.dicebear.com/9.x/lorelei/svg?seed=publish-flow&width=1200&height=800"
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-vault-1",
+      "url": "https://api.dicebear.com/9.x/lorelei/svg?seed=vault-shelf&width=1200&height=800",
+      "name": "vault shelf"
+    },
+    {
+      "id": "asset-vault-2",
+      "url": "https://api.dicebear.com/9.x/lorelei/svg?seed=vault-spares&width=1200&height=800",
+      "name": "vault spares"
     }
   ]
 }
